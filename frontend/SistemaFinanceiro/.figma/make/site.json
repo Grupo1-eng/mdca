@@ -1,0 +1,11 @@
+{
+  "title": "Sistema de Gestão Financeira",
+  "description": "Manage finances and projects for organizations and NGOs with a comprehensive dashboard, detailed financial tracking, and customizable reporting tools.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
