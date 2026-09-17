@@ -1,0 +1,400 @@
+// Schema gerado a partir da estrutura REAL do banco "MDCA BANCO" (Neon),
+// confirmada via information_schema (colunas + constraints) nesta conversa.
+// NÃO foi escrito à mão / imaginado — reflete o que já está em produção,
+// mais duas mudanças já decididas pelo grupo:
+//   1) responsavel_familiar ganhou cpf, rg, profissao, vinculo
+//   2) educando ganhou tecnico_responsavel_id (responsável técnico fixo)
+// mais a separação em 3 schemas Postgres exigida pela disciplina.
+//
+// Todos os IDs são integer/serial (autoincrement), como já está no banco.
+// NÃO use UUID — mudar o tipo de PK agora exigiria recriar todas as tabelas
+// e quebraria os dados e FKs já existentes.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "gestao", "financeiro"]
+}
+
+// ==========================================================
+// SCHEMA: public — compartilhado entre gestão e financeiro
+// ==========================================================
+
+model Organizacao {
+  id           Int       @id @default(autoincrement())
+  nome         String
+  cnpj         String?
+  email        String?
+  telefone     String?
+  endereco     String?
+  dataFundacao DateTime? @map("data_fundacao") @db.Timestamp(6)
+  ativa        Boolean   @default(true)
+
+  usuarios          Usuario[]
+  educandos         Educando[]
+  projetos          Projeto[]
+  contasFinanceiras ContaFinanceira[]
+
+  @@map("organizacao")
+  @@schema("public")
+}
+
+model Usuario {
+  id            Int      @id @default(autoincrement())
+  organizacaoId Int      @map("organizacao_id")
+  nome          String
+  email         String
+  senhaHash     String   @map("senha_hash")
+  perfil        String
+  ativo         Boolean  @default(true)
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamp(6)
+
+  organizacao Organizacao @relation(fields: [organizacaoId], references: [id])
+
+  atividadesResponsavel   Atividade[]  @relation("AtividadeResponsavel")
+  evolucoesProfissional   Evolucao[]   @relation("EvolucaoProfissional")
+  compromissosCriados     Compromisso[] @relation("CompromissoCriador")
+  educandosResponsavel    Educando[]   @relation("TecnicoResponsavel")
+  lancamentos             Lancamento[]
+  auditorias              Auditoria[]
+
+  @@map("usuario")
+  @@schema("public")
+}
+
+model Projeto {
+  id             Int       @id @default(autoincrement())
+  organizacaoId  Int       @map("organizacao_id")
+  nome           String
+  descricao      String?
+  status         String
+  orcamentoTotal Decimal?  @map("orcamento_total")
+  dataInicio     DateTime? @map("data_inicio") @db.Timestamp(6)
+  dataFim        DateTime? @map("data_fim") @db.Timestamp(6)
+
+  organizacao Organizacao @relation(fields: [organizacaoId], references: [id])
+
+  educandoProjetos EducandoProjeto[]
+  atividades       Atividade[]
+  evolucoes        Evolucao[]
+  lancamentos      Lancamento[]
+  orcamentos       Orcamento[]
+
+  @@map("projeto")
+  @@schema("public")
+}
+
+model Auditoria {
+  id          Int      @id @default(autoincrement())
+  usuarioId   Int      @map("usuario_id")
+  recursoId   String   @map("recurso_id")
+  recursoTipo String   @map("recurso_tipo")
+  acao        String
+  dataHora    DateTime @default(now()) @map("data_hora") @db.Timestamp(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("auditoria")
+  @@schema("public")
+}
+
+// ==========================================================
+// SCHEMA: gestao
+// ==========================================================
+
+model Educando {
+  id                     Int       @id @default(autoincrement())
+  organizacaoId          Int       @map("organizacao_id")
+  nome                   String
+  cpf                    String?
+  rg                     String?
+  nis                    String?
+  corAutodeclarada       String?   @map("cor_autodeclarada")
+  dataNascimento         DateTime? @map("data_nascimento") @db.Timestamp(6)
+  endereco               String?
+  telefone               String?
+  escola                 String?
+  turno                  String?
+  historicoRepetencia    String?   @map("historico_repetencia")
+  numerosPessoasFamilias Int?      @map("numeros_pessoas_familias")
+  rendaFamiliar          Decimal?  @map("renda_familiar")
+  beneficiosSociais      String?   @map("beneficios_sociais")
+  tipoMoradia            String?   @map("tipo_moradia")
+  doencaCronica          String?   @map("doenca_cronica")
+  medicamentoContinuo    String?   @map("medicamento_continuo")
+  observacaoSaude        String?   @map("observacao_saude")
+  situacaoAtual          String    @default("ativo") @map("situacao_atual")
+
+  // NOVO — decidido nesta conversa: responsável técnico fixo por educando
+  tecnicoResponsavelId   Int?      @map("tecnico_responsavel_id")
+
+  organizacao        Organizacao        @relation(fields: [organizacaoId], references: [id])
+  tecnicoResponsavel Usuario?           @relation("TecnicoResponsavel", fields: [tecnicoResponsavelId], references: [id])
+  responsaveis       ResponsavelFamiliar[]
+  educandoProjetos   EducandoProjeto[]
+  evolucoes          Evolucao[]
+  encaminhamentos    Encaminhamento[]
+  frequencias        Frequencia[]
+
+  @@map("educando")
+  @@schema("gestao")
+}
+
+model ResponsavelFamiliar {
+  id            Int    @id @default(autoincrement())
+  educandoId    Int    @map("educando_id")
+  nome          String
+
+  // NOVOS — decidido nesta conversa, confirmado pela ficha física da MDCA
+  cpf           String?
+  rg            String?
+  profissao     String?
+  vinculo       String
+
+  tipoTrabalho  String? @map("tipo_trabalho")
+  localTrabalho String? @map("local_trabalho")
+  escolaridade  String?
+  telefone      String?
+
+  educando Educando @relation(fields: [educandoId], references: [id])
+
+  @@map("responsavel_familiar")
+  @@schema("gestao")
+}
+
+model EducandoProjeto {
+  id           Int      @id @default(autoincrement())
+  educandoId   Int      @map("educando_id")
+  projetoId    Int      @map("projeto_id")
+  dataIngresso DateTime @default(now()) @map("data_ingresso") @db.Timestamp(6)
+  situacao     String   @default("ativo")
+
+  educando Educando @relation(fields: [educandoId], references: [id])
+  projeto  Projeto  @relation(fields: [projetoId], references: [id])
+
+  @@map("educando_projeto")
+  @@schema("gestao")
+}
+
+model Atividade {
+  id            Int    @id @default(autoincrement())
+  projetoId     Int    @map("projeto_id")
+  responsavelId Int    @map("responsavel_id")
+  nome          String
+  descricao     String?
+  situacao      String @default("ativa")
+
+  projeto     Projeto   @relation(fields: [projetoId], references: [id])
+  responsavel Usuario   @relation("AtividadeResponsavel", fields: [responsavelId], references: [id])
+  encontros   Encontro[]
+
+  @@map("atividade")
+  @@schema("gestao")
+}
+
+model Encontro {
+  id         Int       @id @default(autoincrement())
+  atividadeId Int      @map("atividade_id")
+  dataInicio DateTime? @map("data_inicio") @db.Timestamp(6)
+  dataFim    DateTime? @map("data_fim") @db.Timestamp(6)
+  horaInicio String?   @map("hora_inicio")
+  horaFim    String?   @map("hora_fim")
+  local      String?
+  situacao   String    @default("agendado")
+
+  atividade   Atividade    @relation(fields: [atividadeId], references: [id])
+  frequencias Frequencia[]
+
+  @@map("encontro")
+  @@schema("gestao")
+}
+
+model Frequencia {
+  id               Int    @id @default(autoincrement())
+  encontroId       Int    @map("encontro_id")
+  educandoId       Int    @map("educando_id")
+  presencaAusencia String @map("presenca_ausencia")
+  observacao       String?
+
+  encontro Encontro @relation(fields: [encontroId], references: [id])
+  educando Educando @relation(fields: [educandoId], references: [id])
+
+  @@map("frequencia")
+  @@schema("gestao")
+}
+
+model Evolucao {
+  id             Int       @id @default(autoincrement())
+  educandoId     Int       @map("educando_id")
+  projetoId      Int?      @map("projeto_id")
+  profissionalId Int       @map("profissional_id")
+  titulo         String?
+  tipo           String?
+  descricao      String?
+  dataInicio     DateTime  @default(now()) @map("data_inicio") @db.Timestamp(6)
+  dataFim        DateTime? @map("data_fim") @db.Timestamp(6)
+  situacao       String    @default("aberta")
+
+  educando        Educando         @relation(fields: [educandoId], references: [id])
+  projeto         Projeto?         @relation(fields: [projetoId], references: [id])
+  profissional    Usuario          @relation("EvolucaoProfissional", fields: [profissionalId], references: [id])
+  encaminhamentos Encaminhamento[]
+
+  @@map("evolucao")
+  @@schema("gestao")
+}
+
+model Encaminhamento {
+  id                 Int      @id @default(autoincrement())
+  educandoId         Int      @map("educando_id")
+  evolucaoId         Int?     @map("evolucao_id")
+  dataEncaminhamento DateTime @default(now()) @map("data_encaminhamento") @db.Timestamp(6)
+  situacaoAtual      String   @default("em andamento") @map("situacao_atual")
+
+  educando       Educando                       @relation(fields: [educandoId], references: [id])
+  evolucao       Evolucao?                      @relation(fields: [evolucaoId], references: [id])
+  acompanhamentos AcompanhamentoEncaminhamento[]
+
+  @@map("encaminhamento")
+  @@schema("gestao")
+}
+
+model AcompanhamentoEncaminhamento {
+  id                Int      @id @default(autoincrement())
+  encaminhamentoId  Int      @map("encaminhamento_id")
+  situacao          String
+  data              DateTime @default(now()) @db.Timestamp(6)
+  observacao        String?
+
+  encaminhamento Encaminhamento @relation(fields: [encaminhamentoId], references: [id])
+
+  @@map("acompanhamento_encaminhamento")
+  @@schema("gestao")
+}
+
+model Compromisso {
+  id         Int       @id @default(autoincrement())
+  criadorId  Int       @map("criador_id")
+  titulo     String
+  tipo       String?
+  descricao  String?
+  dataInicio DateTime  @map("data_inicio") @db.Timestamp(6)
+  dataFim    DateTime? @map("data_fim") @db.Timestamp(6)
+  situacao   String    @default("agendado")
+
+  criador Usuario @relation("CompromissoCriador", fields: [criadorId], references: [id])
+
+  @@map("compromisso")
+  @@schema("gestao")
+}
+
+// ==========================================================
+// SCHEMA: financeiro
+// ==========================================================
+
+model Contato {
+  id          Int     @id @default(autoincrement())
+  nome        String
+  tipo        String?
+  papel       String?
+  cpfCnpj     String? @map("cpf_cnpj")
+  telefone    String?
+  observacoes String?
+
+  lancamentos Lancamento[]
+
+  @@map("contato")
+  @@schema("financeiro")
+}
+
+model CategoriaFinanceira {
+  id              Int     @id @default(autoincrement())
+  nome            String
+  tipo            String
+  categoriaPaiId  Int?    @map("categoria_pai_id")
+  ativa           Boolean @default(true)
+
+  categoriaPai  CategoriaFinanceira?  @relation("CategoriaHierarquia", fields: [categoriaPaiId], references: [id])
+  subcategorias CategoriaFinanceira[] @relation("CategoriaHierarquia")
+  lancamentos   Lancamento[]
+  orcamentos    Orcamento[]
+
+  @@map("categoria_financeira")
+  @@schema("financeiro")
+}
+
+model ContaFinanceira {
+  id            Int     @id @default(autoincrement())
+  organizacaoId Int     @map("organizacao_id")
+  nome          String
+  tipo          String?
+  banco         String?
+  agencia       String?
+  numero        String?
+  saldoInicial  Decimal @default(0) @map("saldo_inicial")
+  saldoAtual    Decimal @default(0) @map("saldo_atual")
+  ativa         Boolean @default(true)
+
+  organizacao Organizacao  @relation(fields: [organizacaoId], references: [id])
+  lancamentos Lancamento[]
+
+  @@map("conta_financeira")
+  @@schema("financeiro")
+}
+
+model FonteDeRecurso {
+  id     Int     @id @default(autoincrement())
+  nome   String
+  origem String?
+  ativa  Boolean @default(true)
+
+  // Ainda sem nenhuma FK apontando pra cá em lancamento/orcamento —
+  // pendência já registrada, não inventei uma ligação aqui.
+
+  @@map("fonte_de_recurso")
+  @@schema("financeiro")
+}
+
+model Lancamento {
+  id              Int       @id @default(autoincrement())
+  contaId         Int       @map("conta_id")
+  categoriaId     Int       @map("categoria_id")
+  projetoId       Int?      @map("projeto_id")
+  usuarioId       Int       @map("usuario_id")
+  contatoId       Int?      @map("contato_id")
+  valor           Decimal
+  tipo            String
+  descricao       String?
+  dataPagamento   DateTime? @map("data_pagamento") @db.Timestamp(6)
+  dataCompetencia DateTime? @map("data_competencia") @db.Timestamp(6)
+  situacao        String    @default("pendente")
+  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamp(6)
+
+  conta     ContaFinanceira     @relation(fields: [contaId], references: [id])
+  categoria CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+  projeto   Projeto?            @relation(fields: [projetoId], references: [id])
+  usuario   Usuario             @relation(fields: [usuarioId], references: [id])
+  contato   Contato?            @relation(fields: [contatoId], references: [id])
+
+  @@map("lancamento")
+  @@schema("financeiro")
+}
+
+model Orcamento {
+  id                Int     @id @default(autoincrement())
+  projetoId         Int     @map("projeto_id")
+  categoriaId       Int     @map("categoria_id")
+  periodoReferencia String  @map("periodo_referencia")
+  valorPrevisto     Decimal @map("valor_previsto")
+
+  projeto   Projeto             @relation(fields: [projetoId], references: [id])
+  categoria CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+
+  @@map("orcamento")
+  @@schema("financeiro")
+}
