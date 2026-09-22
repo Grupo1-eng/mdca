@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+
+# Prisma
+backend/prisma/*.db
+
+dist/
+build/
+.turbo/
