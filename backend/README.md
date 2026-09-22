@@ -1,3 +1,14 @@
 # Backend
 
-Backend novo em NestJS. Descreve comandos, configuração de ambiente, Prisma, migrations, banco Neon e testes. O backend ainda não foi implementado — este documento distingue setup planejado de comandos já disponíveis.
+Backend em NestJS com Prisma, PostgreSQL no Neon e migrations versionadas.
+
+## Comandos
+
+```bash
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run start:dev
+```
+
+Configure `DATABASE_URL` no arquivo `.env` antes de iniciar a aplicação.
