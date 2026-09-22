@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
+import { useAuth } from "@/context/AuthContext";
 
 function BussolaLogo({ size = 28, light = false }: { size?: number; light?: boolean }) {
   return (
@@ -117,19 +118,22 @@ function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Si
   );
 }
 
-export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; goToCadastro: () => void }) {
+export function LoginScreen({ goToCadastro }: { goToCadastro: () => void }) {
+  const { login, loading, error } = useAuth();
   const [sistema, setSistema] = useState<Sistema>("financeiro");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const cfg = sistemasConfig[sistema];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 900);
+    try {
+      await login({ email, senha });
+    } catch {
+      // erro já fica disponível em `error`, vindo do contexto de autenticação
+    }
   };
 
   return (
@@ -200,6 +204,8 @@ export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; go
               </div>
             </div>
 
+            {error && <p className="text-xs text-red-500 -mt-1">{error}</p>}
+
             <button
               type="submit"
               disabled={loading}
@@ -215,27 +221,42 @@ export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; go
             </button>
           </form>
 
+          <p className="text-center text-xs text-[#6b7a99] mt-5">
+            Ainda não tem uma conta?{" "}
+            <button onClick={goToCadastro} className="text-[#0e7e6e] font-medium hover:underline cursor-pointer">
+              Criar conta
+            </button>
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-export function CadastroScreen({ onLogin, goToLogin }: { onLogin: () => void; goToLogin: () => void }) {
+export function CadastroScreen({ goToLogin }: { goToLogin: () => void }) {
+  const { register, loading, error } = useAuth();
   const [form, setForm] = useState({ nome: "", email: "", organizacao: "", cargo: "", senha: "", confirmSenha: "" });
   const [showSenha, setShowSenha] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [erroSenha, setErroSenha] = useState(false);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.senha !== form.confirmSenha) { setErroSenha(true); return; }
     setErroSenha(false);
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 1100);
+    try {
+      await register({
+        nome: form.nome,
+        email: form.email,
+        organizacao: form.organizacao,
+        cargo: form.cargo,
+        senha: form.senha,
+      });
+    } catch {
+      // erro já fica disponível em `error`, vindo do contexto de autenticação
+    }
   };
 
   const cargos = [
@@ -344,6 +365,7 @@ export function CadastroScreen({ onLogin, goToLogin }: { onLogin: () => void; go
               </Field>
             </div>
             {erroSenha && <p className="text-xs text-red-500 -mt-2">As senhas não coincidem.</p>}
+            {error && <p className="text-xs text-red-500 -mt-2">{error}</p>}
 
             <div className="pt-1">
               <label className="flex items-start gap-2.5 cursor-pointer group">
@@ -398,4 +420,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-

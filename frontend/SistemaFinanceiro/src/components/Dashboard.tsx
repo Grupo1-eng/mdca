@@ -1,28 +1,14 @@
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fmt } from '@/lib/format';
+import { fmt, formatDate } from '@/lib/format';
+import { useLancamentos } from '@/hooks/useLancamentos';
+import { useContas } from '@/hooks/useContas';
+import {
+  getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixa,
+  type PeriodoDash, type Intervalo,
+} from '@/lib/aggregations';
+import { LoadingState, ErrorState } from './StatusMessage';
 
-type PeriodoDash = 'semana' | 'mes' | 'trimestre' | 'ano' | 'personalizado';
-
-const cashFlowData = [
-  { mes: "Mar", realizado: 42000, previsto: 38000 },
-  { mes: "Abr", realizado: 51000, previsto: 47000 },
-  { mes: "Mai", realizado: 39000, previsto: 44000 },
-  { mes: "Jun", realizado: 63000, previsto: 58000 },
-  { mes: "Jul", realizado: 55000, previsto: 60000 },
-  { mes: "Ago", realizado: 71000, previsto: 65000 },
-];
-const contasVencidas = [
-  { descricao: "Convênio Secretaria de Educação", valor: 22000, vencimento: "10/08/2026", tipo: "receber" },
-  { descricao: "Edital Cultura Viva — Prestação de Contas", valor: 9600, vencimento: "15/08/2026", tipo: "receber" },
-  { descricao: "Fornecedor gráfico — impressão", valor: 1480, vencimento: "12/08/2026", tipo: "pagar" },
-];
-
-const contasVencendo = [
-  { descricao: "Doação Fundação Banco do Brasil", valor: 35000, vencimento: "25/08/2026", tipo: "receber" },
-  { descricao: "Seguro da sede", valor: 960, vencimento: "28/08/2026", tipo: "pagar" },
-  { descricao: "Conta de energia", valor: 640, vencimento: "30/08/2026", tipo: "pagar" },
-];
 export function SummaryCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <div className="bg-white rounded-lg border border-[var(--border)] p-5">
@@ -33,43 +19,6 @@ export function SummaryCard({ label, value, sub, color }: { label: string; value
   );
 }
 
-// ── dados por período para o dashboard ───────────────────────────────────────
-const dashPeriodoData: Record<PeriodoDash, {
-  label: string; sublabel: string; entradas: number; saidas: number; saldoContas: number;
-  subEntradas: string; subSaidas: string; chartData: typeof cashFlowData;
-}> = {
-  semana: {
-    label: "Semana", sublabel: "18 a 22 de agosto de 2026",
-    entradas: 32100, saidas: 18450, saldoContas: 184320,
-    subEntradas: "+14% vs semana anterior", subSaidas: "3 lançamentos",
-    chartData: cashFlowData.slice(-4),
-  },
-  mes: {
-    label: "Mês", sublabel: "Agosto 2026",
-    entradas: 54700, saidas: 18750, saldoContas: 184320,
-    subEntradas: "+8% vs mês anterior", subSaidas: "12 lançamentos",
-    chartData: cashFlowData.slice(-3),
-  },
-  trimestre: {
-    label: "Trimestre", sublabel: "Jun a Ago 2026",
-    entradas: 189000, saidas: 126000, saldoContas: 184320,
-    subEntradas: "3 meses acumulado", subSaidas: "31 lançamentos",
-    chartData: cashFlowData.slice(-3),
-  },
-  ano: {
-    label: "Ano", sublabel: "Jan a Ago 2026",
-    entradas: 321000, saidas: 220000, saldoContas: 184320,
-    subEntradas: "8 meses acumulado", subSaidas: "87 lançamentos",
-    chartData: cashFlowData,
-  },
-  personalizado: {
-    label: "Personalizado", sublabel: "Período selecionado",
-    entradas: 54700, saidas: 18750, saldoContas: 184320,
-    subEntradas: "Período customizado", subSaidas: "—",
-    chartData: cashFlowData.slice(-2),
-  },
-};
-
 const periodoOpcoes: { key: PeriodoDash; label: string }[] = [
   { key: "semana", label: "Esta semana" },
   { key: "mes", label: "Este mês" },
@@ -77,6 +26,17 @@ const periodoOpcoes: { key: PeriodoDash; label: string }[] = [
   { key: "ano", label: "Este ano" },
   { key: "personalizado", label: "Personalizado" },
 ];
+
+function labelPeriodo(key: PeriodoDash): string {
+  return periodoOpcoes.find((o) => o.key === key)?.label ?? key;
+}
+
+function formatIntervalo(periodo: PeriodoDash, intervalo: Intervalo): string {
+  const completo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  if (periodo === "mes") return completo.format(intervalo.inicio).replace(/^\d{2} de /, "");
+  const curto = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+  return `${curto.format(intervalo.inicio)} a ${completo.format(intervalo.fim)}`;
+}
 
 function FiltroDropdown({ periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim }: {
   periodo: PeriodoDash; setPeriodo: (p: PeriodoDash) => void;
@@ -140,17 +100,27 @@ function FiltroDropdown({ periodo, setPeriodo, dataIni, setDataIni, dataFim, set
 }
 
 export default function Dashboard() {
+  const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos } = useLancamentos();
+  const { data: contas, loading: loadingContas, error: errorContas } = useContas();
   const [periodo, setPeriodo] = useState<PeriodoDash>("semana");
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
-  const d = dashPeriodoData[periodo];
+
+  const loading = loadingLancamentos || loadingContas;
+  const error = errorLancamentos ?? errorContas;
+
+  const intervalo = useMemo(() => getIntervaloPeriodo(periodo, new Date(), dataIni, dataFim), [periodo, dataIni, dataFim]);
+  const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const { vencidas, vencendo } = useMemo(() => contasPendentes(lancamentos), [lancamentos]);
+  const chartData = useMemo(() => serieFluxoCaixa(lancamentos), [lancamentos]);
+  const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-serif text-2xl text-[var(--foreground)]">Painel de Controle</h1>
-          <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{d.sublabel}</p>
+          <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{formatIntervalo(periodo, intervalo)}</p>
         </div>
         <FiltroDropdown
           periodo={periodo} setPeriodo={setPeriodo}
@@ -159,93 +129,113 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <SummaryCard label={`Entradas — ${d.label}`} value={fmt(d.entradas)} sub={d.subEntradas} color="text-[#0e7e6e]" />
-        <SummaryCard label={`Saídas — ${d.label}`} value={fmt(d.saidas)} sub={d.subSaidas} color="text-red-600" />
-        <SummaryCard label="Saldo do período" value={fmt(d.entradas - d.saidas)} sub={`Previsto: ${fmt(d.entradas * 0.9)}`} />
-        <SummaryCard label="Saldo das contas" value={fmt(d.saldoContas)} sub="2 contas ativas" />
-      </div>
+      {error && <ErrorState message={error} />}
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white rounded-lg border border-[var(--border)] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-semibold text-sm text-[var(--foreground)]">Fluxo de Caixa</h2>
-              <p className="text-xs text-[var(--muted-foreground)]">Realizado vs. Previsto — {d.sublabel}</p>
-            </div>
+      {loading ? <LoadingState /> : (
+        <>
+          <div className="grid grid-cols-4 gap-4">
+            <SummaryCard
+              label={`Entradas — ${labelPeriodo(periodo)}`}
+              value={fmt(resumo.entradas)}
+              sub={`${resumo.qtdLancamentos} lançamento${resumo.qtdLancamentos === 1 ? "" : "s"} no período`}
+              color="text-[#0e7e6e]"
+            />
+            <SummaryCard
+              label={`Saídas — ${labelPeriodo(periodo)}`}
+              value={fmt(resumo.saidas)}
+              sub={`${resumo.qtdLancamentos} lançamento${resumo.qtdLancamentos === 1 ? "" : "s"} no período`}
+              color="text-red-600"
+            />
+            <SummaryCard label="Saldo do período" value={fmt(resumo.entradas - resumo.saidas)} />
+            <SummaryCard
+              label="Saldo das contas"
+              value={fmt(saldoContas)}
+              sub={`${contas.length} conta${contas.length === 1 ? "" : "s"} cadastrada${contas.length === 1 ? "" : "s"}`}
+            />
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={d.chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="colorRealizado" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0e7e6e" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#0e7e6e" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorPrevisto" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1a3a6b" stopOpacity={0.1} />
-                  <stop offset="95%" stopColor="#1a3a6b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" />
-              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-              <Tooltip
-                formatter={(v: number) => fmt(v)}
-                contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6, fontFamily: "Instrument Sans" }}
-              />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#0e7e6e" strokeWidth={2} fill="url(#colorRealizado)" dot={{ r: 3, fill: "#0e7e6e" }} />
-              <Area type="monotone" dataKey="previsto" name="Previsto" stroke="#1a3a6b" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#colorPrevisto)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-lg border border-[var(--border)] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <h2 className="text-sm font-semibold">Vencidas</h2>
-              <span className="ml-auto text-xs font-mono bg-red-50 text-red-600 px-1.5 py-0.5 rounded">{contasVencidas.length}</span>
-            </div>
-            <div className="space-y-2.5">
-              {contasVencidas.map((c, i) => (
-                <div key={i} className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
-                    <p className="text-xs text-[var(--muted-foreground)]">{c.vencimento}</p>
-                  </div>
-                  <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                    {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
-                  </span>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2 bg-white rounded-lg border border-[var(--border)] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-semibold text-sm text-[var(--foreground)]">Fluxo de Caixa</h2>
+                  <p className="text-xs text-[var(--muted-foreground)]">Realizado vs. Previsto — últimos 6 meses</p>
                 </div>
-              ))}
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRealizado" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0e7e6e" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#0e7e6e" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorPrevisto" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1a3a6b" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#1a3a6b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v) => fmt(Number(v))}
+                    contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6, fontFamily: "Instrument Sans" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#0e7e6e" strokeWidth={2} fill="url(#colorRealizado)" dot={{ r: 3, fill: "#0e7e6e" }} />
+                  <Area type="monotone" dataKey="previsto" name="Previsto" stroke="#1a3a6b" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#colorPrevisto)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg border border-[var(--border)] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <h2 className="text-sm font-semibold">Vencendo em breve</h2>
-              <span className="ml-auto text-xs font-mono bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{contasVencendo.length}</span>
-            </div>
-            <div className="space-y-2.5">
-              {contasVencendo.map((c, i) => (
-                <div key={i} className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
-                    <p className="text-xs text-[var(--muted-foreground)]">{c.vencimento}</p>
-                  </div>
-                  <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                    {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
-                  </span>
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg border border-[var(--border)] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <h2 className="text-sm font-semibold">Vencidas</h2>
+                  <span className="ml-auto text-xs font-mono bg-red-50 text-red-600 px-1.5 py-0.5 rounded">{vencidas.length}</span>
                 </div>
-              ))}
+                <div className="space-y-2.5">
+                  {vencidas.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma pendência vencida.</p>}
+                  {vencidas.map((c, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{formatDate(c.vencimento)}</p>
+                      </div>
+                      <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
+                        {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg border border-[var(--border)] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  <h2 className="text-sm font-semibold">Vencendo em breve</h2>
+                  <span className="ml-auto text-xs font-mono bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{vencendo.length}</span>
+                </div>
+                <div className="space-y-2.5">
+                  {vencendo.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma pendência nos próximos 7 dias.</p>}
+                  {vencendo.map((c, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{formatDate(c.vencimento)}</p>
+                      </div>
+                      <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
+                        {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
-
-// ── tipos e helpers de comprovantes ──────────────────────────────────────────

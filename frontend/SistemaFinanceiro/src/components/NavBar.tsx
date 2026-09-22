@@ -1,5 +1,11 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
+import { useAuth } from "@/context/AuthContext";
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  return partes.slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "?";
+}
 
 export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros';
 
@@ -39,6 +45,7 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
   logs: LogEntry[];
   onClearLogs: () => void;
 }) {
+  const { user } = useAuth();
   const [logOpen, setLogOpen] = useState(false);
   const [vistosAte, setVistosAte] = useState(0);
   const novos = logs.length - vistosAte;
@@ -177,8 +184,11 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
             )}
           </div>
 
-          <div className="w-7 h-7 rounded-full bg-[#0e7e6e]/30 flex items-center justify-center text-xs font-semibold text-[#0e7e6e]">
-            MO
+          <div
+            className="w-7 h-7 rounded-full bg-[#0e7e6e]/30 flex items-center justify-center text-xs font-semibold text-[#0e7e6e]"
+            title={user?.nome}
+          >
+            {user ? iniciais(user.nome) : "?"}
           </div>
         </div>
       </div>

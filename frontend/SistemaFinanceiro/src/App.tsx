@@ -6,9 +6,11 @@ import Projetos from "@/components/Projetos";
 import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
 import { LoginScreen, CadastroScreen } from "@/components/AuthScreens";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
-export default function App() {
-  const [auth, setAuth] = useState<"login" | "cadastro" | "app">("login");
+function AppShell() {
+  const { user } = useAuth();
+  const [authView, setAuthView] = useState<"login" | "cadastro">("login");
   const [module, setModule] = useState<Module>("inicio");
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
@@ -20,17 +22,28 @@ export default function App() {
     }]);
   };
 
-  if (auth === "login") return <LoginScreen onLogin={() => setAuth("app")} goToCadastro={() => setAuth("cadastro")} />;
-  if (auth === "cadastro") return <CadastroScreen onLogin={() => setAuth("app")} goToLogin={() => setAuth("login")} />;
+  if (!user) {
+    return authView === "login"
+      ? <LoginScreen goToCadastro={() => setAuthView("cadastro")} />
+      : <CadastroScreen goToLogin={() => setAuthView("login")} />;
+  }
 
   return <div className="min-h-screen bg-[var(--background)]">
     <NavBar active={module} setModule={setModule} logs={logs} onClearLogs={() => setLogs([])} />
     <main className="max-w-screen-xl mx-auto px-6 py-7">
       {module === "inicio" && <Dashboard />}
       {module === "financeiro" && <Financeiro addLog={addLog} />}
-      {module === "projetos" && <Projetos />}
+      {module === "projetos" && <Projetos addLog={addLog} />}
       {module === "relatorios" && <Relatorios />}
       {module === "cadastros" && <Cadastros addLog={addLog} />}
     </main>
   </div>;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
 }

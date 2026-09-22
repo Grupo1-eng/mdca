@@ -1,12 +1,18 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fmt } from '@/lib/format';
-import { lancamentos } from '@/data';
+import { fmt, formatDate } from '@/lib/format';
 import { type LogEntry } from './NavBar';
 import { SummaryCard } from './Dashboard';
+import { LoadingState, ErrorState } from './StatusMessage';
+import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
+import { useLancamentos } from '@/hooks/useLancamentos';
+import { useProjetos } from '@/hooks/useProjetos';
+import { useContas } from '@/hooks/useContas';
+import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
+import { getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, serieSemanalMesAtual } from '@/lib/aggregations';
+import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
 type FinanceTab = "lancamentos" | "entradas" | "saidas" | "fluxo";
-type Anexo = { id: string; nome: string; tipo: string; tamanho: number; url: string; dataUpload: string };
 
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
@@ -27,9 +33,10 @@ function iconeAnexo(tipo: string) {
 }
 
 // ── Drawer de comprovantes ────────────────────────────────────────────────────
-function DrawerComprovantes({ lancamento, anexos, onClose, onAddAnexos, onRemoveAnexo }: {
-  lancamento: typeof lancamentos[0];
+function DrawerComprovantes({ lancamento, anexos, loading, onClose, onAddAnexos, onRemoveAnexo }: {
+  lancamento: Lancamento;
   anexos: Anexo[];
+  loading: boolean;
   onClose: () => void;
   onAddAnexos: (files: FileList) => void;
   onRemoveAnexo: (id: string) => void;
@@ -58,7 +65,7 @@ function DrawerComprovantes({ lancamento, anexos, onClose, onAddAnexos, onRemove
               <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] mb-1">Comprovantes</p>
               <h2 className="font-semibold text-[var(--foreground)] leading-snug truncate">{lancamento.descricao}</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-mono text-[var(--muted-foreground)]">{lancamento.data}</span>
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">{formatDate(lancamento.data)}</span>
                 <span className="text-[var(--muted-foreground)]">·</span>
                 <span className={`text-xs font-mono font-semibold ${lancamento.valor >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>
                   {lancamento.valor >= 0 ? "+" : ""}{fmt(lancamento.valor)}
@@ -108,7 +115,7 @@ function DrawerComprovantes({ lancamento, anexos, onClose, onAddAnexos, onRemove
 
         {/* lista de anexos */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {anexos.length === 0 ? (
+          {loading ? <LoadingState label="Carregando comprovantes…" /> : anexos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-10">
               <div className="w-12 h-12 rounded-full bg-[var(--muted)] flex items-center justify-center mb-3">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7a99" strokeWidth="1.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
@@ -138,7 +145,7 @@ function DrawerComprovantes({ lancamento, anexos, onClose, onAddAnexos, onRemove
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--foreground)] truncate">{a.nome}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {a.dataUpload}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {new Date(a.dataUpload).toLocaleDateString("pt-BR")}</p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <a href={a.url} download={a.nome} target="_blank" rel="noreferrer"
@@ -189,11 +196,133 @@ function DrawerComprovantes({ lancamento, anexos, onClose, onAddAnexos, onRemove
   );
 }
 
+// ── Modal Novo Lançamento ─────────────────────────────────────────────────────
+const tiposLancamento: { value: TipoLancamento; label: string }[] = [
+  { value: "entrada", label: "Entrada" },
+  { value: "saida", label: "Saída" },
+];
+const situacoesLancamento: SituacaoLancamento[] = ["Previsto", "Pago", "Recebido"];
+
+function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
+  projetos: { id: string; nome: string }[];
+  contas: { id: string; nome: string }[];
+  onClose: () => void;
+  onSave: (input: NovoLancamento) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    data: "", descricao: "", projeto: "", conta: "", valor: "",
+    tipo: "entrada" as TipoLancamento, situacao: "Previsto" as SituacaoLancamento,
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [field]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const valorAbs = Math.abs(parseFloat(form.valor.replace(",", ".")) || 0);
+      await onSave({
+        data: form.data,
+        descricao: form.descricao,
+        projeto: form.projeto,
+        conta: form.conta,
+        valor: form.tipo === "saida" ? -valorAbs : valorAbs,
+        tipo: form.tipo,
+        situacao: form.situacao,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar o lançamento.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      title="Novo lançamento" subtitle="Registrar entrada ou saída financeira"
+      onClose={onClose} onSubmit={handleSubmit} submitLabel="Salvar lançamento"
+      submitting={submitting} error={error}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <FieldMd label="Tipo" required>
+          <div className="grid grid-cols-2 gap-2">
+            {tiposLancamento.map(t => (
+              <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, tipo: t.value }))}
+                className={`h-10 rounded-md border text-sm font-medium transition-all cursor-pointer ${
+                  form.tipo === t.value
+                    ? t.value === "entrada" ? "border-[#0e7e6e] bg-[#0e7e6e]/10 text-[#0e7e6e]" : "border-red-400 bg-red-50 text-red-600"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+                }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </FieldMd>
+        <FieldMd label="Situação" required>
+          <select required value={form.situacao} onChange={set("situacao")} className={selectCls} style={chevronBg}>
+            {situacoesLancamento.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </FieldMd>
+        <div className="col-span-2">
+          <FieldMd label="Descrição" required>
+            <input type="text" required value={form.descricao} onChange={set("descricao")} placeholder="Ex: Convênio SEDES — Parcela 3" className={inputMdCls} />
+          </FieldMd>
+        </div>
+        <FieldMd label="Data" required>
+          <input type="date" required value={form.data} onChange={set("data")} className={inputMdCls + " font-mono"} />
+        </FieldMd>
+        <FieldMd label="Valor (R$)" required>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
+            <input type="number" required min="0" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
+          </div>
+        </FieldMd>
+        <FieldMd label="Projeto" required>
+          <select required value={form.projeto} onChange={set("projeto")} className={selectCls} style={chevronBg}>
+            <option value="">Selecionar…</option>
+            {projetos.map(p => <option key={p.id} value={p.nome}>{p.nome}</option>)}
+          </select>
+        </FieldMd>
+        <FieldMd label="Conta" required>
+          <select required value={form.conta} onChange={set("conta")} className={selectCls} style={chevronBg}>
+            <option value="">Selecionar…</option>
+            {contas.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+          </select>
+        </FieldMd>
+      </div>
+    </ModalShell>
+  );
+}
+
 // ── Financeiro ────────────────────────────────────────────────────────────────
 export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
+  const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos, create: createLancamento } = useLancamentos();
+  const { data: projetos, loading: loadingProjetos } = useProjetos();
+  const { data: contas, loading: loadingContas, error: errorContas } = useContas();
+
   const [tab, setTab] = useState<FinanceTab>("lancamentos");
-  const [drawerIdx, setDrawerIdx] = useState<number | null>(null);
-  const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [anexosPorLanc, setAnexosPorLanc] = useState<Record<string, Anexo[]>>({});
+  const [anexosLoading, setAnexosLoading] = useState(false);
+  const [modalNovo, setModalNovo] = useState(false);
+
+  const loading = loadingLancamentos || loadingProjetos || loadingContas;
+  const error = errorLancamentos ?? errorContas;
+
+  useEffect(() => {
+    if (drawerId === null) return;
+    let cancelado = false;
+    setAnexosLoading(true);
+    getAnexos(drawerId)
+      .then(lista => { if (!cancelado) setAnexosPorLanc(prev => ({ ...prev, [drawerId]: lista })); })
+      .catch(() => { /* mantém a lista vazia; a mensagem de erro geral já cobre o caso */ })
+      .finally(() => { if (!cancelado) setAnexosLoading(false); });
+    return () => { cancelado = true; };
+  }, [drawerId]);
 
   const tabs: { key: FinanceTab; label: string }[] = [
     { key: "lancamentos", label: "Lançamentos" },
@@ -212,56 +341,72 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const totalEntradas = filtered.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
   const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + Math.abs(b.valor), 0);
 
-  const barData = [
-    { label: "Sem 1", entradas: 18500, saidas: 12400 },
-    { label: "Sem 2", entradas: 14600, saidas: 8950 },
-    { label: "Sem 3", entradas: 9600, saidas: 5130 },
-    { label: "Sem 4", entradas: 12000, saidas: 7200 },
-  ];
+  const mesAtualLabel = useMemo(() => {
+    const texto = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+  }, []);
+  const resumoMes = useMemo(() => resumoPeriodo(lancamentos, getIntervaloPeriodo("mes")), [lancamentos]);
+  const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
+  const barData = useMemo(() => serieSemanalMesAtual(lancamentos), [lancamentos]);
 
-  const addAnexos = (idx: number, files: FileList) => {
-    const novos: Anexo[] = Array.from(files).map(f => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      nome: f.name,
-      tipo: f.type || "application/octet-stream",
-      tamanho: f.size,
-      url: URL.createObjectURL(f),
-      dataUpload: new Date().toLocaleDateString("pt-BR"),
-    }));
-    setAnexosPorLanc(prev => ({ ...prev, [idx]: [...(prev[idx] ?? []), ...novos] }));
-    novos.forEach(a => addLog({
-      modulo: "Financeiro",
-      acao: "anexo",
-      descricao: `Comprovante anexado ao lançamento "${lancamentos[idx].descricao}"`,
-      detalhe: `${a.nome} · ${fmtBytes(a.tamanho)}`,
-    }));
+  const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
+
+  const addAnexos = async (lancamentoId: string, files: FileList) => {
+    const lancamento = lancamentos.find(l => l.id === lancamentoId);
+    for (const file of Array.from(files)) {
+      const anexo = await createAnexo(lancamentoId, file);
+      setAnexosPorLanc(prev => ({ ...prev, [lancamentoId]: [...(prev[lancamentoId] ?? []), anexo] }));
+      addLog({
+        modulo: "Financeiro",
+        acao: "anexo",
+        descricao: `Comprovante anexado ao lançamento "${lancamento?.descricao ?? ""}"`,
+        detalhe: `${anexo.nome} · ${fmtBytes(anexo.tamanho)}`,
+      });
+    }
   };
 
-  const removeAnexo = (idx: number, id: string) => {
-    setAnexosPorLanc(prev => {
-      const revoked = prev[idx]?.find(a => a.id === id);
-      if (revoked) {
-        URL.revokeObjectURL(revoked.url);
-        addLog({
-          modulo: "Financeiro",
-          acao: "remoção",
-          descricao: `Comprovante removido do lançamento "${lancamentos[idx].descricao}"`,
-          detalhe: revoked.nome,
-        });
-      }
-      return { ...prev, [idx]: (prev[idx] ?? []).filter(a => a.id !== id) };
+  const removeAnexoHandler = async (lancamentoId: string, anexoId: string) => {
+    const lancamento = lancamentos.find(l => l.id === lancamentoId);
+    const anexo = anexosPorLanc[lancamentoId]?.find(a => a.id === anexoId);
+    await apiRemoveAnexo(anexoId);
+    setAnexosPorLanc(prev => ({ ...prev, [lancamentoId]: (prev[lancamentoId] ?? []).filter(a => a.id !== anexoId) }));
+    if (anexo) addLog({
+      modulo: "Financeiro",
+      acao: "remoção",
+      descricao: `Comprovante removido do lançamento "${lancamento?.descricao ?? ""}"`,
+      detalhe: anexo.nome,
+    });
+  };
+
+  const handleSaveLancamento = async (input: NovoLancamento) => {
+    const criado = await createLancamento(input);
+    addLog({
+      modulo: "Financeiro",
+      acao: "adição",
+      descricao: `Novo lançamento registrado: ${criado.descricao}`,
+      detalhe: `${criado.tipo === "entrada" ? "+" : "-"}${fmt(Math.abs(criado.valor))} · ${criado.projeto}`,
     });
   };
 
   return (
     <>
-      {drawerIdx !== null && (
+      {modalNovo && (
+        <ModalNovoLancamento
+          projetos={projetos}
+          contas={contas}
+          onClose={() => setModalNovo(false)}
+          onSave={handleSaveLancamento}
+        />
+      )}
+
+      {drawerLancamento && (
         <DrawerComprovantes
-          lancamento={lancamentos[drawerIdx]}
-          anexos={anexosPorLanc[drawerIdx] ?? []}
-          onClose={() => setDrawerIdx(null)}
-          onAddAnexos={files => addAnexos(drawerIdx, files)}
-          onRemoveAnexo={id => removeAnexo(drawerIdx, id)}
+          lancamento={drawerLancamento}
+          anexos={anexosPorLanc[drawerLancamento.id] ?? []}
+          loading={anexosLoading}
+          onClose={() => setDrawerId(null)}
+          onAddAnexos={files => addAnexos(drawerLancamento.id, files)}
+          onRemoveAnexo={id => removeAnexoHandler(drawerLancamento.id, id)}
         />
       )}
 
@@ -269,126 +414,130 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         <div className="flex items-baseline justify-between">
           <div>
             <h1 className="font-serif text-2xl text-[var(--foreground)]">Financeiro</h1>
-            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">Agosto 2026</p>
+            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{mesAtualLabel}</p>
           </div>
           <div className="flex gap-2">
             <button className="text-xs border border-[var(--border)] rounded px-3 py-1.5 hover:bg-[var(--muted)] transition-colors">
               Período ▾
             </button>
-            <button className="text-xs bg-[#1a3a6b] text-white rounded px-3 py-1.5 hover:bg-[#142e57] transition-colors">
+            <button onClick={() => setModalNovo(true)} className="text-xs bg-[#1a3a6b] text-white rounded px-3 py-1.5 hover:bg-[#142e57] transition-colors cursor-pointer">
               + Lançamento
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          <SummaryCard label="Total entradas" value={fmt(54700)} sub="Agosto 2026" color="text-[#0e7e6e]" />
-          <SummaryCard label="Total saídas" value={fmt(18750)} sub="Agosto 2026" color="text-red-600" />
-          <SummaryCard label="Saldo do período" value={fmt(35950)} sub="Resultado operacional" />
-          <SummaryCard label="Saldo das contas" value={fmt(184320)} sub="C/C Bradesco + C/C Itaú" />
-        </div>
+        {error && <ErrorState message={error} />}
 
-        <div className="bg-white rounded-lg border border-[var(--border)]">
-          <div className="border-b border-[var(--border)] px-5 flex gap-1">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`py-3 px-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-                  tab === t.key
-                    ? "border-[#1a3a6b] text-[#1a3a6b]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {tab === "fluxo" ? (
-            <div className="p-5">
-              <p className="text-sm text-[var(--muted-foreground)] mb-4">Entradas vs. Saídas por semana — Agosto 2026</p>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={barData} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="entradas" name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="saidas" name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        {loading ? <LoadingState /> : (
+          <>
+            <div className="grid grid-cols-4 gap-4">
+              <SummaryCard label="Total entradas" value={fmt(resumoMes.entradas)} sub={mesAtualLabel} color="text-[#0e7e6e]" />
+              <SummaryCard label="Total saídas" value={fmt(resumoMes.saidas)} sub={mesAtualLabel} color="text-red-600" />
+              <SummaryCard label="Saldo do período" value={fmt(resumoMes.entradas - resumoMes.saidas)} sub="Resultado operacional" />
+              <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", "Comprovantes"].map((h) => (
-                      <th key={h} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((l, fi) => {
-                    const realIdx = lancamentos.indexOf(l);
-                    const qtd = (anexosPorLanc[realIdx] ?? []).length;
-                    return (
-                      <tr key={fi} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors">
-                        <td className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{l.data}</td>
-                        <td className="px-5 py-3 font-medium text-[var(--foreground)]">{l.descricao}</td>
-                        <td className="px-5 py-3 text-[var(--muted-foreground)]">{l.projeto}</td>
-                        <td className="px-5 py-3 text-[var(--muted-foreground)] whitespace-nowrap">{l.conta}</td>
-                        <td className={`px-5 py-3 font-mono font-medium whitespace-nowrap ${l.valor >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                          {l.valor >= 0 ? "+" : ""}{fmt(l.valor)}
-                        </td>
-                        <td className="px-5 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            l.situacao === "Recebido" ? "bg-emerald-100 text-emerald-800"
-                            : l.situacao === "Pago" ? "bg-slate-100 text-slate-600"
-                            : "bg-amber-100 text-amber-800"
-                          }`}>
-                            {l.situacao}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <button
-                            onClick={() => setDrawerIdx(realIdx)}
-                            className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
-                              qtd > 0
-                                ? "border-[#1a3a6b]/30 bg-[#1a3a6b]/5 text-[#1a3a6b] hover:bg-[#1a3a6b]/10"
-                                : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[#1a3a6b]/30 hover:text-[#1a3a6b]"
-                            }`}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                            {qtd > 0 ? `${qtd} arquivo${qtd > 1 ? "s" : ""}` : "Anexar"}
-                          </button>
-                        </td>
+
+            <div className="bg-white rounded-lg border border-[var(--border)]">
+              <div className="border-b border-[var(--border)] px-5 flex gap-1">
+                {tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`py-3 px-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                      tab === t.key
+                        ? "border-[#1a3a6b] text-[#1a3a6b]"
+                        : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {tab === "fluxo" ? (
+                <div className="p-5">
+                  <p className="text-sm text-[var(--muted-foreground)] mb-4">Entradas vs. Saídas por semana — {mesAtualLabel}</p>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={barData} barGap={4}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="entradas" name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="saidas" name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--border)]">
+                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", "Comprovantes"].map((h) => (
+                          <th key={h} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-[var(--muted)]">
-                    <td colSpan={4} className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)]">Totais do período</td>
-                    <td className="px-5 py-3">
-                      <div className="text-xs font-mono">
-                        <span className="text-[#0e7e6e]">+{fmt(totalEntradas)}</span>
-                        {tab === "lancamentos" && <span className="text-red-600 ml-2">-{fmt(totalSaidas)}</span>}
-                      </div>
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              </table>
+                    </thead>
+                    <tbody>
+                      {filtered.map((l) => {
+                        const qtd = (anexosPorLanc[l.id] ?? []).length;
+                        return (
+                          <tr key={l.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors">
+                            <td className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(l.data)}</td>
+                            <td className="px-5 py-3 font-medium text-[var(--foreground)]">{l.descricao}</td>
+                            <td className="px-5 py-3 text-[var(--muted-foreground)]">{l.projeto}</td>
+                            <td className="px-5 py-3 text-[var(--muted-foreground)] whitespace-nowrap">{l.conta}</td>
+                            <td className={`px-5 py-3 font-mono font-medium whitespace-nowrap ${l.valor >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>
+                              {l.valor >= 0 ? "+" : ""}{fmt(l.valor)}
+                            </td>
+                            <td className="px-5 py-3">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                l.situacao === "Recebido" ? "bg-emerald-100 text-emerald-800"
+                                : l.situacao === "Pago" ? "bg-slate-100 text-slate-600"
+                                : "bg-amber-100 text-amber-800"
+                              }`}>
+                                {l.situacao}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3">
+                              <button
+                                onClick={() => setDrawerId(l.id)}
+                                className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
+                                  qtd > 0
+                                    ? "border-[#1a3a6b]/30 bg-[#1a3a6b]/5 text-[#1a3a6b] hover:bg-[#1a3a6b]/10"
+                                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[#1a3a6b]/30 hover:text-[#1a3a6b]"
+                                }`}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                                {qtd > 0 ? `${qtd} arquivo${qtd > 1 ? "s" : ""}` : "Anexar"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-[var(--muted)]">
+                        <td colSpan={4} className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)]">Totais do período</td>
+                        <td className="px-5 py-3">
+                          <div className="text-xs font-mono">
+                            <span className="text-[#0e7e6e]">+{fmt(totalEntradas)}</span>
+                            {tab === "lancamentos" && <span className="text-red-600 ml-2">-{fmt(totalSaidas)}</span>}
+                          </div>
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </>
   );
 }
-
