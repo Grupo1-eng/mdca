@@ -1,25 +1,17 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   CalendarDays,
-  
   FolderKanban,
   LayoutDashboard,
   Settings,
   Users,
   Activity,
   BarChart3,
-  ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { PERFIS, type PerfilId } from "@/lib/mock-data";
 import { usePermissoes, useStore } from "@/lib/store";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, chave: "sempre" },
@@ -33,7 +25,7 @@ const NAV = [
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { perfil, setPerfil } = useStore();
+  const { usuario, nomePerfil, sair } = useStore();
   const perm = usePermissoes();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -49,12 +41,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
         <div className="flex items-center gap-3 border-b border-sidebar-border px-6 py-5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <ShieldCheck className="size-5" />
-          </div>
+          <img src="/logo-mdca.png" alt="MDCA" className="size-10 rounded-full bg-white object-contain" />
           <div>
             <p className="text-sm font-semibold leading-tight text-sidebar-foreground">MDCA</p>
-            <p className="text-xs text-muted-foreground">Módulo Gestão</p>
+            <p className="text-xs text-sidebar-foreground/70">Módulo Gestão</p>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">
@@ -77,8 +67,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <p className="border-t border-sidebar-border p-4 text-xs text-muted-foreground">
-          Protótipo Sprint 1 — dados fictícios, sem autenticação real.
+        <p className="border-t border-sidebar-border p-4 text-xs text-sidebar-foreground/70">
+          Protótipo Sprint 1 — dados fictícios.
         </p>
       </aside>
 
@@ -90,20 +80,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               Organização: MDCA – Sede · entidades compartilhadas com o módulo Financeiro
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Perfil de acesso (simulado)</span>
-            <Select value={perfil} onValueChange={(v) => setPerfil(v as PerfilId)}>
-              <SelectTrigger className="w-60">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PERFIS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm font-medium">{usuario?.nome}</p>
+              <p className="text-xs text-muted-foreground">
+                {usuario ? nomePerfil(usuario.perfil) : ""}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={sair}>
+              <LogOut className="size-4" /> Sair
+            </Button>
           </div>
         </header>
         <main className="flex-1 p-6">{children}</main>

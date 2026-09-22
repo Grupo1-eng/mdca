@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
-import { useStore } from "@/lib/store";
+import { usePermissoes, useStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/educandos/")({
 
 function EducandosLista() {
   const { educandos, iniciativas, iniciativaNome } = useStore();
+  const perm = usePermissoes();
   const [busca, setBusca] = useState("");
   const [iniciativa, setIniciativa] = useState("todas");
   const [situacao, setSituacao] = useState("todas");
@@ -56,11 +57,13 @@ function EducandosLista() {
         titulo="Educandos"
         descricao="Crianças e adolescentes vinculados às iniciativas da MDCA."
         acoes={
+          perm.editarCadastro ? (
           <Button asChild>
             <Link to="/educandos/novo">
               <Plus className="size-4" /> Novo educando
             </Link>
           </Button>
+          ) : undefined
         }
       />
 

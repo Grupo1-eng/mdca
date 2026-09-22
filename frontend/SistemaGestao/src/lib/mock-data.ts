@@ -28,12 +28,42 @@ export interface Iniciativa {
   origem: "Compartilhado com Financeiro" | "Somente Gestão";
 }
 
+export interface Responsavel {
+  id: string;
+  nome: string;
+  vinculo: string;
+  cpf: string;
+  rg: string;
+  telefone: string;
+  profissao: string;
+  tipoTrabalho: string;
+  localTrabalho: string;
+  escolaridade: string;
+}
+
+export function responsavelVazio(id = ""): Responsavel {
+  return {
+    id,
+    nome: "",
+    vinculo: "",
+    cpf: "",
+    rg: "",
+    telefone: "",
+    profissao: "",
+    tipoTrabalho: "",
+    localTrabalho: "",
+    escolaridade: "",
+  };
+}
+
 export interface Educando {
   id: string;
   nome: string;
   nascimento: string;
   cpf: string;
   nis: string;
+  rg: string;
+  corAutodeclarada: string;
   genero: string;
   endereco: string;
   telefone: string;
@@ -43,36 +73,44 @@ export interface Educando {
   escola: string;
   serie: string;
   turno: string;
-  responsavelNome: string;
-  responsavelParentesco: string;
-  responsavelTelefone: string;
+  repetencia: string;
+  responsaveis: Responsavel[];
   rendaFamiliar: string;
   pessoasCasa: number;
   beneficios: string;
   moradia: string;
-  saudeObs: string; // sensível
+  doencaCronica: string;
+  medicamentoContinuo: string;
+  saudeObs: string;
   motivosIngresso: string[];
   origemEncaminhamento: string;
 }
 
 export const MOTIVOS_INGRESSO = [
-  "Vulnerabilidade socioeconômica",
-  "Evasão / baixa frequência escolar",
-  "Situação de rua",
-  "Violência intrafamiliar",
+  "Situação de isolamento",
   "Trabalho infantil",
-  "Uso de substâncias na família",
-  "Demanda espontânea da família",
+  "Vivência de violência e/ou negligência",
+  "Fora da escola ou com defasagem escolar superior a 2 anos",
+  "Situação de acolhimento",
+  "Cumprimento de medida socioeducativa em meio aberto, ou egresso",
+  "Situação de abuso e/ou exploração sexual",
+  "Medidas de proteção do ECA",
+  "Criança/adolescente em situação de rua",
+  "Vulnerabilidade relacionada a pessoas com deficiência",
+  "Dificuldade de aprendizagem",
 ];
 
 export const ORIGENS_ENCAMINHAMENTO = [
-  "CRAS",
-  "CREAS",
-  "Conselho Tutelar",
+  "Ação Rua",
+  "CREAS Leste",
+  "CRAS Leste I/II",
+  "CRAS Partenon",
+  "SAF AELCA",
+  "SAF Santa Rita",
   "Escola",
-  "Unidade de Saúde",
-  "Ministério Público",
-  "Demanda espontânea",
+  "Conselho Tutelar",
+  "Espontâneo",
+  "Outro",
 ];
 
 export interface Atendimento {
@@ -96,8 +134,9 @@ export interface Encaminhamento {
   dataHora: string;
   destino: string;
   motivo: string;
-  status: StatusEncaminhamento;
-  acompanhamentos: { id: string; data: string; observacoes: string; status: StatusEncaminhamento }[];
+  situacaoEfetivacao: StatusEncaminhamento;
+  observacaoEfetivacao: string;
+  dataEfetivacao: string;
 }
 
 export interface Atividade {
@@ -117,7 +156,7 @@ export interface Encontro {
   local: string;
   situacao: "Planejado" | "Realizado" | "Cancelado";
   observacoes: string;
-  presencas: { educandoId: string; presente: boolean }[];
+  presencas: { educandoId: string; presente: boolean; observacao?: string }[];
 }
 
 export interface Compromisso {
@@ -136,6 +175,7 @@ export interface Usuario {
   id: string;
   nome: string;
   email: string;
+  senha: string;
   perfil: PerfilId;
   situacao: "Ativo" | "Inativo";
   organizacao: string;
@@ -207,6 +247,8 @@ export const educandosSeed: Educando[] = [
     nis: "1234567890",
     genero: "Feminino",
     endereco: "Rua das Acácias, 120 – Vila Nova",
+    rg: "3091847562",
+    corAutodeclarada: "Parda",
     telefone: "(51) 99999-1010",
     iniciativaId: "ini-1",
     dataIngresso: "2026-02-10",
@@ -214,16 +256,33 @@ export const educandosSeed: Educando[] = [
     escola: "EMEF Presidente Vargas",
     serie: "7º ano",
     turno: "Manhã",
-    responsavelNome: "Marli Souza",
-    responsavelParentesco: "Mãe",
-    responsavelTelefone: "(51) 98888-2020",
+    repetencia: "Uma reprovação no 6º ano",
+    responsaveis: [
+      {
+        id: "resp-1",
+        nome: "Marli Souza",
+        vinculo: "Mãe",
+        cpf: "321.654.987-00",
+        rg: "1098765432",
+        telefone: "(51) 98888-2020",
+        profissao: "Diarista",
+        tipoTrabalho: "Informal",
+        localTrabalho: "Domicílios da região",
+        escolaridade: "Ensino fundamental incompleto",
+      },
+    ],
     rendaFamiliar: "Até 1 salário mínimo",
     pessoasCasa: 4,
     beneficios: "Bolsa Família",
     moradia: "Alugada",
+    doencaCronica: "Não",
+    medicamentoContinuo: "Não",
     saudeObs: "Acompanhamento em saúde mental na UBS desde 2025.",
-    motivosIngresso: ["Vulnerabilidade socioeconômica", "Evasão / baixa frequência escolar"],
-    origemEncaminhamento: "CRAS",
+    motivosIngresso: [
+      "Situação de isolamento",
+      "Fora da escola ou com defasagem escolar superior a 2 anos",
+    ],
+    origemEncaminhamento: "CRAS Leste I/II",
   },
   {
     id: "edu-2",
@@ -233,6 +292,8 @@ export const educandosSeed: Educando[] = [
     nis: "9876543210",
     genero: "Masculino",
     endereco: "Av. Brasil, 45 – Centro",
+    rg: "2081736451",
+    corAutodeclarada: "Preta",
     telefone: "(51) 99777-3030",
     iniciativaId: "ini-2",
     dataIngresso: "2026-03-05",
@@ -240,15 +301,29 @@ export const educandosSeed: Educando[] = [
     escola: "EEEF Castro Alves",
     serie: "9º ano",
     turno: "Tarde",
-    responsavelNome: "Joana Lima",
-    responsavelParentesco: "Avó",
-    responsavelTelefone: "(51) 97777-4040",
+    repetencia: "Não",
+    responsaveis: [
+      {
+        id: "resp-2",
+        nome: "Joana Lima",
+        vinculo: "Avó",
+        cpf: "654.321.987-00",
+        rg: "2081736400",
+        telefone: "(51) 97777-4040",
+        profissao: "Aposentada",
+        tipoTrabalho: "Não trabalha",
+        localTrabalho: "",
+        escolaridade: "Ensino fundamental completo",
+      },
+    ],
     rendaFamiliar: "1 a 2 salários mínimos",
     pessoasCasa: 3,
     beneficios: "BPC",
     moradia: "Própria",
+    doencaCronica: "Asma",
+    medicamentoContinuo: "Sim",
     saudeObs: "Uso contínuo de medicação para asma.",
-    motivosIngresso: ["Vulnerabilidade socioeconômica"],
+    motivosIngresso: ["Dificuldade de aprendizagem"],
     origemEncaminhamento: "Escola",
   },
   {
@@ -259,6 +334,8 @@ export const educandosSeed: Educando[] = [
     nis: "1122334455",
     genero: "Feminino",
     endereco: "Rua Cinco, 88 – Bairro Esperança",
+    rg: "4071625340",
+    corAutodeclarada: "Branca",
     telefone: "(51) 96666-5050",
     iniciativaId: "ini-3",
     dataIngresso: "2025-08-11",
@@ -266,15 +343,29 @@ export const educandosSeed: Educando[] = [
     escola: "IFRS – Campus Central",
     serie: "1º ano EM",
     turno: "Noite",
-    responsavelNome: "Paulo Ferreira",
-    responsavelParentesco: "Pai",
-    responsavelTelefone: "(51) 96666-6060",
+    repetencia: "Não",
+    responsaveis: [
+      {
+        id: "resp-3",
+        nome: "Paulo Ferreira",
+        vinculo: "Pai",
+        cpf: "147.258.369-00",
+        rg: "4071625300",
+        telefone: "(51) 96666-6060",
+        profissao: "Auxiliar de serviços",
+        tipoTrabalho: "CLT",
+        localTrabalho: "Mercado do bairro",
+        escolaridade: "Ensino médio completo",
+      },
+    ],
     rendaFamiliar: "Até 1 salário mínimo",
     pessoasCasa: 5,
     beneficios: "Nenhum",
     moradia: "Cedida",
+    doencaCronica: "Não",
+    medicamentoContinuo: "Não",
     saudeObs: "Sem restrições relatadas.",
-    motivosIngresso: ["Trabalho infantil", "Vulnerabilidade socioeconômica"],
+    motivosIngresso: ["Trabalho infantil"],
     origemEncaminhamento: "Conselho Tutelar",
   },
   {
@@ -285,6 +376,8 @@ export const educandosSeed: Educando[] = [
     nis: "5566778899",
     genero: "Masculino",
     endereco: "Travessa Sol, 12 – Vila Nova",
+    rg: "5061524339",
+    corAutodeclarada: "Parda",
     telefone: "(51) 95555-7070",
     iniciativaId: "ini-1",
     dataIngresso: "2025-04-22",
@@ -292,16 +385,30 @@ export const educandosSeed: Educando[] = [
     escola: "EMEF Monteiro Lobato",
     serie: "6º ano",
     turno: "Manhã",
-    responsavelNome: "Regina Antunes",
-    responsavelParentesco: "Mãe",
-    responsavelTelefone: "(51) 95555-8080",
+    repetencia: "Duas reprovações",
+    responsaveis: [
+      {
+        id: "resp-4",
+        nome: "Regina Antunes",
+        vinculo: "Mãe",
+        cpf: "963.852.741-00",
+        rg: "5061524300",
+        telefone: "(51) 95555-8080",
+        profissao: "Desempregada",
+        tipoTrabalho: "Não trabalha",
+        localTrabalho: "",
+        escolaridade: "Ensino fundamental incompleto",
+      },
+    ],
     rendaFamiliar: "Sem renda formal",
     pessoasCasa: 6,
     beneficios: "Bolsa Família",
     moradia: "Alugada",
+    doencaCronica: "Não informado",
+    medicamentoContinuo: "Não",
     saudeObs: "Encaminhado para avaliação neuropediátrica.",
-    motivosIngresso: ["Violência intrafamiliar"],
-    origemEncaminhamento: "CREAS",
+    motivosIngresso: ["Vivência de violência e/ou negligência"],
+    origemEncaminhamento: "CREAS Leste",
   },
   {
     id: "edu-5",
@@ -311,6 +418,8 @@ export const educandosSeed: Educando[] = [
     nis: "2233445566",
     genero: "Feminino",
     endereco: "Rua do Parque, 300 – Centro",
+    rg: "6051423328",
+    corAutodeclarada: "Branca",
     telefone: "(51) 94444-9090",
     iniciativaId: "ini-2",
     dataIngresso: "2026-01-30",
@@ -318,16 +427,30 @@ export const educandosSeed: Educando[] = [
     escola: "EMEF Presidente Vargas",
     serie: "8º ano",
     turno: "Tarde",
-    responsavelNome: "Cláudia Nogueira",
-    responsavelParentesco: "Mãe",
-    responsavelTelefone: "(51) 94444-1111",
+    repetencia: "Não",
+    responsaveis: [
+      {
+        id: "resp-5",
+        nome: "Cláudia Nogueira",
+        vinculo: "Mãe",
+        cpf: "852.741.963-00",
+        rg: "6051423300",
+        telefone: "(51) 94444-1111",
+        profissao: "Caixa",
+        tipoTrabalho: "CLT",
+        localTrabalho: "Farmácia",
+        escolaridade: "Ensino médio completo",
+      },
+    ],
     rendaFamiliar: "1 a 2 salários mínimos",
     pessoasCasa: 4,
     beneficios: "Nenhum",
     moradia: "Própria",
+    doencaCronica: "Não",
+    medicamentoContinuo: "Não",
     saudeObs: "Alergia a lactose.",
-    motivosIngresso: ["Demanda espontânea da família"],
-    origemEncaminhamento: "Demanda espontânea",
+    motivosIngresso: ["Situação de isolamento"],
+    origemEncaminhamento: "Espontâneo",
   },
 ];
 
@@ -386,15 +509,9 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-9)}T11:00`,
     destino: "UBS Vila Nova – Saúde Mental",
     motivo: "Necessidade de acompanhamento psicológico continuado.",
-    status: "Em andamento",
-    acompanhamentos: [
-      {
-        id: "acp-1",
-        data: iso(-3),
-        observacoes: "Consulta agendada pela unidade para a próxima semana.",
-        status: "Em andamento",
-      },
-    ],
+    situacaoEfetivacao: "Em andamento",
+    observacaoEfetivacao: "Consulta agendada pela unidade para a próxima semana.",
+    dataEfetivacao: iso(-3),
   },
   {
     id: "enc-2",
@@ -403,10 +520,9 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-20)}T15:30`,
     destino: "CRAS Centro",
     motivo: "Atualização do CadÚnico da família.",
-    status: "Efetivado",
-    acompanhamentos: [
-      { id: "acp-2", data: iso(-12), observacoes: "Família compareceu e cadastro foi atualizado.", status: "Efetivado" },
-    ],
+    situacaoEfetivacao: "Efetivado",
+    observacaoEfetivacao: "Família compareceu e cadastro foi atualizado.",
+    dataEfetivacao: iso(-12),
   },
   {
     id: "enc-3",
@@ -415,8 +531,9 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-5)}T13:00`,
     destino: "Programa Jovem Aprendiz – empresa parceira",
     motivo: "Inclusão em vaga de aprendizagem.",
-    status: "Pendente",
-    acompanhamentos: [],
+    situacaoEfetivacao: "Pendente",
+    observacaoEfetivacao: "",
+    dataEfetivacao: "",
   },
 ];
 
@@ -570,12 +687,12 @@ export const compromissosSeed: Compromisso[] = [
 ];
 
 export const usuariosSeed: Usuario[] = [
-  { id: "usr-1", nome: "Helena Martins", email: "helena@mdca.org.br", perfil: "coordenacao", situacao: "Ativo", organizacao: "MDCA – Sede" },
-  { id: "usr-2", nome: "Fernanda Rocha", email: "fernanda@mdca.org.br", perfil: "servico_social", situacao: "Ativo", organizacao: "MDCA – Sede" },
-  { id: "usr-3", nome: "Rafael Dias", email: "rafael@mdca.org.br", perfil: "psicologia", situacao: "Ativo", organizacao: "MDCA – Sede" },
-  { id: "usr-4", nome: "Marcos Reis", email: "marcos@mdca.org.br", perfil: "educador", situacao: "Ativo", organizacao: "MDCA – Sede" },
-  { id: "usr-5", nome: "Paula Menezes", email: "paula@mdca.org.br", perfil: "educador", situacao: "Inativo", organizacao: "MDCA – Sede" },
-  { id: "usr-6", nome: "Lucas Prado", email: "lucas@mdca.org.br", perfil: "administrativo", situacao: "Ativo", organizacao: "MDCA – Sede" },
+  { id: "usr-1", nome: "Helena Martins", email: "helena@mdca.org.br", senha: "mdca123", perfil: "coordenacao", situacao: "Ativo", organizacao: "MDCA – Sede" },
+  { id: "usr-2", nome: "Fernanda Rocha", email: "fernanda@mdca.org.br", senha: "mdca123", perfil: "servico_social", situacao: "Ativo", organizacao: "MDCA – Sede" },
+  { id: "usr-3", nome: "Rafael Dias", email: "rafael@mdca.org.br", senha: "mdca123", perfil: "psicologia", situacao: "Ativo", organizacao: "MDCA – Sede" },
+  { id: "usr-4", nome: "Marcos Reis", email: "marcos@mdca.org.br", senha: "mdca123", perfil: "educador", situacao: "Ativo", organizacao: "MDCA – Sede" },
+  { id: "usr-5", nome: "Paula Menezes", email: "paula@mdca.org.br", senha: "mdca123", perfil: "educador", situacao: "Inativo", organizacao: "MDCA – Sede" },
+  { id: "usr-6", nome: "Lucas Prado", email: "lucas@mdca.org.br", senha: "mdca123", perfil: "administrativo", situacao: "Ativo", organizacao: "MDCA – Sede" },
 ];
 
 export const logsSeed: LogAuditoria[] = [

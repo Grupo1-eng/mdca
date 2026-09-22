@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Link2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { SaveStatus } from "@/components/SaveStatus";
-import { novoId, useSalvar, useStore } from "@/lib/store";
+import { useRascunho } from "@/lib/rascunho";
+import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
 import type { Iniciativa } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,22 +56,19 @@ const vazio: Omit<Iniciativa, "id"> = {
 };
 
 function Projetos() {
-  const { iniciativas, setIniciativas } = useStore();
-  const { estado, salvar } = useSalvar();
+  const { iniciativas, salvarIniciativa } = useStore();
+  const perm = usePermissoes();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
-  const [form, setForm] = useState(vazio);
+  const [form, setForm, limparForm] = useRascunho("rascunho:iniciativa", vazio);
 
   const submeter = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    const ok = await salvar(() => {
-      if (editando) {
-        setIniciativas((l) => l.map((i) => (i.id === editando ? { ...i, ...form } : i)));
-      } else {
-        setIniciativas((l) => [...l, { id: novoId("ini"), ...form }]);
-      }
-    });
+    const registro: Iniciativa = { id: editando ?? novoId("ini"), ...form };
+    const ok = await salvar(() => salvarIniciativa(registro, !!editando));
     if (ok) {
+      limparForm();
       setAberto(false);
       setEditando(null);
       setForm(vazio);
@@ -85,6 +83,7 @@ function Projetos() {
         acoes={
           <div className="flex items-center gap-3">
             <SaveStatus estado={estado} />
+            {perm.cadastrarIniciativa && (
             <Button
               onClick={() => {
                 setEditando(null);
@@ -94,6 +93,7 @@ function Projetos() {
             >
               <Plus className="size-4" /> Nova iniciativa
             </Button>
+            )}
           </div>
         }
       />
@@ -107,7 +107,9 @@ function Projetos() {
         </p>
       </div>
 
-      {aberto && (
+      {mensagem && <p className="mb-3 text-sm text-destructive">{mensagem}</p>}
+
+      {perm.cadastrarIniciativa && aberto && (
         <form onSubmit={submeter} className="card-surface mb-5 space-y-4 p-5">
           <h2 className="text-base font-semibold">
             {editando ? "Editar iniciativa" : "Cadastrar iniciativa"}
@@ -230,6 +232,7 @@ function Projetos() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
+                  {perm.cadastrarIniciativa && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -242,6 +245,7 @@ function Projetos() {
                   >
                     Editar
                   </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

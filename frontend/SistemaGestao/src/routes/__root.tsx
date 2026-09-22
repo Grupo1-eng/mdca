@@ -11,8 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { StoreProvider } from "@/lib/store";
+import { StoreProvider, useStore } from "@/lib/store";
 import { AppShell } from "@/components/AppShell";
+import { LoginScreen } from "@/components/LoginScreen";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -114,16 +115,23 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function Sessao({ children }: { children: ReactNode }) {
+  const { usuario, sessaoPronta } = useStore();
+  if (!sessaoPronta) return null;
+  if (!usuario) return <LoginScreen />;
+  return <AppShell>{children}</AppShell>;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
-        <AppShell>
+        <Sessao>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
-        </AppShell>
+        </Sessao>
         <Toaster />
       </StoreProvider>
     </QueryClientProvider>

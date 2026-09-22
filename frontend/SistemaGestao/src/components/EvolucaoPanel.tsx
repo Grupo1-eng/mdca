@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CalendarClock, Lock, Plus, UserRound } from "lucide-react";
 import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
+import { useRascunho } from "@/lib/rascunho";
 import type { Atendimento, Encaminhamento, StatusEncaminhamento } from "@/lib/mock-data";
 import { SaveStatus, SensitiveNote } from "@/components/SaveStatus";
 import { Badge } from "@/components/ui/badge";
@@ -25,38 +26,39 @@ function badgeStatus(s: StatusEncaminhamento) {
 
 function formatarDataHora(v: string) {
   const [d, h] = v.split("T");
-  return `${(d ?? "").split("-").reverse().join("/")}${h ? ` às ${h}` : ""}`;
+  return `${(d ?? "").split("-").reverse().join("/")}${h ? ` às ${h.slice(0, 5)}` : ""}`;
 }
 
 export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
-  const { atendimentos, encaminhamentos, setAtendimentos, setEncaminhamentos } = useStore();
+  const { atendimentos, encaminhamentos, usuario, nomePerfil, registrarEvolucao, registrarEncaminhamento } =
+    useStore();
   const perm = usePermissoes();
-  const { estado, salvar } = useSalvar();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
   const [novoEnc, setNovoEnc] = useState(false);
 
-  const [form, setForm] = useState({
-    profissional: "",
+  const [form, setForm, limparForm] = useRascunho(`rascunho:evolucao:${educandoId}`, {
     dataHora: new Date().toISOString().slice(0, 16),
     registro: "",
     intervencaoUsuario: "",
     intervencaoFamilia: "",
     sigiloso: true,
   });
-  const [formEnc, setFormEnc] = useState({
-    profissional: "",
+  const [formEnc, setFormEnc, limparEnc] = useRascunho(`rascunho:encaminhamento:${educandoId}`, {
     destino: "",
     motivo: "",
-    status: "Pendente" as StatusEncaminhamento,
   });
 
-  if (!perm.verFichas) {
+  if (!perm.verEvolucao) {
     return (
       <SensitiveNote>
-        As fichas de evolução não estão disponíveis para o perfil Educador.
+        As fichas de evolução não estão disponíveis para este perfil.
       </SensitiveNote>
     );
   }
+
+  const profissional = usuario?.nome ?? "";
+  const perfilProfissional = usuario ? nomePerfil(usuario.perfil) : "";
 
   const linha = [
     ...atendimentos
@@ -72,11 +74,13 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
     const registro: Atendimento = {
       id: novoId("at"),
       educandoId,
-      perfilProfissional: "Equipe técnica",
+      profissional,
+      perfilProfissional,
       ...form,
     };
-    const ok = await salvar(() => setAtendimentos((l) => [registro, ...l]));
+    const ok = await salvar(() => registrarEvolucao(registro));
     if (ok) {
+      limparForm();
       setAberto(false);
       setForm({ ...form, registro: "", intervencaoUsuario: "", intervencaoFamilia: "" });
     }
@@ -87,14 +91,19 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
     const registro: Encaminhamento = {
       id: novoId("enc"),
       educandoId,
+      profissional,
       dataHora: new Date().toISOString().slice(0, 16),
-      acompanhamentos: [],
-      ...formEnc,
+      destino: formEnc.destino,
+      motivo: formEnc.motivo,
+      situacaoEfetivacao: "Pendente",
+      observacaoEfetivacao: "",
+      dataEfetivacao: "",
     };
-    const ok = await salvar(() => setEncaminhamentos((l) => [registro, ...l]));
+    const ok = await salvar(() => registrarEncaminhamento(registro));
     if (ok) {
+      limparEnc();
       setNovoEnc(false);
-      setFormEnc({ profissional: "", destino: "", motivo: "", status: "Pendente" });
+      setFormEnc({ destino: "", motivo: "" });
     }
   };
 
@@ -109,69 +118,43 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
         </Button>
         <SaveStatus estado={estado} />
       </div>
+      {mensagem && <SensitiveNote>{mensagem}</SensitiveNote>}
 
       {aberto && (
         <form onSubmit={salvarAtendimento} className="card-surface space-y-4 p-5">
           <h3 className="text-base font-semibold">Registrar atendimento</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className="mb-1.5 block text-sm">Profissional responsável</Label>
-              <Input
-                required
-                value={form.profissional}
-                onChange={(e) => setForm({ ...form, profissional: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Data e hora</Label>
-              <Input
-                type="datetime-local"
-                value={form.dataHora}
-                onChange={(e) => setForm({ ...form, dataHora: e.target.value })}
-              />
-            </div>
+          <p className="text-sm text-muted-foreground">
+            Profissional responsável: {profissional} ({perfilProfissional}). O registro usa o usuário autenticado.
+          </p>
+          <div>
+            <Label className="mb-1.5 block text-sm">Data e hora</Label>
+            <Input
+              type="datetime-local"
+              value={form.dataHora}
+              onChange={(e) => setForm({ ...form, dataHora: e.target.value })}
+            />
           </div>
           <div>
             <Label className="mb-1.5 block text-sm">Registro do atendimento</Label>
-            <Textarea
-              rows={3}
-              required
-              value={form.registro}
-              onChange={(e) => setForm({ ...form, registro: e.target.value })}
-            />
+            <Textarea rows={3} required value={form.registro} onChange={(e) => setForm({ ...form, registro: e.target.value })} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Intervenções com o usuário</Label>
-              <Textarea
-                rows={3}
-                value={form.intervencaoUsuario}
-                onChange={(e) => setForm({ ...form, intervencaoUsuario: e.target.value })}
-              />
+              <Textarea rows={3} value={form.intervencaoUsuario} onChange={(e) => setForm({ ...form, intervencaoUsuario: e.target.value })} />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Intervenções com a família</Label>
-              <Textarea
-                rows={3}
-                value={form.intervencaoFamilia}
-                onChange={(e) => setForm({ ...form, intervencaoFamilia: e.target.value })}
-              />
+              <Textarea rows={3} value={form.intervencaoFamilia} onChange={(e) => setForm({ ...form, intervencaoFamilia: e.target.value })} />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={form.sigiloso}
-              onCheckedChange={(c) => setForm({ ...form, sigiloso: !!c })}
-            />
+            <Checkbox checked={form.sigiloso} onCheckedChange={(c) => setForm({ ...form, sigiloso: !!c })} />
             Marcar conteúdo como sigiloso (restrito à equipe técnica e coordenação)
           </label>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={estado === "saving"}>
-              Salvar atendimento
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setAberto(false)}>
-              Cancelar
-            </Button>
+            <Button type="submit" disabled={estado === "saving"}>Salvar atendimento</Button>
+            <Button type="button" variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
             <SaveStatus estado={estado} />
           </div>
         </form>
@@ -180,57 +163,18 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
       {novoEnc && (
         <form onSubmit={salvarEncaminhamento} className="card-surface space-y-4 p-5">
           <h3 className="text-base font-semibold">Registrar encaminhamento</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className="mb-1.5 block text-sm">Profissional responsável</Label>
-              <Input
-                required
-                value={formEnc.profissional}
-                onChange={(e) => setFormEnc({ ...formEnc, profissional: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Destino / serviço da rede</Label>
-              <Input
-                required
-                value={formEnc.destino}
-                onChange={(e) => setFormEnc({ ...formEnc, destino: e.target.value })}
-              />
-            </div>
+          <p className="text-sm text-muted-foreground">Registrado por {profissional}.</p>
+          <div>
+            <Label className="mb-1.5 block text-sm">Destino / serviço da rede</Label>
+            <Input required value={formEnc.destino} onChange={(e) => setFormEnc({ ...formEnc, destino: e.target.value })} />
           </div>
           <div>
             <Label className="mb-1.5 block text-sm">Motivo</Label>
-            <Textarea
-              rows={2}
-              value={formEnc.motivo}
-              onChange={(e) => setFormEnc({ ...formEnc, motivo: e.target.value })}
-            />
-          </div>
-          <div className="max-w-xs">
-            <Label className="mb-1.5 block text-sm">Status</Label>
-            <Select
-              value={formEnc.status}
-              onValueChange={(v) => setFormEnc({ ...formEnc, status: v as StatusEncaminhamento })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Textarea rows={2} value={formEnc.motivo} onChange={(e) => setFormEnc({ ...formEnc, motivo: e.target.value })} />
           </div>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={estado === "saving"}>
-              Salvar encaminhamento
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setNovoEnc(false)}>
-              Cancelar
-            </Button>
+            <Button type="submit" disabled={estado === "saving"}>Salvar encaminhamento</Button>
+            <Button type="button" variant="ghost" onClick={() => setNovoEnc(false)}>Cancelar</Button>
           </div>
         </form>
       )}
@@ -238,15 +182,13 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
       <div className="space-y-4 border-l-2 border-border pl-5">
         {linha.map((r) =>
           r.tipo === "atendimento" ? (
-            <AtendimentoCard key={r.item.id} a={r.item} podeVerSigiloso={perm.verSigiloso} />
+            <AtendimentoCard key={r.item.id} a={r.item} podeVerSigiloso={perm.verSaude} />
           ) : (
             <EncaminhamentoCard key={r.item.id} e={r.item} />
           ),
         )}
         {linha.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nenhum registro na linha do tempo deste educando.
-          </p>
+          <p className="text-sm text-muted-foreground">Nenhum registro na linha do tempo deste educando.</p>
         )}
       </div>
     </div>
@@ -272,22 +214,15 @@ function AtendimentoCard({ a, podeVerSigiloso }: { a: Atendimento; podeVerSigilo
         <div className="mt-3">
           <SensitiveNote>
             <span className="inline-flex items-center gap-1.5">
-              <Lock className="size-3.5" /> Conteúdo sigiloso — restrito à equipe técnica e à
-              coordenação.
+              <Lock className="size-3.5" /> Conteúdo sigiloso — restrito à equipe técnica e à coordenação.
             </span>
           </SensitiveNote>
         </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm">
           <p>{a.registro}</p>
-          <p>
-            <strong className="text-muted-foreground">Com o usuário:</strong>{" "}
-            {a.intervencaoUsuario || "—"}
-          </p>
-          <p>
-            <strong className="text-muted-foreground">Com a família:</strong>{" "}
-            {a.intervencaoFamilia || "—"}
-          </p>
+          <p><strong className="text-muted-foreground">Com o usuário:</strong> {a.intervencaoUsuario || "—"}</p>
+          <p><strong className="text-muted-foreground">Com a família:</strong> {a.intervencaoFamilia || "—"}</p>
           {a.sigiloso && (
             <Badge variant="outline" className="mt-1">
               <Lock className="size-3" /> Sigiloso
@@ -300,33 +235,27 @@ function AtendimentoCard({ a, podeVerSigiloso }: { a: Atendimento; podeVerSigilo
 }
 
 function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
-  const { setEncaminhamentos } = useStore();
-  const { estado, salvar } = useSalvar();
+  const { registrarEfetivacao } = useStore();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
-  const [acomp, setAcomp] = useState({
-    data: new Date().toISOString().slice(0, 10),
-    observacoes: "",
-    status: e.status,
+  const [acomp, setAcomp, limpar] = useRascunho(`rascunho:efetivacao:${e.id}`, {
+    data: e.dataEfetivacao || new Date().toISOString().slice(0, 10),
+    observacoes: e.observacaoEfetivacao,
+    status: e.situacaoEfetivacao,
   });
 
-  const adicionar = async (ev: React.FormEvent) => {
+  const gravar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const ok = await salvar(() =>
-      setEncaminhamentos((lista) =>
-        lista.map((x) =>
-          x.id === e.id
-            ? {
-                ...x,
-                status: acomp.status,
-                acompanhamentos: [...x.acompanhamentos, { id: novoId("acp"), ...acomp }],
-              }
-            : x,
-        ),
-      ),
+      registrarEfetivacao(e.id, {
+        situacao: acomp.status,
+        observacao: acomp.observacoes,
+        data: acomp.data,
+      }),
     );
     if (ok) {
+      limpar();
       setAberto(false);
-      setAcomp({ ...acomp, observacoes: "" });
     }
   };
 
@@ -336,7 +265,7 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline">Encaminhamento</Badge>
-          <Badge variant={badgeStatus(e.status)}>{e.status}</Badge>
+          <Badge variant={badgeStatus(e.situacaoEfetivacao)}>{e.situacaoEfetivacao}</Badge>
         </div>
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <CalendarClock className="size-3.5" /> {formatarDataHora(e.dataHora)}
@@ -345,45 +274,31 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
       <p className="mt-2 text-sm font-medium">{e.destino}</p>
       <p className="text-sm text-muted-foreground">{e.motivo}</p>
       <p className="mt-1 text-xs text-muted-foreground">Registrado por {e.profissional}</p>
-
-      {e.acompanhamentos.length > 0 && (
-        <ul className="mt-3 space-y-2 border-l border-dashed border-border pl-4">
-          {e.acompanhamentos.map((ac) => (
-            <li key={ac.id} className="text-sm">
-              <span className="text-xs text-muted-foreground">
-                {ac.data.split("-").reverse().join("/")} · {ac.status}
-              </span>
-              <p>{ac.observacoes}</p>
-            </li>
-          ))}
-        </ul>
+      {e.observacaoEfetivacao && (
+        <p className="mt-3 text-sm">
+          <span className="text-xs text-muted-foreground">
+            Efetivação em {e.dataEfetivacao.split("-").reverse().join("/")} · {e.situacaoEfetivacao}
+          </span>
+          <br />
+          {e.observacaoEfetivacao}
+        </p>
       )}
-
       {aberto ? (
-        <form onSubmit={adicionar} className="mt-3 space-y-3 rounded-lg bg-muted p-3">
+        <form onSubmit={gravar} className="mt-3 space-y-3 rounded-lg bg-muted p-3">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label className="mb-1.5 block text-sm">Data do acompanhamento</Label>
-              <Input
-                type="date"
-                value={acomp.data}
-                onChange={(ev) => setAcomp({ ...acomp, data: ev.target.value })}
-              />
+              <Label className="mb-1.5 block text-sm">Data da efetivação</Label>
+              <Input type="date" value={acomp.data} onChange={(ev) => setAcomp({ ...acomp, data: ev.target.value })} />
             </div>
             <div>
-              <Label className="mb-1.5 block text-sm">Atualizar status</Label>
-              <Select
-                value={acomp.status}
-                onValueChange={(v) => setAcomp({ ...acomp, status: v as StatusEncaminhamento })}
-              >
+              <Label className="mb-1.5 block text-sm">Situação</Label>
+              <Select value={acomp.status} onValueChange={(v) => setAcomp({ ...acomp, status: v as StatusEncaminhamento })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -391,30 +306,21 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
           </div>
           <div>
             <Label className="mb-1.5 block text-sm">Observações</Label>
-            <Textarea
-              rows={2}
-              required
-              value={acomp.observacoes}
-              onChange={(ev) => setAcomp({ ...acomp, observacoes: ev.target.value })}
-            />
+            <Textarea rows={2} required value={acomp.observacoes} onChange={(ev) => setAcomp({ ...acomp, observacoes: ev.target.value })} />
           </div>
           <p className="text-xs text-muted-foreground">
-            O registro original do encaminhamento é preservado; o acompanhamento é adicionado ao
-            histórico.
+            O texto original do encaminhamento não é alterado. Há uma única efetivação por registro.
           </p>
+          {mensagem && <p className="text-sm text-destructive">{mensagem}</p>}
           <div className="flex items-center gap-3">
-            <Button type="submit" size="sm" disabled={estado === "saving"}>
-              Adicionar acompanhamento
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>
-              Cancelar
-            </Button>
+            <Button type="submit" size="sm" disabled={estado === "saving"}>Registrar efetivação</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
             <SaveStatus estado={estado} />
           </div>
         </form>
       ) : (
         <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAberto(true)}>
-          + Adicionar acompanhamento
+          Registrar efetivação
         </Button>
       )}
     </article>

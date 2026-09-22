@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { SaveStatus } from "@/components/SaveStatus";
+import { useRascunho } from "@/lib/rascunho";
 import { novoId, useSalvar, useStore } from "@/lib/store";
 import type { Compromisso } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
@@ -37,19 +38,19 @@ export const Route = createFileRoute("/agenda")({
 const br = (d: string) => d.split("-").reverse().join("/");
 
 function Agenda() {
-  const { compromissos, setCompromissos } = useStore();
-  const { estado, salvar } = useSalvar();
+  const { compromissos, usuario, criarCompromisso, editarCompromisso, mudarSituacaoCompromisso } = useStore();
+  const { estado, salvar, mensagem } = useSalvar();
   const [visao, setVisao] = useState<"dia" | "semana" | "mes">("semana");
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
 
   const hoje = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState<Omit<Compromisso, "id">>({
+  const [form, setForm, limparForm] = useRascunho<Omit<Compromisso, "id">>("rascunho:compromisso", {
     titulo: "",
     data: hoje,
     horario: "09:00",
     local: "",
-    responsavel: "",
+    responsavel: usuario?.nome ?? "",
     tipo: "Atendimento",
     status: "Agendado",
     observacoes: "",
@@ -74,12 +75,25 @@ function Agenda() {
     ev.preventDefault();
     const ok = await salvar(() => {
       if (editando) {
-        setCompromissos((l) => l.map((c) => (c.id === editando ? { ...c, ...form } : c)));
+        editarCompromisso(editando, {
+          titulo: form.titulo,
+          data: form.data,
+          horario: form.horario,
+          observacoes: form.observacoes,
+          local: form.local,
+          tipo: form.tipo,
+        });
       } else {
-        setCompromissos((l) => [...l, { id: novoId("cmp"), ...form }]);
+        criarCompromisso({
+          id: novoId("cmp"),
+          ...form,
+          responsavel: usuario?.nome ?? "",
+          status: "Agendado",
+        });
       }
     });
     if (ok) {
+      limparForm();
       setAberto(false);
       setEditando(null);
     }
@@ -93,7 +107,7 @@ function Agenda() {
   };
 
   const mudarStatus = (id: string, status: Compromisso["status"]) =>
-    salvar(() => setCompromissos((l) => l.map((c) => (c.id === id ? { ...c, status } : c))));
+    salvar(() => mudarSituacaoCompromisso(id, status));
 
   return (
     <div>
@@ -163,10 +177,7 @@ function Agenda() {
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Responsável</Label>
-              <Input
-                value={form.responsavel}
-                onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
-              />
+              <Input value={editando ? form.responsavel : usuario?.nome ?? ""} disabled />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Tipo</Label>
@@ -185,22 +196,7 @@ function Agenda() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) => setForm({ ...form, status: v as Compromisso["status"] })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Agendado">Agendado</SelectItem>
-                  <SelectItem value="Realizado">Realizado</SelectItem>
-                  <SelectItem value="Cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {mensagem && <p className="text-sm text-destructive md:col-span-2">{mensagem}</p>}
             <div className="md:col-span-2">
               <Label className="mb-1.5 block text-sm">Observações</Label>
               <Textarea

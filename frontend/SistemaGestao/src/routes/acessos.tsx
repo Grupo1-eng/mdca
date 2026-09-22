@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { SaveStatus, SensitiveNote } from "@/components/SaveStatus";
+import { SENHA_DEMO } from "@/lib/gestao-api";
+import { useRascunho } from "@/lib/rascunho";
 import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
 import { PERFIS, type PerfilId, type Usuario } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
@@ -44,11 +46,11 @@ export const Route = createFileRoute("/acessos")({
 const nomePerfil = (p: PerfilId) => PERFIS.find((x) => x.id === p)?.nome ?? p;
 
 function Acessos() {
-  const { usuarios, setUsuarios, logs } = useStore();
+  const { usuarios, logs, criarUsuario, alterarPerfilUsuario, alternarSituacaoUsuario } = useStore();
   const perm = usePermissoes();
-  const { estado, salvar } = useSalvar();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm, limparForm] = useRascunho("rascunho:usuario", {
     nome: "",
     email: "",
     perfil: "educador" as PerfilId,
@@ -66,25 +68,19 @@ function Acessos() {
 
   const criar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    const registro: Usuario = { id: novoId("usr"), situacao: "Ativo", ...form };
-    const ok = await salvar(() => setUsuarios((l) => [...l, registro]));
+    const registro: Usuario = { id: novoId("usr"), situacao: "Ativo", senha: SENHA_DEMO, ...form };
+    const ok = await salvar(() => criarUsuario(registro));
     if (ok) {
+      limparForm();
       setAberto(false);
       setForm({ ...form, nome: "", email: "" });
     }
   };
 
   const alterarPerfil = (id: string, perfil: PerfilId) =>
-    salvar(() => setUsuarios((l) => l.map((u) => (u.id === id ? { ...u, perfil } : u))));
+    salvar(() => alterarPerfilUsuario(id, perfil));
 
-  const alternarSituacao = (id: string) =>
-    salvar(() =>
-      setUsuarios((l) =>
-        l.map((u) =>
-          u.id === id ? { ...u, situacao: u.situacao === "Ativo" ? "Inativo" : "Ativo" } : u,
-        ),
-      ),
-    );
+  const alternarSituacao = (id: string) => salvar(() => alternarSituacaoUsuario(id));
 
   return (
     <div>

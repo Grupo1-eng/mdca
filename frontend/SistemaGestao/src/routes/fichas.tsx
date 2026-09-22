@@ -43,7 +43,7 @@ function Fichas() {
         descricao="Histórico cronológico dos atendimentos e encaminhamentos de cada educando."
       />
 
-      {!perm.verFichas ? (
+      {!perm.verEvolucao ? (
         <SensitiveNote>
           Seu perfil atual (Educador) não tem acesso às fichas de evolução.
         </SensitiveNote>

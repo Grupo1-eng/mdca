@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { SaveStatus } from "@/components/SaveStatus";
-import { novoId, useSalvar, useStore } from "@/lib/store";
+import { useRascunho } from "@/lib/rascunho";
+import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
 import type { Atividade } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,10 +43,11 @@ export const Route = createFileRoute("/atividades/")({
 });
 
 function Atividades() {
-  const { atividades, setAtividades, iniciativas, iniciativaNome, encontros } = useStore();
-  const { estado, salvar } = useSalvar();
+  const { atividades, iniciativas, iniciativaNome, encontros, criarAtividade } = useStore();
+  const perm = usePermissoes();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm, limparForm] = useRascunho("rascunho:atividade", {
     nome: "",
     iniciativaId: "",
     responsavel: "",
@@ -56,8 +58,9 @@ function Atividades() {
   const criar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const registro: Atividade = { id: novoId("atv"), ...form };
-    const ok = await salvar(() => setAtividades((l) => [...l, registro]));
+    const ok = await salvar(() => criarAtividade(registro));
     if (ok) {
+      limparForm();
       setAberto(false);
       setForm({ nome: "", iniciativaId: "", responsavel: "", descricao: "", situacao: "Ativa" });
     }
@@ -69,13 +72,17 @@ function Atividades() {
         titulo="Atividades e Frequência"
         descricao="Oficinas e ações coletivas vinculadas às iniciativas da organização."
         acoes={
-          <Button onClick={() => setAberto((v) => !v)}>
-            <Plus className="size-4" /> Nova atividade
-          </Button>
+          perm.registrarAtividade ? (
+            <Button onClick={() => setAberto((v) => !v)}>
+              <Plus className="size-4" /> Nova atividade
+            </Button>
+          ) : undefined
         }
       />
 
-      {aberto && (
+      {mensagem && <p className="mb-3 text-sm text-destructive">{mensagem}</p>}
+
+      {perm.registrarAtividade && aberto && (
         <form onSubmit={criar} className="card-surface mb-5 space-y-4 p-5">
           <h2 className="text-base font-semibold">Cadastrar atividade</h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -98,7 +105,7 @@ function Atividades() {
             <div>
               <Label className="mb-1.5 block text-sm">Projeto / Serviço / Programa</Label>
               <Select
-                value={form.iniciativaId}
+                {...(form.iniciativaId ? { value: form.iniciativaId } : {})}
                 onValueChange={(v) => setForm({ ...form, iniciativaId: v })}
               >
                 <SelectTrigger>

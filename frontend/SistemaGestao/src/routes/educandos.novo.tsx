@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { EducandoForm } from "@/components/EducandoForm";
+import { SensitiveNote } from "@/components/SaveStatus";
+import { usePermissoes } from "@/lib/store";
 
 export const Route = createFileRoute("/educandos/novo")({
   head: () => ({
@@ -18,13 +20,18 @@ export const Route = createFileRoute("/educandos/novo")({
 });
 
 function NovoEducando() {
+  const perm = usePermissoes();
   return (
     <div className="max-w-4xl">
       <PageHeader
         titulo="Novo educando"
-        descricao="Preencha os dados do cadastro. O sistema avisa sobre possíveis duplicidades de CPF/NIS."
+        descricao="Preencha os dados do cadastro. CPF ou NIS já existentes impedem gravar."
       />
-      <EducandoForm />
+      {perm.editarCadastro ? (
+        <EducandoForm />
+      ) : (
+        <SensitiveNote>Seu perfil não pode cadastrar educandos.</SensitiveNote>
+      )}
     </div>
   );
 }

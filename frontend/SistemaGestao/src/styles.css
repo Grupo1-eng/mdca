@@ -5,8 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system MDCA — paleta institucional provisória:
- * verde-sálvia (primária) + azul suave (acento), tons neutros e acessíveis.
+ * Identidade usada no módulo financeiro: azul-marinho #0f1e3d e verde #0e7e6e.
  */
 
 @theme inline {
@@ -66,8 +65,8 @@
   --card-foreground: oklch(0.24 0.02 200);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 200);
-  --primary: oklch(0.52 0.078 176);
-  --primary-foreground: oklch(0.985 0.01 175);
+  --primary: #0e7e6e;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.945 0.02 195);
   --secondary-foreground: oklch(0.32 0.03 200);
   --muted: oklch(0.955 0.008 190);
@@ -86,20 +85,20 @@
   --sensitive-foreground: oklch(0.4 0.09 55);
   --border: oklch(0.9 0.012 195);
   --input: oklch(0.9 0.012 195);
-  --ring: oklch(0.52 0.078 176);
+  --ring: #0e7e6e;
   --chart-1: oklch(0.52 0.078 176);
   --chart-2: oklch(0.58 0.09 240);
   --chart-3: oklch(0.7 0.1 155);
   --chart-4: oklch(0.8 0.12 85);
   --chart-5: oklch(0.6 0.09 300);
-  --sidebar: oklch(0.99 0.008 175);
-  --sidebar-foreground: oklch(0.28 0.02 200);
-  --sidebar-primary: oklch(0.52 0.078 176);
-  --sidebar-primary-foreground: oklch(0.99 0.01 175);
-  --sidebar-accent: oklch(0.945 0.02 195);
-  --sidebar-accent-foreground: oklch(0.3 0.03 200);
-  --sidebar-border: oklch(0.91 0.012 195);
-  --sidebar-ring: oklch(0.52 0.078 176);
+  --sidebar: #0f1e3d;
+  --sidebar-foreground: #f4f7fb;
+  --sidebar-primary: #0e7e6e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a3358;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #243e66;
+  --sidebar-ring: #0e7e6e;
 }
 
 .dark {

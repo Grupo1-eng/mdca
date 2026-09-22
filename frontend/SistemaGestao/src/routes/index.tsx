@@ -171,7 +171,7 @@ function PainelTecnico() {
   const { encaminhamentos, atendimentos, educandos } = useStore();
   const nome = (id: string) => educandos.find((e) => e.id === id)?.nome ?? "—";
   const abertos = encaminhamentos
-    .filter((e) => e.status !== "Efetivado")
+    .filter((e) => e.situacaoEfetivacao !== "Efetivado")
     .sort((a, b) => a.dataHora.localeCompare(b.dataHora))
     .slice(0, 4);
   const recentes = [...atendimentos]
@@ -190,8 +190,8 @@ function PainelTecnico() {
             <li key={e.id} className="rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium">{nome(e.educandoId)}</p>
-                <Badge variant={e.status === "Pendente" ? "destructive" : "secondary"}>
-                  {e.status}
+                <Badge variant={e.situacaoEfetivacao === "Pendente" ? "destructive" : "secondary"}>
+                  {e.situacaoEfetivacao}
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">

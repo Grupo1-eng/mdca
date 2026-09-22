@@ -3,7 +3,8 @@ import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { SaveStatus } from "@/components/SaveStatus";
-import { novoId, useSalvar, useStore } from "@/lib/store";
+import { useRascunho } from "@/lib/rascunho";
+import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
 import type { Encontro } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,21 @@ export const Route = createFileRoute("/atividades/$id")({
 
 function AtividadeDetalhe() {
   const { id } = useParams({ from: "/atividades/$id" });
-  const { atividades, encontros, setEncontros, educandos, iniciativaNome } = useStore();
-  const { estado, salvar } = useSalvar();
+  const {
+    atividades,
+    encontros,
+    educandos,
+    iniciativaNome,
+    criarEncontro: gravarEncontro,
+    registrarFrequencia,
+    mudarSituacaoEncontro,
+  } = useStore();
+  const perm = usePermissoes();
+  const { estado, salvar, mensagem } = useSalvar();
   const [aberto, setAberto] = useState(false);
   const atividade = atividades.find((a) => a.id === id);
 
-  const [form, setForm] = useState({
+  const [form, setForm, limparForm] = useRascunho(`rascunho:encontro:${id}`, {
     data: new Date().toISOString().slice(0, 10),
     horario: "14:00",
     local: "",
@@ -72,34 +82,17 @@ function AtividadeDetalhe() {
       id: novoId("enco"),
       atividadeId: atividade.id,
       ...form,
-      presencas: elegiveis.map((e) => ({ educandoId: e.id, presente: false })),
+      presencas: elegiveis.map((e) => ({ educandoId: e.id, presente: false, observacao: "" })),
     };
-    const ok = await salvar(() => setEncontros((l) => [registro, ...l]));
-    if (ok) setAberto(false);
+    const ok = await salvar(() => gravarEncontro(registro));
+    if (ok) {
+      limparForm();
+      setAberto(false);
+    }
   };
 
-  const marcar = (encontroId: string, educandoId: string, presente: boolean) =>
-    salvar(() =>
-      setEncontros((lista) =>
-        lista.map((e) =>
-          e.id === encontroId
-            ? {
-                ...e,
-                presencas: e.presencas.some((p) => p.educandoId === educandoId)
-                  ? e.presencas.map((p) => (p.educandoId === educandoId ? { ...p, presente } : p))
-                  : [...e.presencas, { educandoId, presente }],
-              }
-            : e,
-        ),
-      ),
-    );
-
   const mudarSituacao = (encontroId: string, situacao: Encontro["situacao"]) =>
-    salvar(() =>
-      setEncontros((lista) =>
-        lista.map((e) => (e.id === encontroId ? { ...e, situacao } : e)),
-      ),
-    );
+    salvar(() => mudarSituacaoEncontro(encontroId, situacao));
 
   return (
     <div className="max-w-4xl">
@@ -115,14 +108,18 @@ function AtividadeDetalhe() {
         acoes={
           <div className="flex items-center gap-3">
             <SaveStatus estado={estado} />
-            <Button onClick={() => setAberto((v) => !v)}>
-              <Plus className="size-4" /> Novo encontro
-            </Button>
+            {perm.registrarAtividade && (
+              <Button onClick={() => setAberto((v) => !v)}>
+                <Plus className="size-4" /> Novo encontro
+              </Button>
+            )}
           </div>
         }
       />
 
-      {aberto && (
+      {mensagem && <p className="mb-3 text-sm text-destructive">{mensagem}</p>}
+
+      {perm.registrarAtividade && aberto && (
         <form onSubmit={criarEncontro} className="card-surface mb-5 space-y-4 p-5">
           <h2 className="text-base font-semibold">Cadastrar encontro</h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -199,6 +196,7 @@ function AtividadeDetalhe() {
                 <Badge variant={e.situacao === "Realizado" ? "default" : "secondary"}>
                   {e.situacao}
                 </Badge>
+                {perm.registrarAtividade && (
                 <Select
                   value={e.situacao}
                   onValueChange={(v) => mudarSituacao(e.id, v as Encontro["situacao"])}
@@ -212,44 +210,97 @@ function AtividadeDetalhe() {
                     <SelectItem value="Cancelado">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
               </div>
             </div>
             {e.observacoes && <p className="mt-2 text-sm">{e.observacoes}</p>}
 
-            <div className="mt-4">
-              <p className="mb-2 text-sm font-medium">Lista de presença</p>
-              <ul className="grid gap-2 md:grid-cols-2">
-                {e.presencas.map((p) => {
-                  const edu = educandos.find((x) => x.id === p.educandoId);
-                  return (
-                    <li
-                      key={p.educandoId}
-                      className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
-                    >
-                      <span>{edu?.nome ?? p.educandoId}</span>
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Checkbox
-                          checked={p.presente}
-                          onCheckedChange={(c) => marcar(e.id, p.educandoId, !!c)}
-                        />
-                        {p.presente ? "Presente" : "Ausente"}
-                      </label>
-                    </li>
-                  );
-                })}
-                {e.presencas.length === 0 && (
-                  <li className="text-sm text-muted-foreground">
-                    Nenhum educando vinculado a este encontro.
-                  </li>
-                )}
-              </ul>
-            </div>
+            <Chamada
+              encontro={e}
+              educandos={educandos}
+              podeRegistrar={perm.registrarAtividade}
+              onSalvar={(participantes) => registrarFrequencia(e.id, participantes)}
+            />
           </section>
         ))}
         {daAtividade.length === 0 && (
           <p className="text-sm text-muted-foreground">Nenhum encontro cadastrado.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function Chamada({
+  encontro,
+  educandos,
+  podeRegistrar,
+  onSalvar,
+}: {
+  encontro: Encontro;
+  educandos: { id: string; nome: string }[];
+  podeRegistrar: boolean;
+  onSalvar: (participantes: { educandoId: string; presente: boolean; observacao?: string }[]) => void;
+}) {
+  const { estado, salvar, mensagem } = useSalvar();
+  const [lista, setLista, limpar] = useRascunho(`rascunho:frequencia:${encontro.id}`, encontro.presencas);
+
+  const gravar = async () => {
+    const ok = await salvar(() => onSalvar(lista));
+    if (ok) limpar();
+  };
+
+  const alterar = (educandoId: string, presente: boolean) =>
+    setLista((atual) => atual.map((p) => (p.educandoId === educandoId ? { ...p, presente } : p)));
+
+  const observar = (educandoId: string, observacao: string) =>
+    setLista((atual) => atual.map((p) => (p.educandoId === educandoId ? { ...p, observacao } : p)));
+
+  return (
+    <div className="mt-4">
+      <p className="mb-2 text-sm font-medium">Lista de presença</p>
+      <ul className="grid gap-2 md:grid-cols-2">
+        {lista.map((p) => {
+          const edu = educandos.find((x) => x.id === p.educandoId);
+          return (
+            <li key={p.educandoId} className="rounded-lg border border-border px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span>{edu?.nome ?? p.educandoId}</span>
+                {podeRegistrar ? (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Checkbox checked={p.presente} onCheckedChange={(c) => alterar(p.educandoId, !!c)} />
+                    {p.presente ? "Presente" : "Ausente"}
+                  </label>
+                ) : (
+                  <Badge variant={p.presente ? "default" : "secondary"}>
+                    {p.presente ? "Presente" : "Ausente"}
+                  </Badge>
+                )}
+              </div>
+              {podeRegistrar && (
+                <Input
+                  className="mt-2"
+                  placeholder="Observação (opcional)"
+                  value={p.observacao ?? ""}
+                  onChange={(ev) => observar(p.educandoId, ev.target.value)}
+                />
+              )}
+            </li>
+          );
+        })}
+        {lista.length === 0 && (
+          <li className="text-sm text-muted-foreground">Nenhum educando vinculado a este encontro.</li>
+        )}
+      </ul>
+      {podeRegistrar && (
+        <div className="mt-3 flex items-center gap-3">
+          <Button type="button" size="sm" onClick={gravar} disabled={estado === "saving"}>
+            Salvar chamada
+          </Button>
+          <SaveStatus estado={estado} />
+          {mensagem && <span className="text-sm text-destructive">{mensagem}</span>}
+        </div>
+      )}
     </div>
   );
 }

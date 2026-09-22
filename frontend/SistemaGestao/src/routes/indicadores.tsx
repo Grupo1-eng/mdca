@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Download } from "lucide-react";
-import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { SensitiveNote } from "@/components/SaveStatus";
+import { baixarArquivo, indicadoresParaCsv, indicadoresParaPdf } from "@/lib/exportar";
 import { usePermissoes, useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/indicadores")({
 });
 
 function Indicadores() {
-  const { educandos, atendimentos, encontros, atividades, iniciativas } = useStore();
+  const { iniciativas, indicadores } = useStore();
   const perm = usePermissoes();
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -47,48 +47,34 @@ function Indicadores() {
       <div className="max-w-2xl">
         <PageHeader titulo="Painel de Indicadores" />
         <SensitiveNote>
-          Painel disponível para Coordenação, equipe técnica e Administrativo.
+          Painel disponível para Coordenação e Administrativo.
         </SensitiveNote>
       </div>
     );
   }
 
-  const noPeriodo = (data: string) => data.slice(0, 10) >= inicio && data.slice(0, 10) <= fim;
-  const educandosFiltrados = educandos.filter(
-    (e) => iniciativa === "todas" || e.iniciativaId === iniciativa,
-  );
-  const idsFiltrados = new Set(educandosFiltrados.map((e) => e.id));
-
-  const atendPeriodo = atendimentos.filter(
-    (a) => noPeriodo(a.dataHora) && idsFiltrados.has(a.educandoId),
-  );
-  const atividadesFiltradas = atividades.filter(
-    (a) => iniciativa === "todas" || a.iniciativaId === iniciativa,
-  );
-  const encontrosPeriodo = encontros.filter(
-    (e) =>
-      noPeriodo(e.data) &&
-      e.situacao === "Realizado" &&
-      atividadesFiltradas.some((a) => a.id === e.atividadeId),
-  );
-
-  const educandosAtendidos = new Set(atendPeriodo.map((a) => a.educandoId)).size;
-  const totalPresencas = encontrosPeriodo.flatMap((e) => e.presencas);
-  const frequenciaMedia = totalPresencas.length
-    ? Math.round((totalPresencas.filter((p) => p.presente).length / totalPresencas.length) * 100)
-    : 0;
-
+  const dados = indicadores({ inicio, fim, programaId: iniciativa });
   const metricas = [
-    { label: "Educandos atendidos", valor: educandosAtendidos, nota: "com ao menos 1 atendimento no período" },
-    { label: "Atendimentos registrados", valor: atendPeriodo.length, nota: "fichas de evolução no período" },
-    { label: "Encontros realizados", valor: encontrosPeriodo.length, nota: "encontros com situação Realizado" },
-    { label: "Frequência média", valor: `${frequenciaMedia}%`, nota: "presenças / total de marcações" },
+    { label: "Educandos atendidos", valor: dados.educandosAtendidos, nota: "com ao menos 1 atendimento no período" },
+    { label: "Atendimentos registrados", valor: dados.atendimentosRegistrados, nota: "fichas de evolução no período" },
+    { label: "Encontros realizados", valor: dados.encontrosRealizados, nota: "encontros com situação Realizado" },
+    { label: "Frequência média", valor: `${dados.frequenciaMedia}%`, nota: "presenças / total de marcações" },
   ];
 
-  const exportar = (formato: string) =>
-    toast.info(`Exportação em ${formato} (protótipo)`, {
-      description: "Nesta Sprint a exportação é apenas demonstrativa.",
-    });
+  const exportar = (formato: "csv" | "pdf") => {
+    const periodo = `Período ${inicio} a ${fim}`;
+    if (formato === "csv") {
+      baixarArquivo(
+        "indicadores-mdca.csv",
+        new Blob([indicadoresParaCsv(dados)], { type: "text/csv;charset=utf-8" }),
+      );
+      return;
+    }
+    baixarArquivo(
+      "indicadores-mdca.pdf",
+      new Blob([indicadoresParaPdf(dados, periodo)], { type: "application/pdf" }),
+    );
+  };
 
   return (
     <div>
@@ -97,10 +83,10 @@ function Indicadores() {
         descricao="Métricas distintas de atendimento, sempre filtráveis por período e iniciativa."
         acoes={
           <>
-            <Button variant="outline" onClick={() => exportar("CSV")}>
+            <Button variant="outline" onClick={() => exportar("csv")}>
               <Download className="size-4" /> Exportar CSV
             </Button>
-            <Button variant="outline" onClick={() => exportar("PDF")}>
+            <Button variant="outline" onClick={() => exportar("pdf")}>
               <Download className="size-4" /> Exportar PDF
             </Button>
           </>
