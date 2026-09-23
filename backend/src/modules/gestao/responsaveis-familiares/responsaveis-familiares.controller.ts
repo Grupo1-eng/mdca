@@ -6,23 +6,25 @@ import {
   HttpStatus,
   Param,
   ParseIntPipe,
-  Patch,
   Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { UsuariosService } from './usuarios.service';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { ResponsaveisFamiliaresService } from './responsaveis-familiares.service';
+import { CreateResponsavelFamiliarDto } from './dto/create-responsavel-familiar.dto';
+import { UpdateResponsavelFamiliarDto } from './dto/update-responsavel-familiar.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PerfisGuard } from '../../auth/guards/perfis.guard';
 import { Perfis } from '../../auth/decorators/perfis.decorator';
-import { PERFIS } from '../../auth/perfis.constants';
+import { PERFIS_TECNICOS } from '../../auth/perfis.constants';
 
-@Controller('api/usuarios')
+@Controller('api/responsaveis-familiares')
 @UseGuards(JwtAuthGuard, PerfisGuard)
-export class UsuariosController {
-  constructor(private readonly service: UsuariosService) {}
+@Perfis(...PERFIS_TECNICOS)
+export class ResponsaveisFamiliaresController {
+  constructor(
+    private readonly service: ResponsaveisFamiliaresService,
+  ) {}
 
   @Get()
   listarTodos() {
@@ -36,23 +38,15 @@ export class UsuariosController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Perfis(PERFIS.COORDENACAO)
-  criar(@Body() dados: CreateUsuarioDto) {
+  criar(@Body() dados: CreateResponsavelFamiliarDto) {
     return this.service.criar(dados);
   }
 
   @Put(':id')
-  @Perfis(PERFIS.COORDENACAO)
   atualizar(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dados: UpdateUsuarioDto,
+    @Body() dados: UpdateResponsavelFamiliarDto,
   ) {
     return this.service.atualizar(id, dados);
-  }
-
-  @Patch(':id/inativar')
-  @Perfis(PERFIS.COORDENACAO)
-  inativar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.inativar(id);
   }
 }

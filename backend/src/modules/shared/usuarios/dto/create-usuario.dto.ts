@@ -1,4 +1,11 @@
-import { IsBoolean, IsDate, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDate,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateUsuarioDto {
@@ -16,7 +23,7 @@ export class CreateUsuarioDto {
 
   @IsString()
   @IsNotEmpty()
-  senhaHash: string;
+  senha: string;
 
   @IsString()
   @IsNotEmpty()
