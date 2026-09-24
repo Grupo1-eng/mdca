@@ -72,6 +72,7 @@ model Projeto {
   organizacaoId  Int       @map("organizacao_id")
   nome           String
   descricao      String?
+  tipo           String    // PROJETO | SERVICO | PROGRAMA
   status         String
   orcamentoTotal Decimal?  @map("orcamento_total")
   dataInicio     DateTime? @map("data_inicio") @db.Timestamp(6)
