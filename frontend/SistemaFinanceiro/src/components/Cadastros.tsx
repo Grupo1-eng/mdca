@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { fmt } from '@/lib/format';
+import { arvoreCategorias } from '@/lib/aggregations';
 import { type LogEntry } from './NavBar';
 import { LoadingState, ErrorState } from './StatusMessage';
 import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
@@ -7,7 +8,7 @@ import { useContatos } from '@/hooks/useContatos';
 import { useContas } from '@/hooks/useContas';
 import { useFontes } from '@/hooks/useFontes';
 import { useCategorias } from '@/hooks/useCategorias';
-import type { Contato, NovoContato, Conta, NovaConta, Fonte, NovaFonte, Categoria } from '@/types/financeiro';
+import type { Categoria, Contato, NovoContato, Conta, NovaConta, Fonte, NovaFonte, TipoCategoria } from '@/types/financeiro';
 
 type CadastroKey = "contatos" | "contas" | "fontes" | "categorias";
 
@@ -18,9 +19,12 @@ const cadastrosMeta: { key: CadastroKey; label: string; sublabel: string }[] = [
   { key: "categorias", label: "Categorias", sublabel: "Plano de contas" },
 ];
 
+// Campo opcional vazio vira null, para a edição conseguir apagar o valor salvo.
+const textoOuNulo = (v: string) => v.trim() || null;
+
 // ── Modal Contato ─────────────────────────────────────────────────────────────
-const tiposContato = ["Financiador", "Gov. Federal", "Gov. Estadual", "Gov. Distrital", "Gov. Municipal", "Fornecedor", "Parceiro", "Beneficiário", "Outro"];
-const ufsLista = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
+const papeisContato = ["Financiador", "Gov. Federal", "Gov. Estadual", "Gov. Distrital", "Gov. Municipal", "Fornecedor", "Parceiro", "Beneficiário", "Outro"];
+const tiposPessoa = ["Pessoa jurídica", "Pessoa física"];
 
 function ModalContato({ initial, onClose, onSave }: {
   initial?: Contato | null;
@@ -28,9 +32,8 @@ function ModalContato({ initial, onClose, onSave }: {
   onSave: (c: NovoContato) => Promise<void>;
 }) {
   const [form, setForm] = useState({
-    nome: initial?.nome ?? "", tipo: initial?.tipo ?? "", cnpj: initial?.cnpj ?? "", email: initial?.email ?? "",
-    telefone: initial?.telefone ?? "", endereco: initial?.endereco ?? "", municipio: initial?.municipio ?? "",
-    uf: initial?.uf ?? "", cep: initial?.cep ?? "", responsavel: initial?.responsavel ?? "", status: initial?.status ?? "Ativo",
+    nome: initial?.nome ?? "", papel: initial?.papel ?? "", tipo: initial?.tipo ?? "",
+    cpfCnpj: initial?.cpfCnpj ?? "", telefone: initial?.telefone ?? "", observacoes: initial?.observacoes ?? "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +46,12 @@ function ModalContato({ initial, onClose, onSave }: {
     setError(null);
     try {
       await onSave({
-        nome: form.nome, tipo: form.tipo, cnpj: form.cnpj || "—", email: form.email, telefone: form.telefone,
-        status: form.status as Contato["status"], endereco: form.endereco, municipio: form.municipio,
-        uf: form.uf, cep: form.cep, responsavel: form.responsavel,
+        nome: form.nome.trim(),
+        papel: textoOuNulo(form.papel),
+        tipo: textoOuNulo(form.tipo),
+        cpfCnpj: textoOuNulo(form.cpfCnpj),
+        telefone: textoOuNulo(form.telefone),
+        observacoes: textoOuNulo(form.observacoes),
       });
       onClose();
     } catch (err) {
@@ -67,49 +73,30 @@ function ModalContato({ initial, onClose, onSave }: {
             <input type="text" required value={form.nome} onChange={set("nome")} placeholder="Ex: Instituto Esperança" className={inputMdCls} />
           </FieldMd>
         </div>
-        <FieldMd label="Tipo de contato" required>
-          <select required value={form.tipo} onChange={set("tipo")} className={selectCls} style={chevronBg}>
+        <FieldMd label="Papel">
+          <select value={form.papel} onChange={set("papel")} className={selectCls} style={chevronBg}>
             <option value="">Selecionar…</option>
-            {tiposContato.map(t => <option key={t} value={t}>{t}</option>)}
+            {papeisContato.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </FieldMd>
-        <FieldMd label="Status">
-          <select value={form.status} onChange={set("status")} className={selectCls} style={chevronBg}>
-            <option value="Ativo">Ativo</option>
-            <option value="Inativo">Inativo</option>
+        <FieldMd label="Tipo de pessoa">
+          <select value={form.tipo} onChange={set("tipo")} className={selectCls} style={chevronBg}>
+            <option value="">Selecionar…</option>
+            {tiposPessoa.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </FieldMd>
-        <FieldMd label="CNPJ">
-          <input type="text" value={form.cnpj} onChange={set("cnpj")} placeholder="00.000.000/0001-00" className={inputMdCls + " font-mono"} />
+        <FieldMd label="CPF / CNPJ">
+          <input type="text" value={form.cpfCnpj} onChange={set("cpfCnpj")} placeholder="00.000.000/0001-00" className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Telefone">
           <input type="text" value={form.telefone} onChange={set("telefone")} placeholder="(00) 00000-0000" className={inputMdCls + " font-mono"} />
         </FieldMd>
         <div className="col-span-2">
-          <FieldMd label="E-mail" required>
-            <input type="email" required value={form.email} onChange={set("email")} placeholder="contato@organizacao.org.br" className={inputMdCls} />
+          <FieldMd label="Observações">
+            <textarea value={form.observacoes} onChange={set("observacoes")} rows={2} placeholder="E-mail, endereço, pessoa de contato…"
+              className={inputMdCls + " h-auto py-2 resize-none"} />
           </FieldMd>
         </div>
-        <FieldMd label="Responsável / pessoa de contato">
-          <input type="text" value={form.responsavel} onChange={set("responsavel")} placeholder="Nome do responsável" className={inputMdCls} />
-        </FieldMd>
-        <FieldMd label="CEP">
-          <input type="text" value={form.cep} onChange={set("cep")} placeholder="00000-000" className={inputMdCls + " font-mono"} />
-        </FieldMd>
-        <div className="col-span-2">
-          <FieldMd label="Endereço">
-            <input type="text" value={form.endereco} onChange={set("endereco")} placeholder="Rua, número, complemento" className={inputMdCls} />
-          </FieldMd>
-        </div>
-        <FieldMd label="Município">
-          <input type="text" value={form.municipio} onChange={set("municipio")} placeholder="Brasília" className={inputMdCls} />
-        </FieldMd>
-        <FieldMd label="UF">
-          <select value={form.uf} onChange={set("uf")} className={selectCls} style={chevronBg}>
-            <option value="">—</option>
-            {ufsLista.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </FieldMd>
       </div>
     </ModalShell>
   );
@@ -120,7 +107,8 @@ function CadContatos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp"
   const [editing, setEditing] = useState<Contato | null>(null);
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState("");
-  const filtered = contatos.filter(c => search === "" || c.nome.toLowerCase().includes(search.toLowerCase()) || c.tipo.toLowerCase().includes(search.toLowerCase()));
+  const termo = search.toLowerCase();
+  const filtered = contatos.filter(c => termo === "" || c.nome.toLowerCase().includes(termo) || (c.papel ?? "").toLowerCase().includes(termo));
 
   const abrirNovo = () => { setEditing(null); setModal(true); };
   const abrirEdicao = (c: Contato) => { setEditing(c); setModal(true); };
@@ -128,10 +116,10 @@ function CadContatos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp"
   const handleSave = async (values: NovoContato) => {
     if (editing) {
       const atualizado = await update(editing.id, values);
-      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Contato atualizado: ${atualizado.nome}`, detalhe: `Tipo: ${atualizado.tipo} · ${atualizado.email}` });
+      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Contato atualizado: ${atualizado.nome}`, detalhe: atualizado.papel ?? "" });
     } else {
       const criado = await create(values);
-      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Novo contato cadastrado: ${criado.nome}`, detalhe: `Tipo: ${criado.tipo} · ${criado.email}` });
+      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Novo contato cadastrado: ${criado.nome}`, detalhe: criado.papel ?? "" });
     }
   };
 
@@ -161,7 +149,7 @@ function CadContatos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp"
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#f8f9fc] border-b border-[var(--border)]">
-                    {["Nome","Tipo","CNPJ / CPF","E-mail","Telefone","Status",""].map(h => (
+                    {["Nome","Papel","Tipo","CPF / CNPJ","Telefone",""].map(h => (
                       <th key={h} className="text-left px-4 py-2.5 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium">{h}</th>
                     ))}
                   </tr>
@@ -170,13 +158,10 @@ function CadContatos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp"
                   {filtered.map((c) => (
                     <tr key={c.id} className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] transition-colors group">
                       <td className="px-4 py-3 font-medium text-[var(--foreground)]">{c.nome}</td>
-                      <td className="px-4 py-3"><span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">{c.tipo}</span></td>
-                      <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)]">{c.cnpj}</td>
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{c.email}</td>
-                      <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)]">{c.telefone}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${c.status==="Ativo"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[var(--muted)] text-[var(--muted-foreground)]"}`}>{c.status}</span>
-                      </td>
+                      <td className="px-4 py-3">{c.papel && <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">{c.papel}</span>}</td>
+                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{c.tipo ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)]">{c.cpfCnpj ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)]">{c.telefone ?? "—"}</td>
                       <td className="px-4 py-3 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => abrirEdicao(c)} className="text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
                       </td>
@@ -209,7 +194,8 @@ function ModalConta({ initial, onClose, onSave }: {
 }) {
   const [form, setForm] = useState({
     nome: initial?.nome ?? "", tipo: initial?.tipo ?? "", banco: initial?.banco ?? "",
-    agencia: initial?.agencia ?? "", conta: initial?.conta ?? "", saldo: initial ? String(initial.saldo) : "",
+    agencia: initial?.agencia ?? "", numero: initial?.numero ?? "", saldoInicial: "",
+    ativa: initial ? String(initial.ativa) : "true",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -222,15 +208,21 @@ function ModalConta({ initial, onClose, onSave }: {
     setSubmitting(true);
     setError(null);
     try {
-      await onSave({
-        nome: form.nome || (isCaixa ? "Caixa Interno" : `${form.tipo} ${form.banco}`),
-        banco: isCaixa ? "—" : form.banco,
-        agencia: isCaixa ? "—" : form.agencia,
-        conta: isCaixa ? "—" : form.conta,
-        tipo: form.tipo,
-        saldo: parseFloat(form.saldo.replace(",", ".")) || 0,
-        status: initial?.status ?? "Ativa",
-      });
+      const dados: NovaConta = {
+        nome: form.nome.trim() || (isCaixa ? "Caixa Interno" : `${form.tipo} ${form.banco}`),
+        tipo: textoOuNulo(form.tipo),
+        banco: isCaixa ? null : textoOuNulo(form.banco),
+        agencia: isCaixa ? null : textoOuNulo(form.agencia),
+        numero: isCaixa ? null : textoOuNulo(form.numero),
+        ativa: form.ativa === "true",
+      };
+      // O backend ainda não recalcula o saldo atual a partir dos lançamentos:
+      // na criação ele começa igual ao inicial.
+      if (!initial && form.saldoInicial) {
+        dados.saldoInicial = form.saldoInicial;
+        dados.saldoAtual = form.saldoInicial;
+      }
+      await onSave(dados);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a conta.");
@@ -268,7 +260,7 @@ function ModalConta({ initial, onClose, onSave }: {
             <input type="text" required={!isCaixa} value={form.agencia} onChange={set("agencia")} placeholder="0001-2" className={inputMdCls + " font-mono"} />
           </FieldMd>
           <FieldMd label="Número da conta" required>
-            <input type="text" required={!isCaixa} value={form.conta} onChange={set("conta")} placeholder="12345-6" className={inputMdCls + " font-mono"} />
+            <input type="text" required={!isCaixa} value={form.numero} onChange={set("numero")} placeholder="12345-6" className={inputMdCls + " font-mono"} />
           </FieldMd>
         </div>
       )}
@@ -278,12 +270,21 @@ function ModalConta({ initial, onClose, onSave }: {
         <p className="text-[10px] text-[var(--muted-foreground)] mt-1">Deixe em branco para usar o nome automático.</p>
       </FieldMd>
 
-      <FieldMd label="Saldo inicial (R$)" required>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-          <input type="number" required min="0" step="0.01" value={form.saldo} onChange={set("saldo")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
-        </div>
-      </FieldMd>
+      {initial ? (
+        <FieldMd label="Status">
+          <select value={form.ativa} onChange={set("ativa")} className={selectCls} style={chevronBg}>
+            <option value="true">Ativa</option>
+            <option value="false">Inativa</option>
+          </select>
+        </FieldMd>
+      ) : (
+        <FieldMd label="Saldo inicial (R$)">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
+            <input type="number" step="0.01" value={form.saldoInicial} onChange={set("saldoInicial")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
+          </div>
+        </FieldMd>
+      )}
     </ModalShell>
   );
 }
@@ -299,10 +300,10 @@ function CadContas({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
   const handleSave = async (values: NovaConta) => {
     if (editing) {
       const atualizada = await update(editing.id, values);
-      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Conta financeira atualizada: ${atualizada.nome}`, detalhe: `${atualizada.tipo} · Saldo: ${fmt(atualizada.saldo)}` });
+      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Conta financeira atualizada: ${atualizada.nome}`, detalhe: `${atualizada.tipo ?? ""} · Saldo: ${fmt(atualizada.saldoAtual)}` });
     } else {
       const nova = await create(values);
-      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova conta financeira cadastrada: ${nova.nome}`, detalhe: `${nova.tipo} · Saldo inicial: ${fmt(nova.saldo)}` });
+      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova conta financeira cadastrada: ${nova.nome}`, detalhe: `${nova.tipo ?? ""} · Saldo inicial: ${fmt(nova.saldoInicial)}` });
     }
   };
 
@@ -313,7 +314,7 @@ function CadContas({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-semibold text-[var(--foreground)]">Contas Financeiras</h2>
-            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Saldo consolidado: {fmt(contas.reduce((a,b)=>a+b.saldo,0))}</p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Saldo consolidado: {fmt(contas.reduce((a,b)=>a+b.saldoAtual,0))}</p>
           </div>
           <button onClick={abrirNova} className="text-xs bg-[#0f1e3d] text-white rounded px-3 py-1.5 hover:bg-[#1a3060] transition-colors flex items-center gap-1.5 cursor-pointer">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -331,15 +332,15 @@ function CadContas({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
                   </div>
                   <div>
                     <p className="font-semibold text-[var(--foreground)]">{c.nome}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{c.banco !== "—" ? `${c.banco} · Ag. ${c.agencia} · C/C ${c.conta}` : c.tipo}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{c.banco ? `${c.banco} · Ag. ${c.agencia ?? "—"} · C/C ${c.numero ?? "—"}` : c.tipo ?? ""}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
                     <p className="text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)]">Saldo atual</p>
-                    <p className="text-lg font-semibold text-[#0e7e6e] font-mono">{fmt(c.saldo)}</p>
+                    <p className="text-lg font-semibold text-[#0e7e6e] font-mono">{fmt(c.saldoAtual)}</p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${c.status==="Ativa"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[var(--muted)] text-[var(--muted-foreground)]"}`}>{c.status}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${c.ativa?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[var(--muted)] text-[var(--muted-foreground)]"}`}>{c.ativa ? "Ativa" : "Inativa"}</span>
                   <button onClick={() => abrirEdicao(c)} className="opacity-0 group-hover:opacity-100 transition-opacity text-xs border border-[var(--border)] rounded px-2.5 py-1 hover:bg-[var(--muted)] cursor-pointer">Editar</button>
                 </div>
               </div>
@@ -352,7 +353,6 @@ function CadContas({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
 }
 
 // ── Modal Fonte de Recursos ───────────────────────────────────────────────────
-const tiposFonte = ["Convênio", "Contrato", "Edital", "Doação", "Recurso Próprio", "Subvenção", "Patrocínio", "Outro"];
 const origensLista = ["Gov. Federal", "Gov. Estadual", "Gov. Distrital", "Gov. Municipal", "Privado", "Internacional", "Pessoa Física", "Interno"];
 
 function ModalFonte({ initial, onClose, onSave }: {
@@ -361,13 +361,11 @@ function ModalFonte({ initial, onClose, onSave }: {
   onSave: (f: NovaFonte) => Promise<void>;
 }) {
   const [form, setForm] = useState({
-    nome: initial?.nome ?? "", tipo: initial?.tipo ?? "", origem: initial?.origem ?? "",
-    numero: initial?.numero ?? "", objeto: initial?.objeto ?? "", vigencia: initial?.vigencia ?? "",
-    valor: initial ? String(initial.valor) : "", status: initial?.status ?? "Vigente",
+    nome: initial?.nome ?? "", origem: initial?.origem ?? "", ativa: initial ? String(initial.ativa) : "true",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -375,12 +373,7 @@ function ModalFonte({ initial, onClose, onSave }: {
     setSubmitting(true);
     setError(null);
     try {
-      await onSave({
-        nome: form.nome, tipo: form.tipo, origem: form.origem,
-        vigencia: form.vigencia || "Contínuo",
-        valor: parseFloat(form.valor.replace(",", ".")) || 0,
-        status: form.status as Fonte["status"], numero: form.numero, objeto: form.objeto,
-      });
+      await onSave({ nome: form.nome.trim(), origem: textoOuNulo(form.origem), ativa: form.ativa === "true" });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a fonte.");
@@ -391,7 +384,7 @@ function ModalFonte({ initial, onClose, onSave }: {
 
   return (
     <ModalShell
-      title={initial ? "Editar fonte de recursos" : "Nova fonte de recursos"} subtitle="Registre a origem e condições do recurso"
+      title={initial ? "Editar fonte de recursos" : "Nova fonte de recursos"} subtitle="Registre a origem do recurso"
       onClose={onClose} onSubmit={handleSubmit} submitLabel={initial ? "Salvar alterações" : "Salvar fonte"}
       submitting={submitting} error={error}
     >
@@ -401,47 +394,18 @@ function ModalFonte({ initial, onClose, onSave }: {
             <input type="text" required value={form.nome} onChange={set("nome")} placeholder="Ex: Convênio SEDES — Educação Rural" className={inputMdCls} />
           </FieldMd>
         </div>
-        <FieldMd label="Tipo de fonte" required>
-          <select required value={form.tipo} onChange={set("tipo")} className={selectCls} style={chevronBg}>
-            <option value="">Selecionar…</option>
-            {tiposFonte.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </FieldMd>
-        <FieldMd label="Origem dos recursos" required>
-          <select required value={form.origem} onChange={set("origem")} className={selectCls} style={chevronBg}>
+        <FieldMd label="Origem dos recursos">
+          <select value={form.origem} onChange={set("origem")} className={selectCls} style={chevronBg}>
             <option value="">Selecionar…</option>
             {origensLista.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         </FieldMd>
-        <div className="col-span-2">
-          <FieldMd label="Número do instrumento (convênio, contrato, edital…)">
-            <input type="text" value={form.numero} onChange={set("numero")} placeholder="Ex: 001/2026 — SEDES/DF" className={inputMdCls + " font-mono"} />
-          </FieldMd>
-        </div>
-        <div className="col-span-2">
-          <FieldMd label="Vigência">
-            <input type="text" value={form.vigencia} onChange={set("vigencia")} placeholder="Ex: Mar 2026 – Fev 2027" className={inputMdCls} />
-          </FieldMd>
-        </div>
-        <FieldMd label="Valor total (R$)" required>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-            <input type="number" required min="0" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
-          </div>
-        </FieldMd>
         <FieldMd label="Status">
-          <select value={form.status} onChange={set("status")} className={selectCls} style={chevronBg}>
-            <option value="Vigente">Vigente</option>
-            <option value="Aguardando">Aguardando</option>
-            <option value="Encerrado">Encerrado</option>
+          <select value={form.ativa} onChange={set("ativa")} className={selectCls} style={chevronBg}>
+            <option value="true">Ativa</option>
+            <option value="false">Inativa</option>
           </select>
         </FieldMd>
-        <div className="col-span-2">
-          <FieldMd label="Objeto / descrição resumida">
-            <textarea value={form.objeto} onChange={set("objeto")} rows={2} placeholder="Descreva brevemente o objeto do convênio ou programa…"
-              className={inputMdCls + " h-auto py-2 resize-none"} />
-          </FieldMd>
-        </div>
       </div>
     </ModalShell>
   );
@@ -458,10 +422,10 @@ function CadFontes({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
   const handleSave = async (values: NovaFonte) => {
     if (editing) {
       const atualizada = await update(editing.id, values);
-      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Fonte de recursos atualizada: ${atualizada.nome}`, detalhe: `${atualizada.tipo} · ${atualizada.origem}` });
+      addLog({ modulo: "Cadastros", acao: "edição", descricao: `Fonte de recursos atualizada: ${atualizada.nome}`, detalhe: atualizada.origem ?? "" });
     } else {
       const nova = await create(values);
-      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova fonte de recursos cadastrada: ${nova.nome}`, detalhe: `${nova.tipo} · ${nova.origem} · ${nova.valor > 0 ? fmt(nova.valor) : "Sem valor definido"}` });
+      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova fonte de recursos cadastrada: ${nova.nome}`, detalhe: nova.origem ?? "" });
     }
   };
 
@@ -485,7 +449,7 @@ function CadFontes({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#f8f9fc] border-b border-[var(--border)]">
-                  {["Fonte","Origem","Tipo","Vigência","Valor total","Status",""].map(h => (
+                  {["Fonte","Origem","Status",""].map(h => (
                     <th key={h} className="py-2.5 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium text-left px-4">{h}</th>
                   ))}
                 </tr>
@@ -494,15 +458,11 @@ function CadFontes({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
                 {fontes.map((f) => (
                   <tr key={f.id} className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] transition-colors group">
                     <td className="px-4 py-3.5 font-medium text-[var(--foreground)]">{f.nome}</td>
-                    <td className="px-4 py-3.5 text-xs text-[var(--muted-foreground)]">{f.origem}</td>
-                    <td className="px-4 py-3.5"><span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">{f.tipo}</span></td>
-                    <td className="px-4 py-3.5 text-xs font-mono text-[var(--muted-foreground)]">{f.vigencia}</td>
-                    <td className="px-4 py-3.5 text-xs font-mono font-medium">{f.valor > 0 ? fmt(f.valor) : "—"}</td>
+                    <td className="px-4 py-3.5 text-xs text-[var(--muted-foreground)]">{f.origem ?? "—"}</td>
                     <td className="px-4 py-3.5">
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                        f.status==="Vigente"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":
-                        f.status==="Aguardando"?"bg-amber-100 text-amber-700":"bg-[var(--muted)] text-[var(--muted-foreground)]"
-                      }`}>{f.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${f.ativa ? "bg-[#0e7e6e]/10 text-[#0e7e6e]" : "bg-[var(--muted)] text-[var(--muted-foreground)]"}`}>
+                        {f.ativa ? "Ativa" : "Inativa"}
+                      </span>
                     </td>
                     <td className="px-4 py-3.5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => abrirEdicao(f)} className="text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
@@ -519,20 +479,21 @@ function CadFontes({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
 }
 
 // ── Modal Categoria ────────────────────────────────────────────────────────────
+const rotuloTipoCategoria: Record<TipoCategoria, string> = { receita: "Receita", despesa: "Despesa" };
+
 interface SalvarCategoriaInput {
-  paiId?: string;
-  codigo: string;
+  paiId?: number;
   nome: string;
-  tipo: "Receita" | "Despesa";
-  subNome?: string;
+  tipo: TipoCategoria;
 }
 
-function ModalNovaCategoria({ onClose, onSave, categoriasPai }: {
+function ModalNovaCategoria({ onClose, onSave, categoriasPai, paiInicial }: {
   onClose: () => void;
   onSave: (input: SalvarCategoriaInput) => Promise<void>;
-  categoriasPai: { id: string; codigo: string; nome: string }[];
+  categoriasPai: Categoria[];
+  paiInicial?: number;
 }) {
-  const [form, setForm] = useState({ nome: "", tipo: "Despesa" as "Receita" | "Despesa", codigo: "", pai: "" });
+  const [form, setForm] = useState({ nome: "", tipo: "despesa" as TipoCategoria, pai: paiInicial ? String(paiInicial) : "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -544,11 +505,7 @@ function ModalNovaCategoria({ onClose, onSave, categoriasPai }: {
     setSubmitting(true);
     setError(null);
     try {
-      if (isSub) {
-        await onSave({ paiId: form.pai, codigo: "", nome: "", tipo: "Despesa", subNome: form.nome });
-      } else {
-        await onSave({ codigo: form.codigo || `${categoriasPai.length + 1}.0`, nome: form.nome, tipo: form.tipo });
-      }
+      await onSave({ paiId: isSub ? Number(form.pai) : undefined, nome: form.nome.trim(), tipo: form.tipo });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a categoria.");
@@ -565,8 +522,9 @@ function ModalNovaCategoria({ onClose, onSave, categoriasPai }: {
             const ativo = isSub ? opt === "subcategoria" : opt === "principal";
             return (
               <button key={opt} type="button"
-                onClick={() => setForm(f => ({ ...f, pai: opt === "subcategoria" ? (categoriasPai[0]?.id ?? "") : "" }))}
-                className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-all cursor-pointer ${ativo ? "border-[#0f1e3d] bg-[#0f1e3d]/5" : "border-[var(--border)] hover:bg-[var(--muted)]"}`}
+                onClick={() => setForm(f => ({ ...f, pai: opt === "subcategoria" ? String(categoriasPai[0]?.id ?? "") : "" }))}
+                disabled={opt === "subcategoria" && categoriasPai.length === 0}
+                className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${ativo ? "border-[#0f1e3d] bg-[#0f1e3d]/5" : "border-[var(--border)] hover:bg-[var(--muted)]"}`}
               >
                 <span className={`text-xs font-semibold ${ativo ? "text-[#0f1e3d]" : "text-[var(--muted-foreground)]"}`}>
                   {opt === "principal" ? "Categoria principal" : "Subcategoria"}
@@ -583,7 +541,7 @@ function ModalNovaCategoria({ onClose, onSave, categoriasPai }: {
           <>
             <FieldMd label="Categoria pai" required>
               <select required value={form.pai} onChange={set("pai")} className={selectCls} style={chevronBg}>
-                {categoriasPai.map(c => <option key={c.id} value={c.id}>{c.codigo} — {c.nome}</option>)}
+                {categoriasPai.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </FieldMd>
             <FieldMd label="Nome da subcategoria" required>
@@ -592,26 +550,19 @@ function ModalNovaCategoria({ onClose, onSave, categoriasPai }: {
           </>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-3">
-              <FieldMd label="Código">
-                <input type="text" value={form.codigo} onChange={set("codigo")} placeholder={`${categoriasPai.length + 1}.0`} className={inputMdCls + " font-mono"} />
-              </FieldMd>
-              <div className="col-span-2">
-                <FieldMd label="Nome da categoria" required>
-                  <input type="text" required value={form.nome} onChange={set("nome")} placeholder="Ex: Custeio Operacional" className={inputMdCls} />
-                </FieldMd>
-              </div>
-            </div>
+            <FieldMd label="Nome da categoria" required>
+              <input type="text" required value={form.nome} onChange={set("nome")} placeholder="Ex: Custeio Operacional" className={inputMdCls} />
+            </FieldMd>
             <FieldMd label="Tipo" required>
               <div className="grid grid-cols-2 gap-2">
-                {(["Receita", "Despesa"] as const).map(t => (
+                {(["receita", "despesa"] as const).map(t => (
                   <button key={t} type="button"
                     onClick={() => setForm(f => ({ ...f, tipo: t }))}
                     className={`h-10 rounded-md border text-sm font-medium transition-all cursor-pointer ${form.tipo === t
-                      ? t === "Receita" ? "border-[#0e7e6e] bg-[#0e7e6e]/10 text-[#0e7e6e]" : "border-[#0f1e3d] bg-[#0f1e3d]/10 text-[#0f1e3d]"
+                      ? t === "receita" ? "border-[#0e7e6e] bg-[#0e7e6e]/10 text-[#0e7e6e]" : "border-[#0f1e3d] bg-[#0f1e3d]/10 text-[#0f1e3d]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                   >
-                    {t}
+                    {rotuloTipoCategoria[t]}
                   </button>
                 ))}
               </div>
@@ -637,7 +588,7 @@ function ModalEditarSubcategoria({ valorInicial, onClose, onSave }: {
     setSubmitting(true);
     setError(null);
     try {
-      await onSave(valor);
+      await onSave(valor.trim());
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a subcategoria.");
@@ -657,44 +608,44 @@ function ModalEditarSubcategoria({ valorInicial, onClose, onSave }: {
 
 function CadCategorias({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
   const { data: categorias, loading, error, create, update } = useCategorias();
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [modal, setModal] = useState(false);
-  const [editandoSub, setEditandoSub] = useState<{ categoria: Categoria; index: number } | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [modal, setModal] = useState<{ paiId?: number } | null>(null);
+  const [editandoSub, setEditandoSub] = useState<Categoria | null>(null);
+  const arvore = arvoreCategorias(categorias);
 
   const handleSave = async (input: SalvarCategoriaInput) => {
     if (input.paiId) {
       const pai = categorias.find(c => c.id === input.paiId);
       if (!pai) return;
-      await update(pai.id, { subcategorias: [...pai.subcategorias, input.subNome!] });
+      // Subcategoria herda o tipo (receita/despesa) da categoria pai.
+      await create({ nome: input.nome, tipo: pai.tipo, categoriaPaiId: pai.id });
       setExpanded(pai.id);
-      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Subcategoria adicionada: ${input.subNome}`, detalhe: `Dentro de ${pai.nome}` });
+      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Subcategoria adicionada: ${input.nome}`, detalhe: `Dentro de ${pai.nome}` });
     } else {
-      const criada = await create({ codigo: input.codigo, nome: input.nome, tipo: input.tipo, subcategorias: [] });
-      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova categoria criada: ${criada.nome}`, detalhe: `Código ${criada.codigo} · ${criada.tipo}` });
+      const criada = await create({ nome: input.nome, tipo: input.tipo });
+      addLog({ modulo: "Cadastros", acao: "adição", descricao: `Nova categoria criada: ${criada.nome}`, detalhe: rotuloTipoCategoria[input.tipo] });
     }
   };
 
   const handleSalvarSubcategoria = async (novoValor: string) => {
     if (!editandoSub) return;
-    const { categoria, index } = editandoSub;
-    const valorAnterior = categoria.subcategorias[index];
-    const novasSubs = categoria.subcategorias.map((s, i) => (i === index ? novoValor : s));
-    await update(categoria.id, { subcategorias: novasSubs });
-    addLog({ modulo: "Cadastros", acao: "edição", descricao: `Subcategoria atualizada em ${categoria.nome}`, detalhe: `${valorAnterior} → ${novoValor}` });
+    await update(editandoSub.id, { nome: novoValor });
+    addLog({ modulo: "Cadastros", acao: "edição", descricao: "Subcategoria atualizada", detalhe: `${editandoSub.nome} → ${novoValor}` });
   };
 
   return (
     <>
       {modal && (
         <ModalNovaCategoria
-          onClose={() => setModal(false)}
+          onClose={() => setModal(null)}
           onSave={handleSave}
-          categoriasPai={categorias.map(c => ({ id: c.id, codigo: c.codigo, nome: c.nome }))}
+          categoriasPai={arvore.map(n => n.categoria)}
+          paiInicial={modal.paiId}
         />
       )}
       {editandoSub && (
         <ModalEditarSubcategoria
-          valorInicial={editandoSub.categoria.subcategorias[editandoSub.index]}
+          valorInicial={editandoSub.nome}
           onClose={() => setEditandoSub(null)}
           onSave={handleSalvarSubcategoria}
         />
@@ -705,7 +656,7 @@ function CadCategorias({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestam
             <h2 className="font-semibold text-[var(--foreground)]">Categorias Financeiras</h2>
             <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Plano de contas da organização</p>
           </div>
-          <button onClick={() => setModal(true)} className="text-xs bg-[#0f1e3d] text-white rounded px-3 py-1.5 hover:bg-[#1a3060] transition-colors flex items-center gap-1.5 cursor-pointer">
+          <button onClick={() => setModal({})} className="text-xs bg-[#0f1e3d] text-white rounded px-3 py-1.5 hover:bg-[#1a3060] transition-colors flex items-center gap-1.5 cursor-pointer">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nova categoria
           </button>
@@ -713,8 +664,9 @@ function CadCategorias({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestam
         {error && <ErrorState message={error} />}
         {loading ? <LoadingState /> : (
           <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-            {categorias.map((cat, i) => {
+            {arvore.map(({ categoria: cat, subcategorias }, i) => {
               const isOpen = expanded === cat.id;
+              const rotulo = rotuloTipoCategoria[cat.tipo as TipoCategoria] ?? cat.tipo;
               return (
                 <div key={cat.id} className={i > 0 ? "border-t border-[var(--border)]" : ""}>
                   <button
@@ -722,28 +674,27 @@ function CadCategorias({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestam
                     className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-[var(--muted)] transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono font-semibold text-[var(--muted-foreground)] w-8">{cat.codigo}</span>
                       <span className="font-semibold text-[var(--foreground)] text-sm">{cat.nome}</span>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase tracking-wide ${cat.tipo==="Receita"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[#0f1e3d]/10 text-[#0f1e3d]"}`}>{cat.tipo}</span>
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase tracking-wide ${cat.tipo==="receita"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[#0f1e3d]/10 text-[#0f1e3d]"}`}>{rotulo}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-[var(--muted-foreground)]">{cat.subcategorias.length} subcategorias</span>
+                      <span className="text-xs text-[var(--muted-foreground)]">{subcategorias.length} subcategorias</span>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-[var(--muted-foreground)] transition-transform ${isOpen ? "rotate-90" : ""}`}><path d="M9 18l6-6-6-6"/></svg>
                     </div>
                   </button>
                   {isOpen && (
                     <div className="border-t border-[var(--border)] bg-[#f8f9fc]">
-                      {cat.subcategorias.map((sub, si) => (
-                        <div key={`${cat.id}-${si}`} className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] last:border-0 group hover:bg-[var(--muted)] transition-colors">
+                      {subcategorias.map((sub) => (
+                        <div key={sub.id} className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] last:border-0 group hover:bg-[var(--muted)] transition-colors">
                           <div className="flex items-center gap-3 pl-8">
                             <span className="w-1 h-1 rounded-full bg-[var(--muted-foreground)]" />
-                            <span className="text-sm text-[var(--muted-foreground)]">{sub}</span>
+                            <span className="text-sm text-[var(--muted-foreground)]">{sub.nome}</span>
                           </div>
-                          <button onClick={() => setEditandoSub({ categoria: cat, index: si })} className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
+                          <button onClick={() => setEditandoSub(sub)} className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
                         </div>
                       ))}
                       <div className="px-5 py-3 pl-16">
-                        <button onClick={() => setModal(true)} className="text-xs text-[#0e7e6e] hover:underline flex items-center gap-1 cursor-pointer">
+                        <button onClick={() => setModal({ paiId: cat.id })} className="text-xs text-[#0e7e6e] hover:underline flex items-center gap-1 cursor-pointer">
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           Adicionar subcategoria
                         </button>

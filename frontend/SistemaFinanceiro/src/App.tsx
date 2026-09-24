@@ -5,12 +5,11 @@ import Financeiro from "@/components/Financeiro";
 import Projetos from "@/components/Projetos";
 import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
-import { LoginScreen, CadastroScreen } from "@/components/AuthScreens";
+import { LoginScreen } from "@/components/AuthScreens";
+import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
-function AppShell() {
-  const { user } = useAuth();
-  const [authView, setAuthView] = useState<"login" | "cadastro">("login");
+function AreaLogada() {
   const [module, setModule] = useState<Module>("inicio");
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
@@ -22,12 +21,6 @@ function AppShell() {
     }]);
   };
 
-  if (!user) {
-    return authView === "login"
-      ? <LoginScreen goToCadastro={() => setAuthView("cadastro")} />
-      : <CadastroScreen goToLogin={() => setAuthView("login")} />;
-  }
-
   return <div className="min-h-screen bg-[var(--background)]">
     <NavBar active={module} setModule={setModule} logs={logs} onClearLogs={() => setLogs([])} />
     <main className="max-w-screen-xl mx-auto px-6 py-7">
@@ -38,6 +31,15 @@ function AppShell() {
       {module === "cadastros" && <Cadastros addLog={addLog} />}
     </main>
   </div>;
+}
+
+function AppShell() {
+  const { user, restaurando } = useAuth();
+
+  if (restaurando) return <LoadingState label="Verificando sessão…" />;
+  if (!user) return <LoginScreen />;
+  // key: trocar de usuário recomeça a área logada (módulo aberto e log de atividades).
+  return <AreaLogada key={user.id} />;
 }
 
 export default function App() {

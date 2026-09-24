@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { fmt, formatDate, formatDuracao, getYear } from '@/lib/format';
 import { useProjetos } from '@/hooks/useProjetos';
+import { useLancamentos } from '@/hooks/useLancamentos';
 import { LoadingState, ErrorState } from './StatusMessage';
 import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
 import { type LogEntry } from './NavBar';
-import type { NovoProjeto, StatusProjeto } from '@/types/financeiro';
+import type { NovoProjeto, TipoProjeto } from '@/types/financeiro';
 
 const statusColors: Record<string, string> = {
   "Em andamento": "bg-emerald-100 text-emerald-800",
@@ -12,13 +13,21 @@ const statusColors: Record<string, string> = {
   Concluído: "bg-slate-100 text-slate-600",
 };
 
-const statusOpcoes: StatusProjeto[] = ["Planejamento", "Em andamento", "Concluído"];
-const coresDisponiveis = ["#0e7e6e", "#1a3a6b", "#7c5fbd", "#6b7a99", "#c2410c", "#0f766e"];
+const statusOpcoes = ["Planejamento", "Em andamento", "Concluído"];
+const tiposProjeto: { value: TipoProjeto; label: string }[] = [
+  { value: "PROJETO", label: "Projeto" },
+  { value: "SERVICO", label: "Serviço" },
+  { value: "PROGRAMA", label: "Programa" },
+];
+
+// O banco não guarda cor: ela é só visual, fixa por projeto.
+const cores = ["#0e7e6e", "#1a3a6b", "#7c5fbd", "#6b7a99", "#c2410c", "#0f766e"];
+const corDoProjeto = (id: number) => cores[id % cores.length];
 
 function ModalNovoProjeto({ onClose, onSave }: { onClose: () => void; onSave: (input: NovoProjeto) => Promise<void> }) {
   const [form, setForm] = useState({
-    nome: "", descricao: "", status: "Planejamento" as StatusProjeto,
-    inicio: "", fim: "", cor: coresDisponiveis[0], orcamento: "", tags: "",
+    nome: "", descricao: "", tipo: "PROJETO" as TipoProjeto, status: "Planejamento",
+    dataInicio: "", dataFim: "", orcamentoTotal: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,14 +40,13 @@ function ModalNovoProjeto({ onClose, onSave }: { onClose: () => void; onSave: (i
     setError(null);
     try {
       await onSave({
-        nome: form.nome,
-        descricao: form.descricao,
+        nome: form.nome.trim(),
+        descricao: form.descricao.trim() || null,
+        tipo: form.tipo,
         status: form.status,
-        inicio: form.inicio,
-        fim: form.fim,
-        cor: form.cor,
-        orcamento: parseFloat(form.orcamento.replace(",", ".")) || 0,
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+        dataInicio: form.dataInicio || null,
+        dataFim: form.dataFim || null,
+        orcamentoTotal: form.orcamentoTotal || null,
       });
       onClose();
     } catch (err) {
@@ -66,70 +74,73 @@ function ModalNovoProjeto({ onClose, onSave }: { onClose: () => void; onSave: (i
               className={inputMdCls + " h-auto py-2 resize-none"} />
           </FieldMd>
         </div>
+        <FieldMd label="Tipo" required>
+          <select required value={form.tipo} onChange={set("tipo")} className={selectCls} style={chevronBg}>
+            {tiposProjeto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </FieldMd>
         <FieldMd label="Status" required>
           <select required value={form.status} onChange={set("status")} className={selectCls} style={chevronBg}>
             {statusOpcoes.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </FieldMd>
-        <FieldMd label="Orçamento total (R$)">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-            <input type="number" min="0" step="0.01" value={form.orcamento} onChange={set("orcamento")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
-          </div>
-        </FieldMd>
-        <FieldMd label="Início" required>
-          <input type="date" required value={form.inicio} onChange={set("inicio")} className={inputMdCls + " font-mono"} />
-        </FieldMd>
-        <FieldMd label="Fim previsto" required>
-          <input type="date" required value={form.fim} onChange={set("fim")} className={inputMdCls + " font-mono"} />
-        </FieldMd>
         <div className="col-span-2">
-          <FieldMd label="Tags (separadas por vírgula)">
-            <input type="text" value={form.tags} onChange={set("tags")} placeholder="Ex: Educação, Rural" className={inputMdCls} />
-          </FieldMd>
-        </div>
-        <div className="col-span-2">
-          <FieldMd label="Cor de identificação">
-            <div className="flex gap-2">
-              {coresDisponiveis.map(cor => (
-                <button key={cor} type="button" onClick={() => setForm(f => ({ ...f, cor }))}
-                  className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${form.cor === cor ? "border-[#0f1e3d] scale-110" : "border-transparent"}`}
-                  style={{ backgroundColor: cor }} />
-              ))}
+          <FieldMd label="Orçamento total (R$)">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
+              <input type="number" min="0" step="0.01" value={form.orcamentoTotal} onChange={set("orcamentoTotal")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
             </div>
           </FieldMd>
         </div>
+        <FieldMd label="Início">
+          <input type="date" value={form.dataInicio} onChange={set("dataInicio")} className={inputMdCls + " font-mono"} />
+        </FieldMd>
+        <FieldMd label="Fim previsto">
+          <input type="date" value={form.dataFim} onChange={set("dataFim")} className={inputMdCls + " font-mono"} />
+        </FieldMd>
       </div>
     </ModalShell>
   );
 }
 
 export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
-  const { data: projetos, loading, error, create } = useProjetos();
-  const [tagsAtivas, setTagsAtivas] = useState<string[]>([]);
+  const { data: projetos, loading: loadingProjetos, error: errorProjetos, create } = useProjetos();
+  const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos } = useLancamentos();
+  const loading = loadingProjetos || loadingLancamentos;
+  const error = errorProjetos ?? errorLancamentos;
   const [statusFiltro, setStatusFiltro] = useState<string>("todos");
   const [anoFiltro, setAnoFiltro] = useState<string>("todos");
   const [busca, setBusca] = useState("");
   const [modal, setModal] = useState(false);
 
-  const todasTags = useMemo(() => Array.from(new Set(projetos.flatMap(p => p.tags))), [projetos]);
+  // Realizado = saídas já pagas lançadas no projeto.
+  const realizadoPorProjeto = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const l of lancamentos) {
+      if (l.projetoId === null || l.tipo !== "saida" || l.situacao !== "pago") continue;
+      mapa.set(l.projetoId, (mapa.get(l.projetoId) ?? 0) + l.valor);
+    }
+    return mapa;
+  }, [lancamentos]);
+
+  const anosDoProjeto = (p: { dataInicio: string | null; dataFim: string | null }) =>
+    [p.dataInicio, p.dataFim].filter((d): d is string => d !== null).map(getYear);
+
   const anosDisponiveis = useMemo(
-    () => Array.from(new Set(projetos.flatMap(p => [getYear(p.inicio), getYear(p.fim)]))).sort((a, b) => a - b),
+    () => Array.from(new Set(projetos.flatMap(anosDoProjeto))).sort((a, b) => a - b),
     [projetos],
   );
 
-  const toggleTag = (tag: string) =>
-    setTagsAtivas(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-
+  const termo = busca.toLowerCase();
   const filtrados = projetos.filter(p => {
     const matchStatus = statusFiltro === "todos" || p.status === statusFiltro;
-    const matchTags = tagsAtivas.length === 0 || tagsAtivas.every(t => p.tags.includes(t));
-    const matchAno = anoFiltro === "todos" || getYear(p.inicio) === parseInt(anoFiltro) || getYear(p.fim) === parseInt(anoFiltro);
-    const matchBusca = busca === "" || p.nome.toLowerCase().includes(busca.toLowerCase()) || p.descricao.toLowerCase().includes(busca.toLowerCase());
-    return matchStatus && matchTags && matchAno && matchBusca;
+    const matchAno = anoFiltro === "todos" || anosDoProjeto(p).includes(parseInt(anoFiltro));
+    const matchBusca = termo === "" || p.nome.toLowerCase().includes(termo) || (p.descricao ?? "").toLowerCase().includes(termo);
+    return matchStatus && matchAno && matchBusca;
   });
 
-  const hasFilters = tagsAtivas.length > 0 || statusFiltro !== "todos" || anoFiltro !== "todos" || busca !== "";
+  const limparFiltros = () => { setStatusFiltro("todos"); setAnoFiltro("todos"); setBusca(""); };
+  const hasFilters = statusFiltro !== "todos" || anoFiltro !== "todos" || busca !== "";
 
   const handleSaveProjeto = async (input: NovoProjeto) => {
     const criado = await create(input);
@@ -137,7 +148,7 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
       modulo: "Projetos",
       acao: "adição",
       descricao: `Novo projeto cadastrado: ${criado.nome}`,
-      detalhe: `${criado.status} · ${fmt(criado.orcamento)}`,
+      detalhe: `${criado.status} · ${criado.orcamentoTotal !== null ? fmt(criado.orcamentoTotal) : "sem orçamento"}`,
     });
   };
 
@@ -151,7 +162,7 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
           <h1 className="font-serif text-2xl text-[var(--foreground)]">Projetos</h1>
           <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
             {filtrados.length} de {projetos.length} iniciativas
-            {hasFilters && <button onClick={() => { setTagsAtivas([]); setStatusFiltro("todos"); setAnoFiltro("todos"); setBusca(""); }} className="ml-2 text-[#0e7e6e] hover:underline cursor-pointer">Limpar filtros</button>}
+            {hasFilters && <button onClick={limparFiltros} className="ml-2 text-[#0e7e6e] hover:underline cursor-pointer">Limpar filtros</button>}
           </p>
         </div>
         <button onClick={() => setModal(true)} className="text-xs bg-[#1a3a6b] text-white rounded px-3 py-1.5 hover:bg-[#142e57] transition-colors cursor-pointer">
@@ -191,77 +202,59 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
                 {anosDisponiveis.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
-
-            {/* linha 2: tags */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] shrink-0">Tags</span>
-              {todasTags.map(tag => {
-                const ativa = tagsAtivas.includes(tag);
-                return (
-                  <button key={tag} onClick={() => toggleTag(tag)}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${ativa ? "bg-[#0f1e3d] text-white border-[#0f1e3d]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[#0f1e3d]/40 hover:text-[var(--foreground)]"}`}>
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Cards */}
           {filtrados.length === 0 ? (
             <div className="bg-white border border-[var(--border)] rounded-lg p-12 text-center">
               <p className="text-[var(--muted-foreground)] text-sm">Nenhum projeto corresponde aos filtros selecionados.</p>
-              <button onClick={() => { setTagsAtivas([]); setStatusFiltro("todos"); setAnoFiltro("todos"); setBusca(""); }}
+              <button onClick={limparFiltros}
                 className="mt-3 text-xs text-[#0e7e6e] hover:underline cursor-pointer">Limpar filtros</button>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {filtrados.map((p) => {
-                const pct = p.orcamento > 0 ? Math.round((p.realizado / p.orcamento) * 100) : 0;
+                const orcamento = p.orcamentoTotal ?? 0;
+                const realizado = realizadoPorProjeto.get(p.id) ?? 0;
+                const pct = orcamento > 0 ? Math.round((realizado / orcamento) * 100) : 0;
+                const cor = corDoProjeto(p.id);
                 return (
                   <div key={p.id} className="bg-white rounded-lg border border-[var(--border)] p-5 hover:shadow-sm transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.cor }} />
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
                           <h2 className="font-semibold text-[var(--foreground)] truncate">{p.nome}</h2>
                         </div>
-                        <p className="text-xs text-[var(--muted-foreground)]">{p.descricao}</p>
+                        {p.descricao && <p className="text-xs text-[var(--muted-foreground)]">{p.descricao}</p>}
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-3 ${statusColors[p.status]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-3 ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
                         {p.status}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)] font-mono mb-3">
-                      <span>Início {formatDate(p.inicio)}</span>
+                    <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)] font-mono mb-4">
+                      <span>Início {formatDate(p.dataInicio)}</span>
                       <span>·</span>
-                      <span>Fim {formatDate(p.fim)}</span>
-                      <span>·</span>
-                      <span>{formatDuracao(p.inicio, p.fim)}</span>
+                      <span>Fim {formatDate(p.dataFim)}</span>
+                      {p.dataInicio && p.dataFim && <>
+                        <span>·</span>
+                        <span>{formatDuracao(p.dataInicio, p.dataFim)}</span>
+                      </>}
                     </div>
 
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {p.tags.map(tag => (
-                        <button key={tag} onClick={() => toggleTag(tag)}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${tagsAtivas.includes(tag) ? "bg-[#0f1e3d] text-white border-[#0f1e3d]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[#0f1e3d]/40"}`}>
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-
-                    {p.orcamento > 0 && (
+                    {orcamento > 0 && (
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs text-[var(--muted-foreground)]">Execução orçamentária</span>
                           <span className="text-xs font-mono font-medium">{pct}%</span>
                         </div>
                         <div className="h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: p.cor }} />
+                          <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: cor }} />
                         </div>
                         <div className="flex justify-between mt-1.5 text-xs font-mono text-[var(--muted-foreground)]">
-                          <span>{fmt(p.realizado)} realizado</span>
-                          <span>{fmt(p.orcamento)} total</span>
+                          <span>{fmt(realizado)} realizado</span>
+                          <span>{fmt(orcamento)} total</span>
                         </div>
                       </div>
                     )}

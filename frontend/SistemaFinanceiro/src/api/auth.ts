@@ -1,16 +1,15 @@
 import { request } from "./client";
-import type { AuthResponse, LoginPayload, RegisterPayload } from "@/types/financeiro";
+import type { AuthResponse, AuthUser, LoginPayload } from "@/types/financeiro";
 
+// Não há cadastro público: usuários são criados pela coordenação em POST /api/usuarios.
 export function login(payload: LoginPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/auth/login", {
+  return request<AuthResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+    publica: true,
   });
 }
 
-export function register(payload: RegisterPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export function me(): Promise<AuthUser> {
+  return request<AuthUser>("/api/auth/me");
 }

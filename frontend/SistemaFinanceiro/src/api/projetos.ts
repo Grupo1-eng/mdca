@@ -1,20 +1,9 @@
-import { request } from "./client";
-import type { Projeto, NovoProjeto } from "@/types/financeiro";
+import { recurso } from "./recurso";
+import { normalizarProjeto } from "./normalizar";
+import type { NovoProjeto, Projeto } from "@/types/financeiro";
 
-export function getProjetos(): Promise<Projeto[]> {
-  return request<Projeto[]>("/financeiro/projetos");
-}
+const api = recurso<Projeto, NovoProjeto, Parameters<typeof normalizarProjeto>[0]>("/api/projetos", normalizarProjeto);
 
-export function createProjeto(input: NovoProjeto): Promise<Projeto> {
-  return request<Projeto>("/financeiro/projetos", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateProjeto(id: string, input: Partial<NovoProjeto>): Promise<Projeto> {
-  return request<Projeto>(`/financeiro/projetos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
-}
+export const getProjetos = api.listar;
+export const createProjeto = api.criar;
+export const updateProjeto = api.atualizar;

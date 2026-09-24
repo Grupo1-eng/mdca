@@ -45,7 +45,7 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
   logs: LogEntry[];
   onClearLogs: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [logOpen, setLogOpen] = useState(false);
   const [vistosAte, setVistosAte] = useState(0);
   const novos = logs.length - vistosAte;
@@ -190,6 +190,12 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
           >
             {user ? iniciais(user.nome) : "?"}
           </div>
+          <button
+            onClick={logout}
+            className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors cursor-pointer"
+          >
+            Sair
+          </button>
         </div>
       </div>
     </header>

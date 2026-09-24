@@ -1,8 +1,12 @@
-// Funções puras que derivam os números do Dashboard e do fluxo de caixa a
-// partir dos lançamentos/contas já carregados pelos hooks — evita expor
-// endpoints de agregação que o backend não definiu para números que dá para
-// calcular a partir das listas simples (lançamentos, contas).
-import type { Conta, Lancamento } from "@/types/financeiro";
+// Funções puras que derivam os números do Dashboard, do fluxo de caixa e dos
+// relatórios a partir das listas já carregadas pelos hooks — o backend ainda
+// não tem endpoints de agregação.
+//
+// Lançamentos guardam `valor` sempre positivo; a direção vem de `tipo`.
+import type {
+  Categoria, CategoriaExecucao, Conta, ExecucaoProjeto, Lancamento, Orcamento, Projeto,
+} from "@/types/financeiro";
+import { dataLocal } from "./format";
 
 export type PeriodoDash = "semana" | "mes" | "trimestre" | "ano" | "personalizado";
 
@@ -38,15 +42,24 @@ export function getIntervaloPeriodo(
       return { inicio: new Date(hoje.getFullYear(), 0, 1), fim: fimHoje };
     case "personalizado":
       return {
-        inicio: dataIni ? new Date(dataIni) : new Date(hoje.getFullYear(), hoje.getMonth(), 1),
-        fim: dataFim ? new Date(dataFim) : fimHoje,
+        inicio: dataIni ? dataLocal(dataIni) : new Date(hoje.getFullYear(), hoje.getMonth(), 1),
+        fim: dataFim ? new Date(dataLocal(dataFim).setHours(23, 59, 59, 999)) : fimHoje,
       };
   }
 }
 
-function dentroDoIntervalo(dataIso: string, intervalo: Intervalo): boolean {
-  const data = new Date(dataIso);
+/** Data que situa o lançamento no tempo: competência, senão pagamento, senão criação. */
+export function dataDoLancamento(l: Lancamento): string {
+  return l.dataCompetencia ?? l.dataPagamento ?? l.criadoEm;
+}
+
+function dentroDoIntervalo(l: Lancamento, intervalo: Intervalo): boolean {
+  const data = dataLocal(dataDoLancamento(l));
   return data >= intervalo.inicio && data <= intervalo.fim;
+}
+
+function soma(lancamentos: Lancamento[]): number {
+  return lancamentos.reduce((a, b) => a + b.valor, 0);
 }
 
 export interface ResumoPeriodo {
@@ -56,16 +69,16 @@ export interface ResumoPeriodo {
 }
 
 export function resumoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): ResumoPeriodo {
-  const doPeriodo = lancamentos.filter((l) => dentroDoIntervalo(l.data, intervalo));
+  const doPeriodo = lancamentos.filter((l) => dentroDoIntervalo(l, intervalo));
   return {
-    entradas: doPeriodo.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0),
-    saidas: doPeriodo.filter((l) => l.tipo === "saida").reduce((a, b) => a + Math.abs(b.valor), 0),
+    entradas: soma(doPeriodo.filter((l) => l.tipo === "entrada")),
+    saidas: soma(doPeriodo.filter((l) => l.tipo === "saida")),
     qtdLancamentos: doPeriodo.length,
   };
 }
 
 export function saldoTotalContas(contas: Conta[]): number {
-  return contas.reduce((a, b) => a + b.saldo, 0);
+  return contas.reduce((a, b) => a + b.saldoAtual, 0);
 }
 
 export interface ContaPendente {
@@ -76,29 +89,30 @@ export interface ContaPendente {
 }
 
 /**
- * Lançamentos com situação "Previsto" (ainda não liquidados), separados entre
- * os que já venceram e os que vencem nos próximos 7 dias.
+ * Lançamentos pendentes (ainda não pagos/recebidos), separados entre os que já
+ * venceram e os que vencem nos próximos 7 dias.
  */
 export function contasPendentes(
   lancamentos: Lancamento[],
   hoje: Date = new Date(),
 ): { vencidas: ContaPendente[]; vencendo: ContaPendente[] } {
-  const emSeteDias = new Date(hoje);
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const emSeteDias = new Date(inicioHoje);
   emSeteDias.setDate(emSeteDias.getDate() + 7);
 
   const toContaPendente = (l: Lancamento): ContaPendente => ({
-    descricao: l.descricao,
-    valor: Math.abs(l.valor),
-    vencimento: l.data,
+    descricao: l.descricao ?? "",
+    valor: l.valor,
+    vencimento: dataDoLancamento(l),
     tipo: l.tipo === "entrada" ? "receber" : "pagar",
   });
 
-  const previstos = lancamentos.filter((l) => l.situacao === "Previsto");
-  const vencidas = previstos.filter((l) => new Date(l.data) < hoje).map(toContaPendente);
-  const vencendo = previstos
+  const pendentes = lancamentos.filter((l) => l.situacao === "pendente");
+  const vencidas = pendentes.filter((l) => dataLocal(dataDoLancamento(l)) < inicioHoje).map(toContaPendente);
+  const vencendo = pendentes
     .filter((l) => {
-      const d = new Date(l.data);
-      return d >= hoje && d <= emSeteDias;
+      const d = dataLocal(dataDoLancamento(l));
+      return d >= inicioHoje && d <= emSeteDias;
     })
     .map(toContaPendente);
 
@@ -121,17 +135,17 @@ export function serieFluxoCaixa(lancamentos: Lancamento[], meses = 6, hoje: Date
   for (let i = meses - 1; i >= 0; i--) {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
     const doMes = lancamentos.filter((l) => {
-      const d = new Date(l.data);
+      const d = dataLocal(dataDoLancamento(l));
       return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
     });
     const entradas = doMes.filter((l) => l.tipo === "entrada");
     const saidas = doMes.filter((l) => l.tipo === "saida");
     pontos.push({
       mes: formatter.format(ref).replace(".", ""),
-      realizado: entradas.filter((l) => l.situacao === "Recebido").reduce((a, b) => a + b.valor, 0),
-      previsto: entradas.reduce((a, b) => a + b.valor, 0),
-      saidasRealizado: saidas.filter((l) => l.situacao === "Pago").reduce((a, b) => a + Math.abs(b.valor), 0),
-      saidasPrevisto: saidas.reduce((a, b) => a + Math.abs(b.valor), 0),
+      realizado: soma(entradas.filter((l) => l.situacao === "recebido")),
+      previsto: soma(entradas),
+      saidasRealizado: soma(saidas.filter((l) => l.situacao === "pago")),
+      saidasPrevisto: soma(saidas),
     });
   }
 
@@ -146,22 +160,67 @@ export interface PontoSemanal {
 
 /** Entradas vs. saídas por semana do mês corrente — usado no gráfico de fluxo da tela Financeiro. */
 export function serieSemanalMesAtual(lancamentos: Lancamento[], hoje: Date = new Date()): PontoSemanal[] {
-  const doMes = lancamentos.filter((l) => {
-    const d = new Date(l.data);
-    return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth();
-  });
-
   const semanas = new Map<number, { entradas: number; saidas: number }>();
-  for (const l of doMes) {
-    const dia = new Date(l.data).getDate();
-    const semana = Math.floor((dia - 1) / 7) + 1;
+  for (const l of lancamentos) {
+    const d = dataLocal(dataDoLancamento(l));
+    if (d.getFullYear() !== hoje.getFullYear() || d.getMonth() !== hoje.getMonth()) continue;
+    const semana = Math.floor((d.getDate() - 1) / 7) + 1;
     const atual = semanas.get(semana) ?? { entradas: 0, saidas: 0 };
     if (l.tipo === "entrada") atual.entradas += l.valor;
-    else atual.saidas += Math.abs(l.valor);
+    else atual.saidas += l.valor;
     semanas.set(semana, atual);
   }
 
   return Array.from(semanas.entries())
     .sort(([a], [b]) => a - b)
     .map(([semana, valores]) => ({ label: `Sem ${semana}`, ...valores }));
+}
+
+export interface NoCategoria {
+  categoria: Categoria;
+  subcategorias: Categoria[];
+}
+
+/** Categorias principais (sem pai) com suas subcategorias, na ordem em que vieram. */
+export function arvoreCategorias(categorias: Categoria[]): NoCategoria[] {
+  return categorias
+    .filter((c) => c.categoriaPaiId === null)
+    .map((categoria) => ({
+      categoria,
+      subcategorias: categorias.filter((c) => c.categoriaPaiId === categoria.id),
+    }));
+}
+
+/**
+ * Execução orçamentária por projeto: orçado vem dos orçamentos cadastrados e
+ * realizado das saídas já pagas, ambos por categoria.
+ */
+export function execucaoOrcamentaria(
+  projetos: Projeto[],
+  categorias: Categoria[],
+  orcamentos: Orcamento[],
+  lancamentos: Lancamento[],
+): ExecucaoProjeto[] {
+  const nomeCategoria = new Map(categorias.map((c) => [c.id, c.nome]));
+  const pagas = lancamentos.filter((l) => l.tipo === "saida" && l.situacao === "pago");
+
+  return projetos.flatMap((projeto) => {
+    const doProjeto = orcamentos.filter((o) => o.projetoId === projeto.id);
+    if (doProjeto.length === 0) return [];
+
+    const categoriaIds = Array.from(new Set(doProjeto.map((o) => o.categoriaId)));
+    const linhas: CategoriaExecucao[] = categoriaIds.map((categoriaId) => ({
+      nome: nomeCategoria.get(categoriaId) ?? `Categoria ${categoriaId}`,
+      orcado: doProjeto.filter((o) => o.categoriaId === categoriaId).reduce((a, b) => a + b.valorPrevisto, 0),
+      realizado: soma(pagas.filter((l) => l.projetoId === projeto.id && l.categoriaId === categoriaId)),
+    }));
+
+    return [{
+      projetoId: projeto.id,
+      projeto: projeto.nome,
+      orcado: linhas.reduce((a, b) => a + b.orcado, 0),
+      realizado: linhas.reduce((a, b) => a + b.realizado, 0),
+      categorias: linhas,
+    }];
+  });
 }

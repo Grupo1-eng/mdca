@@ -1,20 +1,9 @@
-import { request } from "./client";
+import { recurso } from "./recurso";
+import { normalizarLancamento } from "./normalizar";
 import type { Lancamento, NovoLancamento } from "@/types/financeiro";
 
-export function getLancamentos(): Promise<Lancamento[]> {
-  return request<Lancamento[]>("/financeiro/lancamentos");
-}
+const api = recurso<Lancamento, NovoLancamento, Parameters<typeof normalizarLancamento>[0]>("/api/lancamentos", normalizarLancamento);
 
-export function createLancamento(input: NovoLancamento): Promise<Lancamento> {
-  return request<Lancamento>("/financeiro/lancamentos", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateLancamento(id: string, input: Partial<NovoLancamento>): Promise<Lancamento> {
-  return request<Lancamento>(`/financeiro/lancamentos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
-}
+export const getLancamentos = api.listar;
+export const createLancamento = api.criar;
+export const updateLancamento = api.atualizar;

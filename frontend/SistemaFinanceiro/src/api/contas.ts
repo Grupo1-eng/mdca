@@ -1,20 +1,9 @@
-import { request } from "./client";
+import { recurso } from "./recurso";
+import { normalizarConta } from "./normalizar";
 import type { Conta, NovaConta } from "@/types/financeiro";
 
-export function getContas(): Promise<Conta[]> {
-  return request<Conta[]>("/financeiro/contas");
-}
+const api = recurso<Conta, NovaConta, Parameters<typeof normalizarConta>[0]>("/api/contas-financeiras", normalizarConta);
 
-export function createConta(input: NovaConta): Promise<Conta> {
-  return request<Conta>("/financeiro/contas", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateConta(id: string, input: Partial<NovaConta>): Promise<Conta> {
-  return request<Conta>(`/financeiro/contas/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
-}
+export const getContas = api.listar;
+export const createConta = api.criar;
+export const updateConta = api.atualizar;
