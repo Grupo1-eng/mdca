@@ -7,9 +7,9 @@ function iniciais(nome: string): string {
   return partes.slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
-export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros';
+export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros' | 'usuarios';
 
-type LogModulo = "Financeiro" | "Cadastros" | "Projetos" | "Relatórios";
+type LogModulo = "Financeiro" | "Cadastros" | "Projetos" | "Relatórios" | "Usuários";
 type LogAcao = "adição" | "remoção" | "edição" | "anexo";
 export interface LogEntry {
   id: string;
@@ -30,6 +30,7 @@ const moduloCor: Record<LogModulo, string> = {
   Cadastros: "bg-[#1a3a6b]/10 text-[#1a3a6b]",
   Projetos: "bg-violet-100 text-violet-700",
   "Relatórios": "bg-amber-100 text-amber-700",
+  "Usuários": "bg-slate-100 text-slate-700",
 }
 function fmtRelativo(d: Date) {
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
@@ -56,6 +57,8 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
     { key: "projetos", label: "Projetos" },
     { key: "relatorios", label: "Relatórios" },
     { key: "cadastros", label: "Cadastros" },
+    // Só a coordenação gerencia usuários (o backend também exige isso).
+    ...(user?.perfil === "coordenador" ? [{ key: "usuarios" as const, label: "Usuários" }] : []),
   ];
 
   const abrirLog = () => {
