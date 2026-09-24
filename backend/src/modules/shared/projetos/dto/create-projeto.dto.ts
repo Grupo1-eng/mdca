@@ -1,14 +1,9 @@
-import { IsDate, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Dinheiro } from '../../../../common/transformers/dinheiro';
 
-export const TIPOS_PROJETO = ['PROJETO', 'SERVICO', 'PROGRAMA'] as const;
-export type TipoProjeto = (typeof TIPOS_PROJETO)[number];
-
+// organizacaoId vem do token do usuário.
 export class CreateProjetoDto {
-  @Type(() => Number)
-  @IsInt()
-  organizacaoId: number;
-
   @IsString()
   @IsNotEmpty()
   nome: string;
@@ -25,9 +20,8 @@ export class CreateProjetoDto {
   status: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  orcamentoTotal?: number;
+  @Dinheiro()
+  orcamentoTotal?: string;
 
   @IsOptional()
   @Type(() => Date)

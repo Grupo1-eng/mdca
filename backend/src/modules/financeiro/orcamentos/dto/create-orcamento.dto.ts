@@ -1,5 +1,6 @@
-import { IsInt, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Dinheiro } from '../../../../common/transformers/dinheiro';
 
 export class CreateOrcamentoDto {
   @Type(() => Number)
@@ -14,7 +15,6 @@ export class CreateOrcamentoDto {
   @IsNotEmpty()
   periodoReferencia: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  valorPrevisto: number;
+  @Dinheiro()
+  valorPrevisto: string;
 }

@@ -1,11 +1,9 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Dinheiro } from '../../../../common/transformers/dinheiro';
 
+// organizacaoId vem do token do usuário.
 export class CreateContaFinanceiraDto {
-  @Type(() => Number)
-  @IsInt()
-  organizacaoId: number;
-
   @IsString()
   @IsNotEmpty()
   nome: string;
@@ -27,14 +25,12 @@ export class CreateContaFinanceiraDto {
   numero?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  saldoInicial?: number;
+  @Dinheiro({ permitirNegativo: true })
+  saldoInicial?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  saldoAtual?: number;
+  @Dinheiro({ permitirNegativo: true })
+  saldoAtual?: string;
 
   @IsOptional()
   @Type(() => Boolean)

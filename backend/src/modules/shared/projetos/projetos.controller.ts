@@ -13,6 +13,10 @@ import {
 import { ProjetosService } from './projetos.service';
 import { CreateProjetoDto } from './dto/create-projeto.dto';
 import { UpdateProjetoDto } from './dto/update-projeto.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../../auth/decorators/usuario-atual.decorator';
 
 @Controller('api/projetos')
 export class ProjetosController {
@@ -30,8 +34,8 @@ export class ProjetosController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  criar(@Body() dados: CreateProjetoDto) {
-    return this.service.criar(dados);
+  criar(@Body() dados: CreateProjetoDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.criar(dados, usuario.organizacaoId);
   }
 
   @Put(':id')
