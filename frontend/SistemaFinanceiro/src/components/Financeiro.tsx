@@ -8,11 +8,17 @@ import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalSh
 import { useLancamentos } from '@/hooks/useLancamentos';
 import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
+import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
-import { getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, serieSemanalMesAtual } from '@/lib/aggregations';
+import { dataDoLancamento, getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, serieSemanalMesAtual } from '@/lib/aggregations';
+import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
 type FinanceTab = "lancamentos" | "entradas" | "saidas" | "fluxo";
+
+// O backend ainda não tem endpoints de anexo; a coluna de comprovantes volta
+// quando eles existirem (ver src/api/anexos.ts).
+const ANEXOS_DISPONIVEIS = false;
 
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
@@ -65,10 +71,10 @@ function DrawerComprovantes({ lancamento, anexos, loading, onClose, onAddAnexos,
               <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] mb-1">Comprovantes</p>
               <h2 className="font-semibold text-[var(--foreground)] leading-snug truncate">{lancamento.descricao}</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-mono text-[var(--muted-foreground)]">{formatDate(lancamento.data)}</span>
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">{formatDate(dataDoLancamento(lancamento))}</span>
                 <span className="text-[var(--muted-foreground)]">·</span>
-                <span className={`text-xs font-mono font-semibold ${lancamento.valor >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                  {lancamento.valor >= 0 ? "+" : ""}{fmt(lancamento.valor)}
+                <span className={`text-xs font-mono font-semibold ${lancamento.tipo === "entrada" ? "text-[#0e7e6e]" : "text-red-600"}`}>
+                  {lancamento.tipo === "entrada" ? "+" : ""}{fmt(valorComSinal(lancamento.valor, lancamento.tipo))}
                 </span>
               </div>
             </div>
@@ -201,17 +207,18 @@ const tiposLancamento: { value: TipoLancamento; label: string }[] = [
   { value: "entrada", label: "Entrada" },
   { value: "saida", label: "Saída" },
 ];
-const situacoesLancamento: SituacaoLancamento[] = ["Previsto", "Pago", "Recebido"];
+const situacoesLancamento: SituacaoLancamento[] = ["pendente", "pago", "recebido"];
 
-function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
-  projetos: { id: string; nome: string }[];
-  contas: { id: string; nome: string }[];
+function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: {
+  projetos: { id: number; nome: string }[];
+  contas: { id: number; nome: string }[];
+  categorias: { id: number; nome: string }[];
   onClose: () => void;
   onSave: (input: NovoLancamento) => Promise<void>;
 }) {
   const [form, setForm] = useState({
-    data: "", descricao: "", projeto: "", conta: "", valor: "",
-    tipo: "entrada" as TipoLancamento, situacao: "Previsto" as SituacaoLancamento,
+    dataCompetencia: "", descricao: "", projetoId: "", contaId: "", categoriaId: "", valor: "",
+    tipo: "entrada" as TipoLancamento, situacao: "pendente" as SituacaoLancamento,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -223,13 +230,13 @@ function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
     setSubmitting(true);
     setError(null);
     try {
-      const valorAbs = Math.abs(parseFloat(form.valor.replace(",", ".")) || 0);
       await onSave({
-        data: form.data,
+        dataCompetencia: form.dataCompetencia,
         descricao: form.descricao,
-        projeto: form.projeto,
-        conta: form.conta,
-        valor: form.tipo === "saida" ? -valorAbs : valorAbs,
+        projetoId: form.projetoId ? Number(form.projetoId) : undefined,
+        contaId: Number(form.contaId),
+        categoriaId: Number(form.categoriaId),
+        valor: form.valor,
         tipo: form.tipo,
         situacao: form.situacao,
       });
@@ -264,7 +271,7 @@ function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
         </FieldMd>
         <FieldMd label="Situação" required>
           <select required value={form.situacao} onChange={set("situacao")} className={selectCls} style={chevronBg}>
-            {situacoesLancamento.map(s => <option key={s} value={s}>{s}</option>)}
+            {situacoesLancamento.map(s => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
           </select>
         </FieldMd>
         <div className="col-span-2">
@@ -273,7 +280,7 @@ function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
           </FieldMd>
         </div>
         <FieldMd label="Data" required>
-          <input type="date" required value={form.data} onChange={set("data")} className={inputMdCls + " font-mono"} />
+          <input type="date" required value={form.dataCompetencia} onChange={set("dataCompetencia")} className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Valor (R$)" required>
           <div className="relative">
@@ -281,18 +288,26 @@ function ModalNovoLancamento({ projetos, contas, onClose, onSave }: {
             <input type="number" required min="0" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
           </div>
         </FieldMd>
-        <FieldMd label="Projeto" required>
-          <select required value={form.projeto} onChange={set("projeto")} className={selectCls} style={chevronBg}>
-            <option value="">Selecionar…</option>
-            {projetos.map(p => <option key={p.id} value={p.nome}>{p.nome}</option>)}
-          </select>
-        </FieldMd>
         <FieldMd label="Conta" required>
-          <select required value={form.conta} onChange={set("conta")} className={selectCls} style={chevronBg}>
+          <select required value={form.contaId} onChange={set("contaId")} className={selectCls} style={chevronBg}>
             <option value="">Selecionar…</option>
-            {contas.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+            {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </FieldMd>
+        <FieldMd label="Categoria" required>
+          <select required value={form.categoriaId} onChange={set("categoriaId")} className={selectCls} style={chevronBg}>
+            <option value="">Selecionar…</option>
+            {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </FieldMd>
+        <div className="col-span-2">
+          <FieldMd label="Projeto">
+            <select value={form.projetoId} onChange={set("projetoId")} className={selectCls} style={chevronBg}>
+              <option value="">Nenhum</option>
+              {projetos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </FieldMd>
+        </div>
       </div>
     </ModalShell>
   );
@@ -303,14 +318,18 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos, create: createLancamento } = useLancamentos();
   const { data: projetos, loading: loadingProjetos } = useProjetos();
   const { data: contas, loading: loadingContas, error: errorContas } = useContas();
+  const { data: categorias, loading: loadingCategorias } = useCategorias();
 
   const [tab, setTab] = useState<FinanceTab>("lancamentos");
-  const [drawerId, setDrawerId] = useState<string | null>(null);
-  const [anexosPorLanc, setAnexosPorLanc] = useState<Record<string, Anexo[]>>({});
+  const [drawerId, setDrawerId] = useState<number | null>(null);
+  const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
   const [anexosLoading, setAnexosLoading] = useState(false);
   const [modalNovo, setModalNovo] = useState(false);
 
-  const loading = loadingLancamentos || loadingProjetos || loadingContas;
+  const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
+
+  const nomeProjeto = useMemo(() => new Map(projetos.map(p => [p.id, p.nome])), [projetos]);
+  const nomeConta = useMemo(() => new Map(contas.map(c => [c.id, c.nome])), [contas]);
   const error = errorLancamentos ?? errorContas;
 
   useEffect(() => {
@@ -339,7 +358,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
       : lancamentos;
 
   const totalEntradas = filtered.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
-  const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + Math.abs(b.valor), 0);
+  const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + b.valor, 0);
 
   const mesAtualLabel = useMemo(() => {
     const texto = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
@@ -351,7 +370,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
   const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
 
-  const addAnexos = async (lancamentoId: string, files: FileList) => {
+  const addAnexos = async (lancamentoId: number, files: FileList) => {
     const lancamento = lancamentos.find(l => l.id === lancamentoId);
     for (const file of Array.from(files)) {
       const anexo = await createAnexo(lancamentoId, file);
@@ -365,7 +384,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
     }
   };
 
-  const removeAnexoHandler = async (lancamentoId: string, anexoId: string) => {
+  const removeAnexoHandler = async (lancamentoId: number, anexoId: string) => {
     const lancamento = lancamentos.find(l => l.id === lancamentoId);
     const anexo = anexosPorLanc[lancamentoId]?.find(a => a.id === anexoId);
     await apiRemoveAnexo(anexoId);
@@ -384,7 +403,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
       modulo: "Financeiro",
       acao: "adição",
       descricao: `Novo lançamento registrado: ${criado.descricao}`,
-      detalhe: `${criado.tipo === "entrada" ? "+" : "-"}${fmt(Math.abs(criado.valor))} · ${criado.projeto}`,
+      detalhe: `${criado.tipo === "entrada" ? "+" : "-"}${fmt(criado.valor)} · ${nomeConta.get(criado.contaId) ?? ""}`,
     });
   };
 
@@ -394,12 +413,13 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         <ModalNovoLancamento
           projetos={projetos}
           contas={contas}
+          categorias={categorias}
           onClose={() => setModalNovo(false)}
           onSave={handleSaveLancamento}
         />
       )}
 
-      {drawerLancamento && (
+      {ANEXOS_DISPONIVEIS && drawerLancamento && (
         <DrawerComprovantes
           lancamento={drawerLancamento}
           anexos={anexosPorLanc[drawerLancamento.id] ?? []}
@@ -474,7 +494,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[var(--border)]">
-                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", "Comprovantes"].map((h) => (
+                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", ...(ANEXOS_DISPONIVEIS ? ["Comprovantes"] : [])].map((h) => (
                           <th key={h} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
                             {h}
                           </th>
@@ -486,23 +506,19 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                         const qtd = (anexosPorLanc[l.id] ?? []).length;
                         return (
                           <tr key={l.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors">
-                            <td className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(l.data)}</td>
+                            <td className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(dataDoLancamento(l))}</td>
                             <td className="px-5 py-3 font-medium text-[var(--foreground)]">{l.descricao}</td>
-                            <td className="px-5 py-3 text-[var(--muted-foreground)]">{l.projeto}</td>
-                            <td className="px-5 py-3 text-[var(--muted-foreground)] whitespace-nowrap">{l.conta}</td>
-                            <td className={`px-5 py-3 font-mono font-medium whitespace-nowrap ${l.valor >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                              {l.valor >= 0 ? "+" : ""}{fmt(l.valor)}
+                            <td className="px-5 py-3 text-[var(--muted-foreground)]">{l.projetoId ? nomeProjeto.get(l.projetoId) ?? "—" : "—"}</td>
+                            <td className="px-5 py-3 text-[var(--muted-foreground)] whitespace-nowrap">{nomeConta.get(l.contaId) ?? "—"}</td>
+                            <td className={`px-5 py-3 font-mono font-medium whitespace-nowrap ${l.tipo === "entrada" ? "text-[#0e7e6e]" : "text-red-600"}`}>
+                              {l.tipo === "entrada" ? "+" : ""}{fmt(valorComSinal(l.valor, l.tipo))}
                             </td>
                             <td className="px-5 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                l.situacao === "Recebido" ? "bg-emerald-100 text-emerald-800"
-                                : l.situacao === "Pago" ? "bg-slate-100 text-slate-600"
-                                : "bg-amber-100 text-amber-800"
-                              }`}>
-                                {l.situacao}
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${corSituacao[l.situacao]}`}>
+                                {rotuloSituacao[l.situacao]}
                               </span>
                             </td>
-                            <td className="px-5 py-3">
+                            {ANEXOS_DISPONIVEIS && <td className="px-5 py-3">
                               <button
                                 onClick={() => setDrawerId(l.id)}
                                 className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
@@ -514,7 +530,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                                 {qtd > 0 ? `${qtd} arquivo${qtd > 1 ? "s" : ""}` : "Anexar"}
                               </button>
-                            </td>
+                            </td>}
                           </tr>
                         );
                       })}
@@ -528,7 +544,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                             {tab === "lancamentos" && <span className="text-red-600 ml-2">-{fmt(totalSaidas)}</span>}
                           </div>
                         </td>
-                        <td colSpan={2} />
+                        <td colSpan={ANEXOS_DISPONIVEIS ? 2 : 1} />
                       </tr>
                     </tfoot>
                   </table>

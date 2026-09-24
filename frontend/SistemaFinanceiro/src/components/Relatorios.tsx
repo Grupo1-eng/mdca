@@ -2,11 +2,13 @@ import React, { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { fmt, formatDate } from '@/lib/format';
 import { useLancamentos } from '@/hooks/useLancamentos';
-import { useFetch } from '@/hooks/useFetch';
-import { getExecucaoOrcamentaria, getBalancete } from '@/api/relatorios';
-import { serieFluxoCaixa } from '@/lib/aggregations';
+import { useProjetos } from '@/hooks/useProjetos';
+import { useContas } from '@/hooks/useContas';
+import { useCategorias } from '@/hooks/useCategorias';
+import { useOrcamentos } from '@/hooks/useOrcamentos';
+import { dataDoLancamento, execucaoOrcamentaria, serieFluxoCaixa } from '@/lib/aggregations';
+import { rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import { LoadingState, ErrorState } from './StatusMessage';
-import type { ExecucaoProjeto, BalanceteFonte } from '@/types/financeiro';
 
 type RelatorioKey = "execucao" | "extrato" | "fluxo" | "balancete";
 
@@ -18,8 +20,18 @@ const relatoriosMeta: { key: RelatorioKey; label: string; sublabel: string }[] =
 ];
 
 function RelExecucao() {
-  const { data: execucaoData, loading, error } = useFetch<ExecucaoProjeto[]>(getExecucaoOrcamentaria, []);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const projetos = useProjetos();
+  const categorias = useCategorias();
+  const orcamentos = useOrcamentos();
+  const lancamentos = useLancamentos();
+  const fontes = [projetos, categorias, orcamentos, lancamentos];
+  const loading = fontes.some(f => f.loading);
+  const error = fontes.find(f => f.error)?.error ?? null;
+  const execucaoData = useMemo(
+    () => execucaoOrcamentaria(projetos.data, categorias.data, orcamentos.data, lancamentos.data),
+    [projetos.data, categorias.data, orcamentos.data, lancamentos.data],
+  );
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   const totalOrcado = execucaoData.reduce((a, b) => a + b.orcado, 0);
   const totalRealizado = execucaoData.reduce((a, b) => a + b.realizado, 0);
@@ -29,7 +41,7 @@ function RelExecucao() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="font-semibold text-[var(--foreground)]">Execução Orçamentária</h2>
-          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Por projeto e categoria</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Orçado (orçamentos cadastrados) vs. realizado (saídas pagas), por projeto e categoria</p>
         </div>
         <button className="text-xs border border-[var(--border)] rounded px-3 py-1.5 hover:bg-[var(--muted)] transition-colors flex items-center gap-1.5">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -43,7 +55,6 @@ function RelExecucao() {
             <thead>
               <tr className="bg-[#0f1e3d] text-white">
                 <th className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide font-medium">Projeto / Categoria</th>
-                <th className="text-left px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Fonte</th>
                 <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Orçado</th>
                 <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Realizado</th>
                 <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Saldo</th>
@@ -51,20 +62,22 @@ function RelExecucao() {
               </tr>
             </thead>
             <tbody>
+              {execucaoData.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-8 text-center text-xs text-[var(--muted-foreground)]">Nenhum projeto com orçamento cadastrado.</td></tr>
+              )}
               {execucaoData.map((p) => {
                 const pct = p.orcado > 0 ? Math.round((p.realizado / p.orcado) * 100) : 0;
-                const isOpen = expanded === p.projeto;
+                const isOpen = expanded === p.projetoId;
                 return (
-                  <React.Fragment key={p.projeto}>
+                  <React.Fragment key={p.projetoId}>
                     <tr
                       className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] cursor-pointer transition-colors"
-                      onClick={() => setExpanded(isOpen ? null : p.projeto)}
+                      onClick={() => setExpanded(isOpen ? null : p.projetoId)}
                     >
                       <td className="px-5 py-3 font-semibold text-[var(--foreground)] flex items-center gap-2">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-[var(--muted-foreground)] transition-transform ${isOpen ? "rotate-90" : ""}`}><path d="M9 18l6-6-6-6"/></svg>
                         {p.projeto}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{p.fonte}</td>
                       <td className="px-4 py-3 text-right font-mono text-xs">{fmt(p.orcado)}</td>
                       <td className="px-4 py-3 text-right font-mono text-xs text-[#0e7e6e] font-medium">{fmt(p.realizado)}</td>
                       <td className={`px-4 py-3 text-right font-mono text-xs font-medium ${(p.orcado - p.realizado) >= 0 ? "text-[var(--muted-foreground)]" : "text-red-600"}`}>{fmt(p.orcado - p.realizado)}</td>
@@ -82,7 +95,6 @@ function RelExecucao() {
                       return (
                         <tr key={cat.nome} className="border-t border-[var(--border)] bg-[#f8f9fc]">
                           <td className="px-5 py-2.5 text-xs text-[var(--muted-foreground)] pl-12">{cat.nome}</td>
-                          <td className="px-4 py-2.5" />
                           <td className="px-4 py-2.5 text-right font-mono text-xs text-[var(--muted-foreground)]">{fmt(cat.orcado)}</td>
                           <td className="px-4 py-2.5 text-right font-mono text-xs text-[#0e7e6e]">{fmt(cat.realizado)}</td>
                           <td className="px-4 py-2.5 text-right font-mono text-xs text-[var(--muted-foreground)]">{fmt(cat.orcado - cat.realizado)}</td>
@@ -103,7 +115,7 @@ function RelExecucao() {
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-[#0f1e3d]/20 bg-[#edf0f5]">
-                <td colSpan={2} className="px-5 py-3 text-xs font-mono font-semibold uppercase tracking-wide text-[var(--foreground)]">Total Geral</td>
+                <td className="px-5 py-3 text-xs font-mono font-semibold uppercase tracking-wide text-[var(--foreground)]">Total Geral</td>
                 <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{fmt(totalOrcado)}</td>
                 <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-[#0e7e6e]">{fmt(totalRealizado)}</td>
                 <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{fmt(totalOrcado - totalRealizado)}</td>
@@ -122,16 +134,23 @@ function RelExecucao() {
 }
 
 function RelExtrato() {
-  const { data: lancamentos, loading, error } = useLancamentos();
+  const { data: lancamentos, loading: loadingLancamentos, error } = useLancamentos();
+  const { data: projetos, loading: loadingProjetos } = useProjetos();
+  const { data: contas, loading: loadingContas } = useContas();
+  const loading = loadingLancamentos || loadingProjetos || loadingContas;
+  const nomeProjeto = useMemo(() => new Map(projetos.map(p => [p.id, p.nome])), [projetos]);
+  const nomeConta = useMemo(() => new Map(contas.map(c => [c.id, c.nome])), [contas]);
   const [filtro, setFiltro] = useState("");
   const [tipFiltro, setTipFiltro] = useState<"todos" | "entrada" | "saida">("todos");
+  const termo = filtro.toLowerCase();
   const filtered = lancamentos.filter((l) => {
     const matchTipo = tipFiltro === "todos" || l.tipo === tipFiltro;
-    const matchTxt = filtro === "" || l.descricao.toLowerCase().includes(filtro.toLowerCase()) || l.projeto.toLowerCase().includes(filtro.toLowerCase());
+    const projeto = l.projetoId ? nomeProjeto.get(l.projetoId) ?? "" : "";
+    const matchTxt = termo === "" || (l.descricao ?? "").toLowerCase().includes(termo) || projeto.toLowerCase().includes(termo);
     return matchTipo && matchTxt;
   });
   const totalE = filtered.filter(l=>l.tipo==="entrada").reduce((a,b)=>a+b.valor,0);
-  const totalS = filtered.filter(l=>l.tipo==="saida").reduce((a,b)=>a+Math.abs(b.valor),0);
+  const totalS = filtered.filter(l=>l.tipo==="saida").reduce((a,b)=>a+b.valor,0);
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -178,20 +197,20 @@ function RelExtrato() {
             <tbody>
               {filtered.map((l) => (
                 <tr key={l.id} className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] transition-colors">
-                  <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(l.data)}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(dataDoLancamento(l))}</td>
                   <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{l.descricao}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{l.projeto}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)] whitespace-nowrap">{l.conta}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{l.projetoId ? nomeProjeto.get(l.projetoId) ?? "—" : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)] whitespace-nowrap">{nomeConta.get(l.contaId) ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${
-                      l.situacao==="Recebido"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":l.situacao==="Pago"?"bg-[#0f1e3d]/10 text-[#0f1e3d]":"bg-amber-100 text-amber-700"
+                      l.situacao==="recebido"?"bg-[#0e7e6e]/10 text-[#0e7e6e]":l.situacao==="pago"?"bg-[#0f1e3d]/10 text-[#0f1e3d]":"bg-amber-100 text-amber-700"
                     }`}>
-                      <span className={`w-1 h-1 rounded-full ${l.situacao==="Recebido"?"bg-[#0e7e6e]":l.situacao==="Pago"?"bg-[#0f1e3d]":"bg-amber-500"}`}/>
-                      {l.situacao}
+                      <span className={`w-1 h-1 rounded-full ${l.situacao==="recebido"?"bg-[#0e7e6e]":l.situacao==="pago"?"bg-[#0f1e3d]":"bg-amber-500"}`}/>
+                      {rotuloSituacao[l.situacao]}
                     </span>
                   </td>
-                  <td className={`px-5 py-3 text-right font-mono text-xs font-medium whitespace-nowrap ${l.valor>=0?"text-[#0e7e6e]":"text-red-600"}`}>
-                    {l.valor>=0?"+":""}{fmt(l.valor)}
+                  <td className={`px-5 py-3 text-right font-mono text-xs font-medium whitespace-nowrap ${l.tipo==="entrada"?"text-[#0e7e6e]":"text-red-600"}`}>
+                    {l.tipo==="entrada"?"+":""}{fmt(valorComSinal(l.valor, l.tipo))}
                   </td>
                 </tr>
               ))}
@@ -276,65 +295,20 @@ function RelFluxo() {
   );
 }
 
+// O balancete agrupa movimentações por fonte de recurso, mas hoje nenhum
+// lançamento ou orçamento aponta para uma fonte no banco (pendência registrada
+// em backend/prisma/schema.prisma, model FonteDeRecurso).
 function RelBalancete() {
-  const { data: balanceteData, loading, error } = useFetch<BalanceteFonte[]>(getBalancete, []);
-  const totalEntradas = balanceteData.reduce((a,b)=>a+b.entradas,0);
-  const totalSaidas = balanceteData.reduce((a,b)=>a+b.saidas,0);
-  const totalSaldo = balanceteData.reduce((a,b)=>a+b.saldo,0);
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="font-semibold text-[var(--foreground)]">Balancete de Prestação de Contas</h2>
-          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Por fonte de recursos</p>
-        </div>
-        <button className="text-xs border border-[var(--border)] rounded px-3 py-1.5 hover:bg-[var(--muted)] transition-colors flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar PDF
-        </button>
+      <div className="mb-5">
+        <h2 className="font-semibold text-[var(--foreground)]">Balancete de Prestação de Contas</h2>
+        <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Por fonte de recursos</p>
       </div>
-      {error && <ErrorState message={error} />}
-      {loading ? <LoadingState /> : (
-        <>
-          <div className="border border-[var(--border)] rounded-lg overflow-hidden mb-4">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-[#0f1e3d] text-white">
-                  {["Fonte de Recursos","Tipo","Entradas","Saídas","Saldo"].map(h => (
-                    <th key={h} className={`py-3 text-xs font-mono uppercase tracking-wide font-medium ${h==="Fonte de Recursos"||h==="Tipo"?"text-left px-5":"text-right px-5"}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {balanceteData.map((r, i) => (
-                  <tr key={i} className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-[var(--foreground)]">{r.fonte}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)] font-mono">{r.tipo}</span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs text-[#0e7e6e] font-medium">{fmt(r.entradas)}</td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs text-red-600 font-medium">{r.saidas > 0 ? fmt(r.saidas) : "—"}</td>
-                    <td className={`px-5 py-3.5 text-right font-mono text-xs font-semibold ${r.saldo >= 0 ? "text-[#0e7e6e]" : "text-red-600"}`}>{fmt(r.saldo)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[#0f1e3d]/20 bg-[#edf0f5]">
-                  <td colSpan={2} className="px-5 py-3 text-xs font-mono font-semibold uppercase tracking-wide">Total</td>
-                  <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-[#0e7e6e]">{fmt(totalEntradas)}</td>
-                  <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-red-600">{fmt(totalSaidas)}</td>
-                  <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-[#0e7e6e]">{fmt(totalSaldo)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <div className="border border-[#0e7e6e]/20 bg-[#0e7e6e]/5 rounded-lg px-5 py-4 text-xs text-[var(--muted-foreground)] leading-relaxed">
-            <strong className="text-[#0e7e6e] font-mono uppercase tracking-wide text-[10px]">Nota de conformidade</strong><br />
-            Este balancete foi gerado automaticamente com base nos lançamentos do período. Confira com o contador responsável antes de encaminhar aos órgãos financiadores.
-          </div>
-        </>
-      )}
+      <div className="border border-amber-200 bg-amber-50 rounded-lg px-5 py-4 text-sm text-amber-800 leading-relaxed">
+        Relatório indisponível: os lançamentos ainda não são vinculados a uma fonte de recursos,
+        então não há como separar entradas e saídas por fonte.
+      </div>
     </div>
   );
 }

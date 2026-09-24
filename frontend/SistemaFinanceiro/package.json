@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -23,6 +24,7 @@
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "vite": "^8.0.5"
+    "vite": "^8.0.5",
+    "vitest": "^3.2.7"
   }
 }

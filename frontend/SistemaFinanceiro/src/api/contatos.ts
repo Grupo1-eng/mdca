@@ -1,20 +1,8 @@
-import { request } from "./client";
+import { recurso } from "./recurso";
 import type { Contato, NovoContato } from "@/types/financeiro";
 
-export function getContatos(): Promise<Contato[]> {
-  return request<Contato[]>("/financeiro/contatos");
-}
+const api = recurso<Contato, NovoContato>("/api/contatos");
 
-export function createContato(input: NovoContato): Promise<Contato> {
-  return request<Contato>("/financeiro/contatos", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateContato(id: string, input: Partial<NovoContato>): Promise<Contato> {
-  return request<Contato>(`/financeiro/contatos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
-}
+export const getContatos = api.listar;
+export const createContato = api.criar;
+export const updateContato = api.atualizar;

@@ -4,7 +4,7 @@ import { ApiError } from "@/api/client";
 interface ResourceApi<T, TCreate, TUpdate> {
   list: () => Promise<T[]>;
   create: (input: TCreate) => Promise<T>;
-  update: (id: string, input: TUpdate) => Promise<T>;
+  update: (id: number, input: TUpdate) => Promise<T>;
 }
 
 export interface UseApiResourceResult<T, TCreate, TUpdate> {
@@ -13,7 +13,7 @@ export interface UseApiResourceResult<T, TCreate, TUpdate> {
   error: string | null;
   refetch: () => Promise<void>;
   create: (input: TCreate) => Promise<T>;
-  update: (id: string, input: TUpdate) => Promise<T>;
+  update: (id: number, input: TUpdate) => Promise<T>;
 }
 
 function errorMessage(err: unknown): string {
@@ -27,7 +27,7 @@ function errorMessage(err: unknown): string {
  * loading/erro e mantém a lista local sincronizada após create/update, sem
  * repetir esse controle em cada hook de recurso (useLancamentos, useProjetos...).
  */
-export function useApiResource<T extends { id: string }, TCreate = Partial<T>, TUpdate = Partial<T>>(
+export function useApiResource<T extends { id: number }, TCreate = Partial<T>, TUpdate = Partial<T>>(
   api: ResourceApi<T, TCreate, TUpdate>,
 ): UseApiResourceResult<T, TCreate, TUpdate> {
   const [data, setData] = useState<T[]>([]);
@@ -60,7 +60,7 @@ export function useApiResource<T extends { id: string }, TCreate = Partial<T>, T
   );
 
   const update = useCallback(
-    async (id: string, input: TUpdate) => {
+    async (id: number, input: TUpdate) => {
       const updated = await api.update(id, input);
       setData((prev) => prev.map((item) => (item.id === id ? updated : item)));
       return updated;
