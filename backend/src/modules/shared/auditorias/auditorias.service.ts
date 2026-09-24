@@ -20,9 +20,9 @@ export class AuditoriasService {
     return auditoria;
   }
 
-  async criar(dados: CreateAuditoriaDto) {
+  async criar(dados: CreateAuditoriaDto, usuarioId: number) {
     return this.prisma.auditoria.create({
-      data: dados,
+      data: { ...dados, usuarioId },
     });
   }
 

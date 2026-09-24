@@ -21,9 +21,9 @@ export class ContasFinanceirasService {
     return conta;
   }
 
-  async criar(dados: CreateContaFinanceiraDto) {
+  async criar(dados: CreateContaFinanceiraDto, organizacaoId: number) {
     return this.prisma.contaFinanceira.create({
-      data: dados,
+      data: { ...dados, organizacaoId },
     });
   }
 

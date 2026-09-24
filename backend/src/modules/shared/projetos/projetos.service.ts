@@ -21,9 +21,9 @@ export class ProjetosService {
     return projeto;
   }
 
-  async criar(dados: CreateProjetoDto) {
+  async criar(dados: CreateProjetoDto, organizacaoId: number) {
     return this.prisma.projeto.create({
-      data: dados,
+      data: { ...dados, organizacaoId },
     });
   }
 

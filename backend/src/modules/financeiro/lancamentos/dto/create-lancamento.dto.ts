@@ -1,6 +1,12 @@
-import { IsDate, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Dinheiro } from '../../../../common/transformers/dinheiro';
 
+export const TIPOS_LANCAMENTO = ['entrada', 'saida'] as const;
+// "pendente" é o valor padrão da coluna no banco.
+export const SITUACOES_LANCAMENTO = ['pendente', 'pago', 'recebido'] as const;
+
+// usuarioId e criadoEm são definidos pelo servidor (token e banco).
 export class CreateLancamentoDto {
   @Type(() => Number)
   @IsInt()
@@ -15,22 +21,16 @@ export class CreateLancamentoDto {
   @IsInt()
   projetoId?: number;
 
-  @Type(() => Number)
-  @IsInt()
-  usuarioId: number;
-
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   contatoId?: number;
 
-  @Type(() => Number)
-  @IsNumber()
-  valor: number;
+  @Dinheiro()
+  valor: string;
 
-  @IsString()
-  @IsNotEmpty()
-  tipo: string;
+  @IsIn(TIPOS_LANCAMENTO)
+  tipo: (typeof TIPOS_LANCAMENTO)[number];
 
   @IsOptional()
   @IsString()
@@ -47,11 +47,6 @@ export class CreateLancamentoDto {
   dataCompetencia?: Date;
 
   @IsOptional()
-  @IsString()
-  situacao?: string;
-
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  criadoEm?: Date;
+  @IsIn(SITUACOES_LANCAMENTO)
+  situacao?: (typeof SITUACOES_LANCAMENTO)[number];
 }

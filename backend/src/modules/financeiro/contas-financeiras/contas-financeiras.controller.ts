@@ -13,6 +13,10 @@ import {
 import { ContasFinanceirasService } from './contas-financeiras.service';
 import { CreateContaFinanceiraDto } from './dto/create-conta-financeira.dto';
 import { UpdateContaFinanceiraDto } from './dto/update-conta-financeira.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../../auth/decorators/usuario-atual.decorator';
 
 @Controller('api/contas-financeiras')
 export class ContasFinanceirasController {
@@ -30,8 +34,8 @@ export class ContasFinanceirasController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  criar(@Body() dados: CreateContaFinanceiraDto) {
-    return this.service.criar(dados);
+  criar(@Body() dados: CreateContaFinanceiraDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.criar(dados, usuario.organizacaoId);
   }
 
   @Put(':id')

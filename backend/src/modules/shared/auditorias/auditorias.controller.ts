@@ -12,6 +12,10 @@ import {
 } from '@nestjs/common';
 import { AuditoriasService } from './auditorias.service';
 import { CreateAuditoriaDto } from './dto/create-auditoria.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../../auth/decorators/usuario-atual.decorator';
 
 @Controller('api/auditorias')
 export class AuditoriasController {
@@ -29,8 +33,8 @@ export class AuditoriasController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  criar(@Body() dados: CreateAuditoriaDto) {
-    return this.service.criar(dados);
+  criar(@Body() dados: CreateAuditoriaDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.criar(dados, usuario.id);
   }
 
   @Delete(':id')

@@ -21,9 +21,9 @@ export class LancamentosService {
     return lancamento;
   }
 
-  async criar(dados: CreateLancamentoDto) {
+  async criar(dados: CreateLancamentoDto, usuarioId: number) {
     return this.prisma.lancamento.create({
-      data: dados,
+      data: { ...dados, usuarioId },
     });
   }
 
