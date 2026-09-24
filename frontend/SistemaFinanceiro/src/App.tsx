@@ -5,11 +5,13 @@ import Financeiro from "@/components/Financeiro";
 import Projetos from "@/components/Projetos";
 import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
+import Usuarios from "@/components/Usuarios";
 import { LoginScreen } from "@/components/AuthScreens";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import type { AuthUser } from "@/types/financeiro";
 
-function AreaLogada() {
+function AreaLogada({ user }: { user: AuthUser }) {
   const [module, setModule] = useState<Module>("inicio");
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
@@ -29,6 +31,7 @@ function AreaLogada() {
       {module === "projetos" && <Projetos addLog={addLog} />}
       {module === "relatorios" && <Relatorios />}
       {module === "cadastros" && <Cadastros addLog={addLog} />}
+      {module === "usuarios" && user.perfil === "coordenador" && <Usuarios addLog={addLog} />}
     </main>
   </div>;
 }
@@ -39,7 +42,7 @@ function AppShell() {
   if (restaurando) return <LoadingState label="Verificando sessão…" />;
   if (!user) return <LoginScreen />;
   // key: trocar de usuário recomeça a área logada (módulo aberto e log de atividades).
-  return <AreaLogada key={user.id} />;
+  return <AreaLogada key={user.id} user={user} />;
 }
 
 export default function App() {

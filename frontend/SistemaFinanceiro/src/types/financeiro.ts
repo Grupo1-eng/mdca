@@ -169,6 +169,32 @@ export type Perfil =
   | "educador"
   | "administrativo";
 
+export interface Usuario {
+  id: number;
+  organizacaoId: number;
+  nome: string;
+  email: string;
+  perfil: Perfil;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+// organizacaoId é definido pelo backend a partir do token da coordenação.
+export interface NovoUsuario {
+  nome: string;
+  email: string;
+  senha: string;
+  perfil: Perfil;
+}
+
+export interface EdicaoUsuario {
+  nome?: string;
+  email?: string;
+  senha?: string;
+  perfil?: Perfil;
+  ativo?: boolean;
+}
+
 // Mesmo formato em POST /api/auth/login (`usuario`) e GET /api/auth/me.
 export interface AuthUser {
   id: number;

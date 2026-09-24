@@ -8,6 +8,7 @@ import { getContatos } from "./contatos";
 import { getFontes } from "./fontes";
 import { getOrcamentos } from "./orcamentos";
 import { getProjetos } from "./projetos";
+import { createUsuario, inativarUsuario, updateUsuario } from "./usuarios";
 
 function resposta(status: number, corpo?: unknown) {
   return {
@@ -95,6 +96,30 @@ describe("auth", () => {
   it("consulta o usuário do token em /api/auth/me", async () => {
     await me();
     expect(chamada().url).toBe("http://localhost:3000/api/auth/me");
+  });
+});
+
+describe("usuarios", () => {
+  it("cria em POST /api/usuarios com senha, sem organização", async () => {
+    fetchMock.mockResolvedValue(resposta(201, { id: 1 }));
+    await createUsuario({ nome: "Maria", email: "maria@mdca.org.br", senha: "senha-segura", perfil: "educador" });
+    expect(chamada().url).toBe("http://localhost:3000/api/usuarios");
+    expect(chamada().init.method).toBe("POST");
+    expect(JSON.parse(chamada().init.body as string)).not.toHaveProperty("organizacaoId");
+  });
+
+  it("inativa em PATCH /api/usuarios/:id/inativar", async () => {
+    fetchMock.mockResolvedValue(resposta(200, { id: 3, ativo: false }));
+    await inativarUsuario(3);
+    expect(chamada().url).toBe("http://localhost:3000/api/usuarios/3/inativar");
+    expect(chamada().init.method).toBe("PATCH");
+  });
+
+  it("reativa com PUT { ativo: true }", async () => {
+    fetchMock.mockResolvedValue(resposta(200, { id: 3, ativo: true }));
+    await updateUsuario(3, { ativo: true });
+    expect(chamada().init.method).toBe("PUT");
+    expect(JSON.parse(chamada().init.body as string)).toEqual({ ativo: true });
   });
 });
 
