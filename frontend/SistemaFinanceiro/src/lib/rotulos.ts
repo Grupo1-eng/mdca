@@ -1,4 +1,4 @@
-import type { SituacaoLancamento, TipoLancamento } from "@/types/financeiro";
+import type { Perfil, SituacaoLancamento, TipoLancamento } from "@/types/financeiro";
 
 // Valores gravados pelo backend → texto exibido na tela.
 export const rotuloSituacao: Record<SituacaoLancamento, string> = {
@@ -17,3 +17,13 @@ export const corSituacao: Record<SituacaoLancamento, string> = {
 export function valorComSinal(valor: number, tipo: TipoLancamento): number {
   return tipo === "saida" ? -valor : valor;
 }
+
+export const rotuloPerfil: Record<Perfil, string> = {
+  coordenador: "Coordenação",
+  tecnico_servico_social: "Técnico(a) — Serviço Social",
+  tecnico_psicologia: "Técnico(a) — Psicologia",
+  educador: "Educador(a)",
+  administrativo: "Administrativo",
+};
+
+export const PERFIS: Perfil[] = Object.keys(rotuloPerfil) as Perfil[];

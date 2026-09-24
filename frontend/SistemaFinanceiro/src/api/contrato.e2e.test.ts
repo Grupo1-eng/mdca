@@ -1,6 +1,6 @@
 // Teste de contrato contra um backend real: usa as mesmas funções de src/api
 // que as telas usam, com fetch de verdade. Precisa de um banco com um usuário
-// (E2E_EMAIL/E2E_SENHA) e sem outros dados de teste:
+// de coordenação (E2E_EMAIL/E2E_SENHA) e sem outros dados de teste:
 //
 //   VITE_API_URL=http://localhost:3000 E2E_EMAIL=... E2E_SENHA=... npx vitest run contrato.e2e
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import { createProjeto } from "./projetos";
 import { createLancamento, getLancamentos, updateLancamento } from "./lancamentos";
 import { createContato } from "./contatos";
 import { createFonte } from "./fontes";
+import { createUsuario, getUsuarios, inativarUsuario, updateUsuario } from "./usuarios";
 import { arvoreCategorias, dataDoLancamento } from "@/lib/aggregations";
 import { formatDate } from "@/lib/format";
 
@@ -95,6 +96,43 @@ describe.skipIf(!process.env.VITE_API_URL)("contrato com o backend real", () => 
     expect(contato.papel).toBe("Financiador");
     const fonte = await createFonte({ nome: "Convênio e2e", origem: "Gov. Distrital" });
     expect(fonte.ativa).toBe(true);
+  });
+
+  it("coordenação cria usuário, que entra com a senha inicial", async () => {
+    const tokenCoordenacao = getToken()!;
+    const criado = await createUsuario({ nome: "Educadora", email: "educadora@mdca.org.br", senha: "senha-inicial", perfil: "educador" });
+    expect(criado.ativo).toBe(true);
+    expect((await getUsuarios()).map(u => u.email)).toContain("educadora@mdca.org.br");
+
+    const sessao = await login({ email: "educadora@mdca.org.br", senha: "senha-inicial" });
+    expect(sessao.usuario.perfil).toBe("educador");
+
+    // Educadora não gerencia usuários.
+    setToken(sessao.accessToken);
+    await expect(createUsuario({ nome: "X", email: "x@mdca.org.br", senha: "senha-qualquer", perfil: "educador" }))
+      .rejects.toThrow("Perfil sem permissão para esta operação.");
+
+    setToken(tokenCoordenacao);
+  });
+
+  it("coordenação não consegue se trancar para fora", async () => {
+    const eu = await me();
+    await expect(inativarUsuario(eu.id)).rejects.toThrow("Você não pode inativar a própria conta.");
+    await expect(updateUsuario(eu.id, { perfil: "administrativo" })).rejects.toThrow("Você não pode alterar o próprio perfil.");
+  });
+
+  it("usuário inativado não entra mais; reativado volta a entrar", async () => {
+    const educadora = (await getUsuarios()).find(u => u.email === "educadora@mdca.org.br")!;
+    await inativarUsuario(educadora.id);
+    await expect(login({ email: "educadora@mdca.org.br", senha: "senha-inicial" })).rejects.toThrow("E-mail ou senha inválidos.");
+
+    await updateUsuario(educadora.id, { ativo: true });
+    expect((await login({ email: "educadora@mdca.org.br", senha: "senha-inicial" })).usuario.id).toBe(educadora.id);
+  });
+
+  it("e-mail repetido é recusado", async () => {
+    await expect(createUsuario({ nome: "Outra", email: "EDUCADORA@mdca.org.br", senha: "senha-qualquer", perfil: "educador" }))
+      .rejects.toThrow();
   });
 
   it("com token inválido, encerra a sessão", async () => {
