@@ -17,19 +17,16 @@ pnpm preview   # preview do build
 pnpm format    # formata com oxfmt
 ```
 
-### Backend (`backend/`) — planejado, ainda não implementado
+### Backend (`backend/`) — NestJS + Prisma
 
-O backend NestJS + Prisma ainda não foi criado neste repositório (ver `backend/README.md`). Quando a base for iniciada, os comandos esperados são:
+Para instalar as dependências e iniciar o backend:
 
 ```bash
 cd backend
 npm install                        # dependências do NestJS
-npm install prisma --save-dev
-npm install @prisma/client
-npx prisma init                    # cria backend/prisma/schema.prisma
 npx prisma migrate dev             # aplica migrations no banco (Neon)
 npx prisma generate                # gera o client a partir do schema
 npm run start:dev                  # servidor NestJS em desenvolvimento
 ```
 
-O `DATABASE_URL` (Neon) e as demais variáveis vêm de `backend/.env.example`.
+Configure `DATABASE_URL` (Neon) no arquivo `backend/.env`.
