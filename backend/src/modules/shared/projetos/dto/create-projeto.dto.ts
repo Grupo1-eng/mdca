@@ -12,6 +12,9 @@ export class CreateProjetoDto {
   @IsString()
   descricao?: string;
 
+  @IsIn(TIPOS_PROJETO)
+  tipo: TipoProjeto;
+
   @IsString()
   @IsNotEmpty()
   status: string;
