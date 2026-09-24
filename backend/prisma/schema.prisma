@@ -48,7 +48,7 @@ model Usuario {
   id            Int      @id @default(autoincrement())
   organizacaoId Int      @map("organizacao_id")
   nome          String
-  email         String
+  email         String   @unique
   senhaHash     String   @map("senha_hash")
   perfil        String
   ativo         Boolean  @default(true)

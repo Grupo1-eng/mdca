@@ -13,6 +13,10 @@ import {
 import { LancamentosService } from './lancamentos.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../../auth/decorators/usuario-atual.decorator';
 
 @Controller('api/lancamentos')
 export class LancamentosController {
@@ -30,8 +34,8 @@ export class LancamentosController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  criar(@Body() dados: CreateLancamentoDto) {
-    return this.service.criar(dados);
+  criar(@Body() dados: CreateLancamentoDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.criar(dados, usuario.id);
   }
 
   @Put(':id')

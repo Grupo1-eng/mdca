@@ -1,11 +1,8 @@
-import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsString } from 'class-validator';
 
+// usuarioId vem do token e dataHora é definida pelo banco: um registro de
+// auditoria não pode ter autor ou horário escolhidos pelo cliente.
 export class CreateAuditoriaDto {
-  @Type(() => Number)
-  @IsInt()
-  usuarioId: number;
-
   @IsString()
   @IsNotEmpty()
   recursoId: string;
@@ -17,9 +14,4 @@ export class CreateAuditoriaDto {
   @IsString()
   @IsNotEmpty()
   acao: string;
-
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  dataHora?: Date;
 }
