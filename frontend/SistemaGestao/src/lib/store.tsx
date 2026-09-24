@@ -19,7 +19,7 @@ import {
   type Iniciativa,
   type LogAuditoria,
   type PerfilId,
-  type StatusEncaminhamento,
+  type AcompanhamentoEncaminhamento,
   type Usuario,
 } from "./mock-data";
 import {
@@ -28,7 +28,7 @@ import {
   patchCancelarCompromisso,
   patchCompromisso,
   patchEducando,
-  patchEfetivacao,
+  postAcompanhamento,
   patchInativarEducando,
   patchIniciativa,
   patchSituacaoCompromisso,
@@ -70,10 +70,7 @@ interface StoreValue {
   alternarSituacaoEducando: (id: string) => void;
   registrarEvolucao: (dados: Atendimento) => void;
   registrarEncaminhamento: (dados: Encaminhamento) => void;
-  registrarEfetivacao: (
-    id: string,
-    efetivacao: { situacao: StatusEncaminhamento; observacao: string; data: string },
-  ) => void;
+  registrarAcompanhamento: (id: string, acompanhamento: AcompanhamentoEncaminhamento) => void;
   criarCompromisso: (dados: Compromisso) => void;
   editarCompromisso: (
     id: string,
@@ -183,8 +180,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       alternarSituacaoEducando: (id) => setEducandos(patchInativarEducando(educandos, id)),
       registrarEvolucao: (dados) => setAtendimentos(postEvolucao(atendimentos, dados)),
       registrarEncaminhamento: (dados) => setEncaminhamentos(postEncaminhamento(encaminhamentos, dados)),
-      registrarEfetivacao: (id, efetivacao) =>
-        setEncaminhamentos(patchEfetivacao(encaminhamentos, id, efetivacao)),
+      registrarAcompanhamento: (id, acompanhamento) =>
+        setEncaminhamentos(postAcompanhamento(encaminhamentos, id, acompanhamento)),
       criarCompromisso: (dados) => setCompromissos(postCompromisso(compromissos, dados)),
       editarCompromisso: (id, parcial) => setCompromissos(patchCompromisso(compromissos, id, parcial)),
       mudarSituacaoCompromisso: (id, status) =>

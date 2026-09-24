@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { CalendarClock, Lock, Plus, UserRound } from "lucide-react";
+import { CalendarClock, ChevronDown, Lock, Plus, UserRound } from "lucide-react";
 import { novoId, usePermissoes, useSalvar, useStore } from "@/lib/store";
 import { useRascunho } from "@/lib/rascunho";
-import type { Atendimento, Encaminhamento, StatusEncaminhamento } from "@/lib/mock-data";
+import {
+  situacaoAtualEncaminhamento,
+  type Atendimento,
+  type Encaminhamento,
+  type StatusEncaminhamento,
+} from "@/lib/mock-data";
 import { SaveStatus, SensitiveNote } from "@/components/SaveStatus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,9 +100,7 @@ export function EvolucaoPanel({ educandoId }: { educandoId: string }) {
       dataHora: new Date().toISOString().slice(0, 16),
       destino: formEnc.destino,
       motivo: formEnc.motivo,
-      situacaoEfetivacao: "Pendente",
-      observacaoEfetivacao: "",
-      dataEfetivacao: "",
+      acompanhamentos: [],
     };
     const ok = await salvar(() => registrarEncaminhamento(registro));
     if (ok) {
@@ -235,27 +238,33 @@ function AtendimentoCard({ a, podeVerSigiloso }: { a: Atendimento; podeVerSigilo
 }
 
 function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
-  const { registrarEfetivacao } = useStore();
+  const { registrarAcompanhamento } = useStore();
   const { estado, salvar, mensagem } = useSalvar();
-  const [aberto, setAberto] = useState(false);
+  const [formAberto, setFormAberto] = useState(false);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+  const situacao = situacaoAtualEncaminhamento(e);
+  const historico = [...e.acompanhamentos].sort((a, b) => a.data.localeCompare(b.data));
   const [acomp, setAcomp, limpar] = useRascunho(`rascunho:efetivacao:${e.id}`, {
-    data: e.dataEfetivacao || new Date().toISOString().slice(0, 10),
-    observacoes: e.observacaoEfetivacao,
-    status: e.situacaoEfetivacao,
+    data: new Date().toISOString().slice(0, 10),
+    observacoes: "",
+    status: situacao,
   });
 
   const gravar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const ok = await salvar(() =>
-      registrarEfetivacao(e.id, {
+      registrarAcompanhamento(e.id, {
+        id: novoId("acp"),
+        data: acomp.data,
         situacao: acomp.status,
         observacao: acomp.observacoes,
-        data: acomp.data,
       }),
     );
     if (ok) {
       limpar();
-      setAberto(false);
+      setAcomp({ data: new Date().toISOString().slice(0, 10), observacoes: "", status: acomp.status });
+      setFormAberto(false);
+      setHistoricoAberto(true);
     }
   };
 
@@ -265,7 +274,20 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline">Encaminhamento</Badge>
-          <Badge variant={badgeStatus(e.situacaoEfetivacao)}>{e.situacaoEfetivacao}</Badge>
+          <Badge variant={badgeStatus(situacao)}>{situacao}</Badge>
+          {historico.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-expanded={historicoAberto}
+              aria-label={historicoAberto ? "Ocultar histórico de acompanhamentos" : "Ver histórico de acompanhamentos"}
+              onClick={() => setHistoricoAberto((v) => !v)}
+            >
+              <ChevronDown className={`size-4 transition-transform ${historicoAberto ? "rotate-180" : ""}`} />
+            </Button>
+          )}
         </div>
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <CalendarClock className="size-3.5" /> {formatarDataHora(e.dataHora)}
@@ -274,20 +296,23 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
       <p className="mt-2 text-sm font-medium">{e.destino}</p>
       <p className="text-sm text-muted-foreground">{e.motivo}</p>
       <p className="mt-1 text-xs text-muted-foreground">Registrado por {e.profissional}</p>
-      {e.observacaoEfetivacao && (
-        <p className="mt-3 text-sm">
-          <span className="text-xs text-muted-foreground">
-            Efetivação em {e.dataEfetivacao.split("-").reverse().join("/")} · {e.situacaoEfetivacao}
-          </span>
-          <br />
-          {e.observacaoEfetivacao}
-        </p>
+      {historicoAberto && (
+        <ul className="mt-3 space-y-2 border-l border-dashed border-border pl-4">
+          {historico.map((item) => (
+            <li key={item.id} className="text-sm">
+              <span className="text-xs text-muted-foreground">
+                {item.data.split("-").reverse().join("/")} · {item.situacao}
+              </span>
+              <p>{item.observacao}</p>
+            </li>
+          ))}
+        </ul>
       )}
-      {aberto ? (
+      {formAberto ? (
         <form onSubmit={gravar} className="mt-3 space-y-3 rounded-lg bg-muted p-3">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label className="mb-1.5 block text-sm">Data da efetivação</Label>
+              <Label className="mb-1.5 block text-sm">Data do acompanhamento</Label>
               <Input type="date" value={acomp.data} onChange={(ev) => setAcomp({ ...acomp, data: ev.target.value })} />
             </div>
             <div>
@@ -309,18 +334,18 @@ function EncaminhamentoCard({ e }: { e: Encaminhamento }) {
             <Textarea rows={2} required value={acomp.observacoes} onChange={(ev) => setAcomp({ ...acomp, observacoes: ev.target.value })} />
           </div>
           <p className="text-xs text-muted-foreground">
-            O texto original do encaminhamento não é alterado. Há uma única efetivação por registro.
+            O destino e o motivo originais permanecem. Este registro é acrescentado ao histórico.
           </p>
           {mensagem && <p className="text-sm text-destructive">{mensagem}</p>}
           <div className="flex items-center gap-3">
-            <Button type="submit" size="sm" disabled={estado === "saving"}>Registrar efetivação</Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
+            <Button type="submit" size="sm" disabled={estado === "saving"}>Registrar acompanhamento</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setFormAberto(false)}>Cancelar</Button>
             <SaveStatus estado={estado} />
           </div>
         </form>
       ) : (
-        <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAberto(true)}>
-          Registrar efetivação
+        <Button variant="ghost" size="sm" className="mt-2" onClick={() => setFormAberto(true)}>
+          Registrar acompanhamento
         </Button>
       )}
     </article>

@@ -127,6 +127,13 @@ export interface Atendimento {
 
 export type StatusEncaminhamento = "Pendente" | "Em andamento" | "Efetivado";
 
+export interface AcompanhamentoEncaminhamento {
+  id: string;
+  data: string;
+  situacao: StatusEncaminhamento;
+  observacao: string;
+}
+
 export interface Encaminhamento {
   id: string;
   educandoId: string;
@@ -134,9 +141,12 @@ export interface Encaminhamento {
   dataHora: string;
   destino: string;
   motivo: string;
-  situacaoEfetivacao: StatusEncaminhamento;
-  observacaoEfetivacao: string;
-  dataEfetivacao: string;
+  acompanhamentos: AcompanhamentoEncaminhamento[];
+}
+
+export function situacaoAtualEncaminhamento(encaminhamento: Encaminhamento): StatusEncaminhamento {
+  const ultimo = [...encaminhamento.acompanhamentos].sort((a, b) => a.data.localeCompare(b.data)).at(-1);
+  return ultimo?.situacao ?? "Pendente";
 }
 
 export interface Atividade {
@@ -509,9 +519,14 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-9)}T11:00`,
     destino: "UBS Vila Nova – Saúde Mental",
     motivo: "Necessidade de acompanhamento psicológico continuado.",
-    situacaoEfetivacao: "Em andamento",
-    observacaoEfetivacao: "Consulta agendada pela unidade para a próxima semana.",
-    dataEfetivacao: iso(-3),
+    acompanhamentos: [
+      {
+        id: "acp-1",
+        data: iso(-3),
+        situacao: "Em andamento",
+        observacao: "Consulta agendada pela unidade para a próxima semana.",
+      },
+    ],
   },
   {
     id: "enc-2",
@@ -520,9 +535,20 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-20)}T15:30`,
     destino: "CRAS Centro",
     motivo: "Atualização do CadÚnico da família.",
-    situacaoEfetivacao: "Efetivado",
-    observacaoEfetivacao: "Família compareceu e cadastro foi atualizado.",
-    dataEfetivacao: iso(-12),
+    acompanhamentos: [
+      {
+        id: "acp-2",
+        data: iso(-16),
+        situacao: "Em andamento",
+        observacao: "Família orientada a comparecer ao CRAS com os documentos.",
+      },
+      {
+        id: "acp-3",
+        data: iso(-12),
+        situacao: "Efetivado",
+        observacao: "Família compareceu e cadastro foi atualizado.",
+      },
+    ],
   },
   {
     id: "enc-3",
@@ -531,9 +557,7 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     dataHora: `${iso(-5)}T13:00`,
     destino: "Programa Jovem Aprendiz – empresa parceira",
     motivo: "Inclusão em vaga de aprendizagem.",
-    situacaoEfetivacao: "Pendente",
-    observacaoEfetivacao: "",
-    dataEfetivacao: "",
+    acompanhamentos: [],
   },
 ];
 

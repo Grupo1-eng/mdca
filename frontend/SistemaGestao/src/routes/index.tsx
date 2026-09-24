@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, CalendarDays, ClipboardList, Users } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
+import { situacaoAtualEncaminhamento } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
 
@@ -171,7 +172,7 @@ function PainelTecnico() {
   const { encaminhamentos, atendimentos, educandos } = useStore();
   const nome = (id: string) => educandos.find((e) => e.id === id)?.nome ?? "—";
   const abertos = encaminhamentos
-    .filter((e) => e.situacaoEfetivacao !== "Efetivado")
+    .filter((e) => situacaoAtualEncaminhamento(e) !== "Efetivado")
     .sort((a, b) => a.dataHora.localeCompare(b.dataHora))
     .slice(0, 4);
   const recentes = [...atendimentos]
@@ -190,8 +191,8 @@ function PainelTecnico() {
             <li key={e.id} className="rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium">{nome(e.educandoId)}</p>
-                <Badge variant={e.situacaoEfetivacao === "Pendente" ? "destructive" : "secondary"}>
-                  {e.situacaoEfetivacao}
+                <Badge variant={situacaoAtualEncaminhamento(e) === "Pendente" ? "destructive" : "secondary"}>
+                  {situacaoAtualEncaminhamento(e)}
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">

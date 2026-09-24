@@ -5,6 +5,7 @@
  * backend publicar o endpoint. Registrar isso com o Scrum Master.
  */
 import type {
+  AcompanhamentoEncaminhamento,
   Atendimento,
   Atividade,
   Compromisso,
@@ -12,7 +13,6 @@ import type {
   Encaminhamento,
   Encontro,
   Iniciativa,
-  StatusEncaminhamento,
   Usuario,
 } from "./mock-data";
 
@@ -105,22 +105,15 @@ export function postEncaminhamento(lista: Encaminhamento[], dados: Encaminhament
   return [dados, ...lista];
 }
 
-export function patchEfetivacao(
+export function postAcompanhamento(
   lista: Encaminhamento[],
   id: string,
-  efetivacao: { situacao: StatusEncaminhamento; observacao: string; data: string },
+  acompanhamento: AcompanhamentoEncaminhamento,
 ): Encaminhamento[] {
   const atual = lista.find((e) => e.id === id);
   if (!atual) throw new ApiErro(404, "Encaminhamento não encontrado.");
   return lista.map((e) =>
-    e.id === id
-      ? {
-          ...e,
-          situacaoEfetivacao: efetivacao.situacao,
-          observacaoEfetivacao: efetivacao.observacao,
-          dataEfetivacao: efetivacao.data,
-        }
-      : e,
+    e.id === id ? { ...e, acompanhamentos: [...e.acompanhamentos, acompanhamento] } : e,
   );
 }
 
