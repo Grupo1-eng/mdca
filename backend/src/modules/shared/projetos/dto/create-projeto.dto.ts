@@ -1,23 +1,34 @@
-import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDate,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
+
 import { Dinheiro } from '../../../../common/transformers/dinheiro';
+import {
+  TIPOS_PROJETO,
+  TipoProjeto,
+} from '../projetos.constants';
 
 // organizacaoId vem do token do usuário.
 export class CreateProjetoDto {
   @IsString()
   @IsNotEmpty()
-  nome: string;
+  nome!: string;
 
   @IsOptional()
   @IsString()
   descricao?: string;
 
   @IsIn(TIPOS_PROJETO)
-  tipo: TipoProjeto;
+  tipo!: TipoProjeto;
 
   @IsString()
   @IsNotEmpty()
-  status: string;
+  status!: string;
 
   @IsOptional()
   @Dinheiro()
