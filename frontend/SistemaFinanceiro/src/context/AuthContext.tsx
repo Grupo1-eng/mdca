@@ -9,7 +9,9 @@ interface AuthContextValue {
   restaurando: boolean;
   loading: boolean;
   error: string | null;
-  login: (payload: LoginPayload) => Promise<void>;
+  // Com `destino`, grava a sessão e abre aquele endereço (o frontend da Gestão)
+  // em vez de entrar neste.
+  login: (payload: LoginPayload, destino?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -75,19 +77,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(EVENTO_SESSAO_EXPIRADA, aoExpirar);
   }, []);
 
-  const login = useCallback(async (payload: LoginPayload) => {
+  const login = useCallback(async (payload: LoginPayload, destino?: string) => {
     setLoading(true);
     setError(null);
     try {
       const res = await authApi.login(payload);
       persistToken(res.accessToken);
+      if (destino) {
+        // Continua em "Entrando…" até a outra página abrir.
+        window.location.assign(destino);
+        return;
+      }
       tokenDaSessao.current = res.accessToken;
       setUser(res.usuario);
+      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível entrar.");
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   }, []);
 

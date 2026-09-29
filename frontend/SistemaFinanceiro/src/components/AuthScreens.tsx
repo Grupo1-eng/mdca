@@ -19,8 +19,12 @@ function BussolaLogo({ size = 28, light = false }: { size?: number; light?: bool
 // ─── Auth screens ─────────────────────────────────────────────────────────────
 // Esta tela existe, idêntica, nos dois frontends: aqui e em
 // frontend/SistemaGestao/src/components/LoginScreen.tsx. Os dois entram pelo
-// mesmo POST /api/auth/login. Ao mudar uma, mude a outra — só SISTEMA_ATUAL,
-// o logo, a chamada de login e a classe de fontes diferem entre as cópias.
+// mesmo POST /api/auth/login e a sessão é a mesma. Ao mudar uma, mude a outra —
+// só SISTEMA_ATUAL, o logo, a chamada de login e a classe de fontes diferem.
+//
+// A tela é a mesma para os dois sistemas: escolher um sistema só troca o que a
+// tela mostra. A troca de sistema acontece depois do login, quando quem
+// escolheu o outro sistema é levado a ele já logado.
 type Sistema = "financeiro" | "gestao";
 
 const SISTEMA_ATUAL: Sistema = "financeiro";
@@ -63,8 +67,8 @@ const sistemasConfig: Record<Sistema, {
   },
 };
 
-function AuthBrand() {
-  const cfg = sistemasConfig[SISTEMA_ATUAL];
+function AuthBrand({ sistema }: { sistema: Sistema }) {
+  const cfg = sistemasConfig[sistema];
   return (
     <div className="hidden lg:flex flex-col justify-between bg-[#0f1e3d] text-white p-12 relative overflow-hidden">
       {/* decorative rings */}
@@ -102,21 +106,19 @@ function AuthBrand() {
   );
 }
 
-// Cada sistema tem o seu frontend: escolher o outro leva a ele. A sessão é a
-// mesma, então quem já entrou num sistema chega ao outro já logado.
-function SistemaSelector() {
+function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Sistema) => void }) {
   return (
     <div className="mb-7">
       <p className="text-xs font-mono uppercase tracking-widest text-[#6b7a99] mb-2">Acessar sistema</p>
       <div className="grid grid-cols-2 gap-2">
         {(["financeiro", "gestao"] as Sistema[]).map((s) => {
           const cfg = sistemasConfig[s];
-          const active = s === SISTEMA_ATUAL;
+          const active = value === s;
           return (
             <button
               key={s}
               type="button"
-              onClick={() => { if (!active) window.location.assign(cfg.url); }}
+              onClick={() => onChange(s)}
               className={`relative flex flex-col items-start gap-1 px-4 py-3.5 rounded-lg border text-left transition-all cursor-pointer ${
                 active
                   ? "border-current bg-white shadow-sm"
@@ -145,16 +147,18 @@ function SistemaSelector() {
 
 export function LoginScreen() {
   const { login, loading, error } = useAuth();
+  const [sistema, setSistema] = useState<Sistema>(SISTEMA_ATUAL);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
 
-  const cfg = sistemasConfig[SISTEMA_ATUAL];
+  const cfg = sistemasConfig[sistema];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ email, senha });
+      // Escolheu o outro sistema: entra e vai para ele, já com a sessão aberta.
+      await login({ email, senha }, sistema === SISTEMA_ATUAL ? undefined : cfg.url);
     } catch {
       // erro já fica disponível em `error`, vindo do contexto de autenticação
     }
@@ -162,7 +166,7 @@ export function LoginScreen() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[480px_1fr] bg-white">
-      <AuthBrand />
+      <AuthBrand sistema={sistema} />
       <div className="flex items-center justify-center px-8 py-12 bg-[#f4f6f9]">
         <div className="w-full max-w-sm">
           {/* mobile logo */}
@@ -175,7 +179,7 @@ export function LoginScreen() {
           <h1 className="font-serif text-3xl text-[#0f1e3d] mb-1">Entrar</h1>
           <p className="text-sm text-[#6b7a99] mb-6">Selecione o sistema e acesse sua conta</p>
 
-          <SistemaSelector />
+          <SistemaSelector value={sistema} onChange={setSistema} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
