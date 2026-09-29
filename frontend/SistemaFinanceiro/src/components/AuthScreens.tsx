@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
+import { URL_FINANCEIRO, URL_GESTAO } from "@/lib/sistemas";
 
 function BussolaLogo({ size = 28, light = false }: { size?: number; light?: boolean }) {
   return (
@@ -16,7 +17,54 @@ function BussolaLogo({ size = 28, light = false }: { size?: number; light?: bool
 }
 
 // ─── Auth screens ─────────────────────────────────────────────────────────────
+// Esta tela existe, idêntica, nos dois frontends: aqui e em
+// frontend/SistemaGestao/src/components/LoginScreen.tsx. Os dois entram pelo
+// mesmo POST /api/auth/login. Ao mudar uma, mude a outra — só SISTEMA_ATUAL,
+// o logo, a chamada de login e a classe de fontes diferem entre as cópias.
+type Sistema = "financeiro" | "gestao";
+
+const SISTEMA_ATUAL: Sistema = "financeiro";
+
+const sistemasConfig: Record<Sistema, {
+  label: string; sublabel: string; desc: string; accent: string; ring: string;
+  marca: string; titulo: string; resumo: string; destaques: string[]; url: string;
+}> = {
+  financeiro: {
+    label: "Sistema Financeiro MDCA",
+    sublabel: "FINANCEIRO",
+    desc: "Lançamentos, fluxo de caixa e prestação de contas",
+    accent: "#0e7e6e",
+    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
+    marca: "Financeiro MDCA",
+    titulo: "Sistema Financeiro",
+    resumo: "Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.",
+    destaques: [
+      "Controle de projetos e fontes de recursos",
+      "Fluxo de caixa e conciliação bancária",
+      "Relatórios para prestação de contas",
+    ],
+    url: URL_FINANCEIRO,
+  },
+  gestao: {
+    label: "Sistema Gestão MDCA",
+    sublabel: "GESTÃO",
+    desc: "Educandos, atendimentos, encaminhamentos e agenda",
+    accent: "#1a3a6b",
+    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
+    marca: "Gestão MDCA",
+    titulo: "Sistema de Gestão",
+    resumo: "Acompanhe educandos, atendimentos e encaminhamentos da sua equipe em um só lugar — do cadastro ao histórico.",
+    destaques: [
+      "Cadastro e acompanhamento de educandos",
+      "Evoluções, encaminhamentos e acompanhamentos",
+      "Agenda compartilhada da equipe",
+    ],
+    url: URL_GESTAO,
+  },
+};
+
 function AuthBrand() {
+  const cfg = sistemasConfig[SISTEMA_ATUAL];
   return (
     <div className="hidden lg:flex flex-col justify-between bg-[#0f1e3d] text-white p-12 relative overflow-hidden">
       {/* decorative rings */}
@@ -28,29 +76,25 @@ function AuthBrand() {
         <div className="flex items-center gap-3 mb-14">
           <BussolaLogo size={32} light />
           <div>
-            <span className="font-serif text-xl leading-none tracking-tight block">Financeiro MDCA</span>
+            <span className="font-serif text-xl leading-none tracking-tight block">{cfg.marca}</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-[0.2em] block mt-0.5">Sistema</span>
           </div>
         </div>
 
         <h2 className="font-serif text-4xl leading-[1.15] mb-5">
-          Sistema Financeiro<br />
+          {cfg.titulo}<br />
           <em>MDCA</em>
         </h2>
         <p className="text-white/60 text-sm leading-relaxed max-w-xs">
-          Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.
+          {cfg.resumo}
         </p>
       </div>
 
       <div className="relative z-10 space-y-4">
-        {[
-          { icon: "◆", text: "Controle de projetos e fontes de recursos" },
-          { icon: "◆", text: "Fluxo de caixa e conciliação bancária" },
-          { icon: "◆", text: "Relatórios para prestação de contas" },
-        ].map((item) => (
-          <div key={item.text} className="flex items-start gap-3">
-            <span className="text-[#0e7e6e] text-[8px] mt-1">{item.icon}</span>
-            <span className="text-white/70 text-xs">{item.text}</span>
+        {cfg.destaques.map((texto) => (
+          <div key={texto} className="flex items-start gap-3">
+            <span className="text-[#0e7e6e] text-[8px] mt-1">◆</span>
+            <span className="text-white/70 text-xs">{texto}</span>
           </div>
         ))}
       </div>
@@ -58,40 +102,21 @@ function AuthBrand() {
   );
 }
 
-type Sistema = "financeiro" | "gestao";
-
-const sistemasConfig: Record<Sistema, { label: string; sublabel: string; desc: string; accent: string; accentDim: string; ring: string }> = {
-  financeiro: {
-    label: "Sistema Financeiro MDCA",
-    sublabel: "FINANCEIRO",
-    desc: "Lançamentos, fluxo de caixa e prestação de contas",
-    accent: "#0e7e6e",
-    accentDim: "#0e7e6e1a",
-    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
-  },
-  gestao: {
-    label: "Sistema Gestão MDCA",
-    sublabel: "GESTÃO",
-    desc: "Projetos, equipes, metas e monitoramento de impacto",
-    accent: "#1a3a6b",
-    accentDim: "#1a3a6b1a",
-    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
-  },
-};
-
-function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Sistema) => void }) {
+// Cada sistema tem o seu frontend: escolher o outro leva a ele. A sessão é a
+// mesma, então quem já entrou num sistema chega ao outro já logado.
+function SistemaSelector() {
   return (
     <div className="mb-7">
       <p className="text-xs font-mono uppercase tracking-widest text-[#6b7a99] mb-2">Acessar sistema</p>
       <div className="grid grid-cols-2 gap-2">
         {(["financeiro", "gestao"] as Sistema[]).map((s) => {
           const cfg = sistemasConfig[s];
-          const active = value === s;
+          const active = s === SISTEMA_ATUAL;
           return (
             <button
               key={s}
               type="button"
-              onClick={() => onChange(s)}
+              onClick={() => { if (!active) window.location.assign(cfg.url); }}
               className={`relative flex flex-col items-start gap-1 px-4 py-3.5 rounded-lg border text-left transition-all cursor-pointer ${
                 active
                   ? "border-current bg-white shadow-sm"
@@ -120,12 +145,11 @@ function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Si
 
 export function LoginScreen() {
   const { login, loading, error } = useAuth();
-  const [sistema, setSistema] = useState<Sistema>("financeiro");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
 
-  const cfg = sistemasConfig[sistema];
+  const cfg = sistemasConfig[SISTEMA_ATUAL];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,14 +168,14 @@ export function LoginScreen() {
           {/* mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-10">
             <BussolaLogo size={24} />
-            <span className="font-serif text-xl text-[#0f1e3d]">Financeiro MDCA</span>
+            <span className="font-serif text-xl text-[#0f1e3d]">{cfg.marca}</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-widest">Sistema</span>
           </div>
 
           <h1 className="font-serif text-3xl text-[#0f1e3d] mb-1">Entrar</h1>
           <p className="text-sm text-[#6b7a99] mb-6">Selecione o sistema e acesse sua conta</p>
 
-          <SistemaSelector value={sistema} onChange={setSistema} />
+          <SistemaSelector />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -5,6 +5,7 @@
 //   VITE_API_URL=http://localhost:3000 E2E_EMAIL=... E2E_SENHA=... npx vitest run contrato.e2e
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { EVENTO_SESSAO_EXPIRADA, getToken, setToken } from "./client";
+import { documentoComCookies } from "./cookie-falso";
 import { login, me } from "./auth";
 import { createConta, getContas, updateConta } from "./contas";
 import { createCategoria, getCategorias } from "./categorias";
@@ -21,12 +22,7 @@ const senha = process.env.E2E_SENHA ?? "";
 
 describe.skipIf(!process.env.VITE_API_URL)("contrato com o backend real", () => {
   beforeAll(() => {
-    const armazenado = new Map<string, string>();
-    vi.stubGlobal("localStorage", {
-      getItem: (k: string) => armazenado.get(k) ?? null,
-      setItem: (k: string, v: string) => armazenado.set(k, v),
-      removeItem: (k: string) => armazenado.delete(k),
-    });
+    vi.stubGlobal("document", documentoComCookies());
     vi.stubGlobal("window", new EventTarget());
   });
 

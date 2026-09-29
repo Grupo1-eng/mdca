@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import * as authApi from "@/api/auth";
 import { EVENTO_SESSAO_EXPIRADA, getToken, setToken as persistToken } from "@/api/client";
 import type { AuthUser, LoginPayload } from "@/types/financeiro";
@@ -20,9 +20,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [restaurando, setRestaurando] = useState(() => getToken() !== null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Token com que o estado atual foi montado; comparado ao cookie para notar
+  // entradas e saídas feitas pelo frontend da Gestão, que usa a mesma sessão.
+  const tokenDaSessao = useRef<string | null>(getToken());
 
   const logout = useCallback(() => {
     persistToken(null);
+    tokenDaSessao.current = null;
     setUser(null);
   }, []);
 
@@ -39,9 +43,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelado = true; };
   }, [logout]);
 
+  // Ao voltar para esta aba, confere se a sessão mudou pela Gestão.
+  useEffect(() => {
+    const conferir = () => {
+      const atual = getToken();
+      if (atual === tokenDaSessao.current) return;
+      tokenDaSessao.current = atual;
+      if (!atual) {
+        setUser(null);
+        return;
+      }
+      authApi.me().then(setUser).catch(() => setUser(null));
+    };
+    const aoMudarVisibilidade = () => { if (document.visibilityState === "visible") conferir(); };
+    window.addEventListener("focus", conferir);
+    document.addEventListener("visibilitychange", aoMudarVisibilidade);
+    return () => {
+      window.removeEventListener("focus", conferir);
+      document.removeEventListener("visibilitychange", aoMudarVisibilidade);
+    };
+  }, []);
+
   // Qualquer 401 durante o uso (token expirado, usuário inativado) volta ao login.
   useEffect(() => {
     const aoExpirar = () => {
+      tokenDaSessao.current = null;
       setUser(null);
       setError("Sua sessão expirou. Entre novamente.");
     };
@@ -55,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await authApi.login(payload);
       persistToken(res.accessToken);
+      tokenDaSessao.current = res.accessToken;
       setUser(res.usuario);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível entrar.");

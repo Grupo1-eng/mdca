@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EVENTO_SESSAO_EXPIRADA, getToken, request, setToken } from "./client";
+import { documentoComCookies } from "./cookie-falso";
 import { createLancamento, getLancamentos, updateLancamento } from "./lancamentos";
 import { login, me } from "./auth";
 import { getCategorias } from "./categorias";
@@ -20,14 +21,11 @@ function resposta(status: number, corpo?: unknown) {
 }
 
 let fetchMock: ReturnType<typeof vi.fn>;
+let documento: ReturnType<typeof documentoComCookies>;
 
 beforeEach(() => {
-  const armazenado = new Map<string, string>();
-  vi.stubGlobal("localStorage", {
-    getItem: (k: string) => armazenado.get(k) ?? null,
-    setItem: (k: string, v: string) => armazenado.set(k, v),
-    removeItem: (k: string) => armazenado.delete(k),
-  });
+  documento = documentoComCookies();
+  vi.stubGlobal("document", documento);
   vi.stubGlobal("window", new EventTarget());
   fetchMock = vi.fn().mockResolvedValue(resposta(200, []));
   vi.stubGlobal("fetch", fetchMock);
@@ -43,6 +41,18 @@ function chamada(i = 0) {
 }
 
 describe("client", () => {
+  it("guarda o token num cookie do host, que a Gestão também lê, e o apaga no logout", () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const jwt = `h.${btoa(JSON.stringify({ sub: 1, exp }))}.s`;
+
+    setToken(jwt);
+    expect(getToken()).toBe(jwt);
+    expect(documento.gravados[0]).toMatch(/^mdca_token=.+; Path=\/; SameSite=Lax; Max-Age=(3599|3600)$/);
+
+    setToken(null);
+    expect(getToken()).toBeNull();
+  });
+
   it("envia o token salvo como Bearer", async () => {
     setToken("abc");
     await request("/api/contatos");
