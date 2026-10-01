@@ -10,11 +10,11 @@ import { Type } from 'class-transformer';
 export class CreateAcompanhamentoEncaminhamentoDto {
   @Type(() => Number)
   @IsInt()
-  encaminhamentoId: number;
+  encaminhamentoId!: number;
 
   @IsString()
   @IsNotEmpty()
-  situacao: string;
+  situacao!: string;
 
   @IsOptional()
   @Type(() => Date)
