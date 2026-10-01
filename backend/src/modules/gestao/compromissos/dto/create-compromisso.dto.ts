@@ -9,7 +9,7 @@ import { Type } from 'class-transformer';
 export class CreateCompromissoDto {
   @IsString()
   @IsNotEmpty()
-  titulo: string;
+  titulo!: string;
 
   @IsOptional()
   @IsString()
@@ -21,7 +21,7 @@ export class CreateCompromissoDto {
 
   @Type(() => Date)
   @IsDate()
-  dataInicio: Date;
+  dataInicio!: Date;
 
   @IsOptional()
   @Type(() => Date)
