@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
+import { useAuth } from "@/context/AuthContext";
+import { URL_FINANCEIRO, URL_GESTAO } from "@/lib/sistemas";
 
 function BussolaLogo({ size = 28, light = false }: { size?: number; light?: boolean }) {
   return (
@@ -15,7 +17,58 @@ function BussolaLogo({ size = 28, light = false }: { size?: number; light?: bool
 }
 
 // ─── Auth screens ─────────────────────────────────────────────────────────────
-function AuthBrand() {
+// Esta tela existe, idêntica, nos dois frontends: aqui e em
+// frontend/SistemaGestao/src/components/LoginScreen.tsx. Os dois entram pelo
+// mesmo POST /api/auth/login e a sessão é a mesma. Ao mudar uma, mude a outra —
+// só SISTEMA_ATUAL, o logo, a chamada de login e a classe de fontes diferem.
+//
+// A tela é a mesma para os dois sistemas: escolher um sistema só troca o que a
+// tela mostra. A troca de sistema acontece depois do login, quando quem
+// escolheu o outro sistema é levado a ele já logado.
+type Sistema = "financeiro" | "gestao";
+
+const SISTEMA_ATUAL: Sistema = "financeiro";
+
+const sistemasConfig: Record<Sistema, {
+  label: string; sublabel: string; desc: string; accent: string; ring: string;
+  marca: string; titulo: string; resumo: string; destaques: string[]; url: string;
+}> = {
+  financeiro: {
+    label: "Sistema Financeiro MDCA",
+    sublabel: "FINANCEIRO",
+    desc: "Lançamentos, fluxo de caixa e prestação de contas",
+    accent: "#0e7e6e",
+    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
+    marca: "Financeiro MDCA",
+    titulo: "Sistema Financeiro",
+    resumo: "Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.",
+    destaques: [
+      "Controle de projetos e fontes de recursos",
+      "Fluxo de caixa e conciliação bancária",
+      "Relatórios para prestação de contas",
+    ],
+    url: URL_FINANCEIRO,
+  },
+  gestao: {
+    label: "Sistema Gestão MDCA",
+    sublabel: "GESTÃO",
+    desc: "Educandos, atendimentos, encaminhamentos e agenda",
+    accent: "#1a3a6b",
+    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
+    marca: "Gestão MDCA",
+    titulo: "Sistema de Gestão",
+    resumo: "Acompanhe educandos, atendimentos e encaminhamentos da sua equipe em um só lugar — do cadastro ao histórico.",
+    destaques: [
+      "Cadastro e acompanhamento de educandos",
+      "Evoluções, encaminhamentos e acompanhamentos",
+      "Agenda compartilhada da equipe",
+    ],
+    url: URL_GESTAO,
+  },
+};
+
+function AuthBrand({ sistema }: { sistema: Sistema }) {
+  const cfg = sistemasConfig[sistema];
   return (
     <div className="hidden lg:flex flex-col justify-between bg-[#0f1e3d] text-white p-12 relative overflow-hidden">
       {/* decorative rings */}
@@ -27,56 +80,31 @@ function AuthBrand() {
         <div className="flex items-center gap-3 mb-14">
           <BussolaLogo size={32} light />
           <div>
-            <span className="font-serif text-xl leading-none tracking-tight block">Financeiro MDCA</span>
+            <span className="font-serif text-xl leading-none tracking-tight block">{cfg.marca}</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-[0.2em] block mt-0.5">Sistema</span>
           </div>
         </div>
 
         <h2 className="font-serif text-4xl leading-[1.15] mb-5">
-          Sistema Financeiro<br />
+          {cfg.titulo}<br />
           <em>MDCA</em>
         </h2>
         <p className="text-white/60 text-sm leading-relaxed max-w-xs">
-          Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.
+          {cfg.resumo}
         </p>
       </div>
 
       <div className="relative z-10 space-y-4">
-        {[
-          { icon: "◆", text: "Controle de projetos e fontes de recursos" },
-          { icon: "◆", text: "Fluxo de caixa e conciliação bancária" },
-          { icon: "◆", text: "Relatórios para prestação de contas" },
-        ].map((item) => (
-          <div key={item.text} className="flex items-start gap-3">
-            <span className="text-[#0e7e6e] text-[8px] mt-1">{item.icon}</span>
-            <span className="text-white/70 text-xs">{item.text}</span>
+        {cfg.destaques.map((texto) => (
+          <div key={texto} className="flex items-start gap-3">
+            <span className="text-[#0e7e6e] text-[8px] mt-1">◆</span>
+            <span className="text-white/70 text-xs">{texto}</span>
           </div>
         ))}
       </div>
     </div>
   );
 }
-
-type Sistema = "financeiro" | "gestao";
-
-const sistemasConfig: Record<Sistema, { label: string; sublabel: string; desc: string; accent: string; accentDim: string; ring: string }> = {
-  financeiro: {
-    label: "Sistema Financeiro MDCA",
-    sublabel: "FINANCEIRO",
-    desc: "Lançamentos, fluxo de caixa e prestação de contas",
-    accent: "#0e7e6e",
-    accentDim: "#0e7e6e1a",
-    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
-  },
-  gestao: {
-    label: "Sistema Gestão MDCA",
-    sublabel: "GESTÃO",
-    desc: "Projetos, equipes, metas e monitoramento de impacto",
-    accent: "#1a3a6b",
-    accentDim: "#1a3a6b1a",
-    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
-  },
-};
 
 function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Sistema) => void }) {
   return (
@@ -117,30 +145,34 @@ function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Si
   );
 }
 
-export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; goToCadastro: () => void }) {
-  const [sistema, setSistema] = useState<Sistema>("financeiro");
+export function LoginScreen() {
+  const { login, loading, error } = useAuth();
+  const [sistema, setSistema] = useState<Sistema>(SISTEMA_ATUAL);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const cfg = sistemasConfig[sistema];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 900);
+    try {
+      // Escolheu o outro sistema: entra e vai para ele, já com a sessão aberta.
+      await login({ email, senha }, sistema === SISTEMA_ATUAL ? undefined : cfg.url);
+    } catch {
+      // erro já fica disponível em `error`, vindo do contexto de autenticação
+    }
   };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[480px_1fr] bg-white">
-      <AuthBrand />
+      <AuthBrand sistema={sistema} />
       <div className="flex items-center justify-center px-8 py-12 bg-[#f4f6f9]">
         <div className="w-full max-w-sm">
           {/* mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-10">
             <BussolaLogo size={24} />
-            <span className="font-serif text-xl text-[#0f1e3d]">Financeiro MDCA</span>
+            <span className="font-serif text-xl text-[#0f1e3d]">{cfg.marca}</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-widest">Sistema</span>
           </div>
 
@@ -200,6 +232,8 @@ export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; go
               </div>
             </div>
 
+            {error && <p className="text-xs text-red-500 -mt-1">{error}</p>}
+
             <button
               type="submit"
               disabled={loading}
@@ -215,187 +249,11 @@ export function LoginScreen({ onLogin, goToCadastro }: { onLogin: () => void; go
             </button>
           </form>
 
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function CadastroScreen({ onLogin, goToLogin }: { onLogin: () => void; goToLogin: () => void }) {
-  const [form, setForm] = useState({ nome: "", email: "", organizacao: "", cargo: "", senha: "", confirmSenha: "" });
-  const [showSenha, setShowSenha] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [erroSenha, setErroSenha] = useState(false);
-
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (form.senha !== form.confirmSenha) { setErroSenha(true); return; }
-    setErroSenha(false);
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 1100);
-  };
-
-  const cargos = [
-    "Coordenador(a) Financeiro(a)",
-    "Gestor(a) de Projetos",
-    "Diretor(a) Executivo(a)",
-    "Analista Financeiro(a)",
-    "Contador(a)",
-    "Assessor(a) Administrativo(a)",
-    "Outro",
-  ];
-
-  return (
-    <div className="min-h-screen grid lg:grid-cols-[480px_1fr] bg-white">
-      <AuthBrand />
-      <div className="flex items-start justify-center px-8 py-10 bg-[#f4f6f9] overflow-y-auto">
-        <div className="w-full max-w-sm">
-          <div className="flex lg:hidden items-center gap-2 mb-10">
-            <BussolaLogo size={24} />
-            <span className="font-serif text-xl text-[#0f1e3d]">Financeiro MDCA</span>
-            <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-widest">Sistema</span>
-          </div>
-
-          <h1 className="font-serif text-3xl text-[#0f1e3d] mb-1">Criar conta</h1>
-          <p className="text-sm text-[#6b7a99] mb-7">Cadastre seu perfil profissional para começar</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Nome completo">
-              <input
-                type="text"
-                required
-                value={form.nome}
-                onChange={set("nome")}
-                placeholder="Maria Oliveira"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="E-mail profissional">
-              <input
-                type="email"
-                required
-                value={form.email}
-                onChange={set("email")}
-                placeholder="voce@organizacao.org.br"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Organização / ONG">
-              <input
-                type="text"
-                required
-                value={form.organizacao}
-                onChange={set("organizacao")}
-                placeholder="Instituto Esperança"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Cargo / função">
-              <select
-                required
-                value={form.cargo}
-                onChange={set("cargo")}
-                className={inputCls + " text-[#0f1e3d] appearance-none bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a99' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")] bg-no-repeat bg-[right_12px_center]"}
-              >
-                <option value="">Selecionar…</option>
-                {cargos.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Senha">
-                <div className="relative">
-                  <input
-                    type={showSenha ? "text" : "password"}
-                    required
-                    minLength={8}
-                    value={form.senha}
-                    onChange={set("senha")}
-                    placeholder="Mín. 8 caracteres"
-                    className={inputCls + (erroSenha ? " border-red-400 focus:ring-red-200 focus:border-red-400" : "")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSenha(!showSenha)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a99] hover:text-[#0f1e3d] transition-colors cursor-pointer"
-                  >
-                    {showSenha
-                      ? <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22"/></svg>
-                      : <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    }
-                  </button>
-                </div>
-              </Field>
-              <Field label="Confirmar senha">
-                <input
-                  type={showSenha ? "text" : "password"}
-                  required
-                  value={form.confirmSenha}
-                  onChange={set("confirmSenha")}
-                  placeholder="Repetir"
-                  className={inputCls + (erroSenha ? " border-red-400 focus:ring-red-200 focus:border-red-400" : "")}
-                />
-              </Field>
-            </div>
-            {erroSenha && <p className="text-xs text-red-500 -mt-2">As senhas não coincidem.</p>}
-
-            <div className="pt-1">
-              <label className="flex items-start gap-2.5 cursor-pointer group">
-                <input type="checkbox" required className="mt-0.5 accent-[#0e7e6e] cursor-pointer" />
-                <span className="text-xs text-[#6b7a99] leading-relaxed">
-                  Concordo com os{" "}
-                  <span className="text-[#1a3a6b] hover:text-[#0e7e6e] transition-colors underline decoration-dotted cursor-pointer">
-                    Termos de Uso
-                  </span>{" "}
-                  e a{" "}
-                  <span className="text-[#1a3a6b] hover:text-[#0e7e6e] transition-colors underline decoration-dotted cursor-pointer">
-                    Política de Privacidade
-                  </span>
-                </span>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 bg-[#0e7e6e] hover:bg-[#0b6b5d] disabled:opacity-60 text-white text-sm font-semibold rounded-md transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Criando conta…
-                </>
-              ) : "Criar minha conta"}
-            </button>
-          </form>
-
           <p className="text-center text-xs text-[#6b7a99] mt-5">
-            Já tem uma conta?{" "}
-            <button onClick={goToLogin} className="text-[#0e7e6e] font-medium hover:underline cursor-pointer">
-              Entrar
-            </button>
+            Ainda não tem acesso? Peça à coordenação para criar seu usuário.
           </p>
         </div>
       </div>
     </div>
   );
 }
-
-const inputCls =
-  "w-full h-11 px-4 rounded-md border border-[#d4dae7] bg-white text-sm text-[#0f1e3d] placeholder-[#b0bac9] focus:outline-none focus:ring-2 focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b] transition-all";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-mono uppercase tracking-widest text-[#6b7a99] mb-1.5">{label}</label>
-      {children}
-    </div>
-  );
-}
-

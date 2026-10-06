@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
+import { useAuth } from "@/context/AuthContext";
+import { URL_GESTAO } from "@/lib/sistemas";
 
-export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros';
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  return partes.slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "?";
+}
 
-type LogModulo = "Financeiro" | "Cadastros" | "Projetos" | "Relatórios";
+export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros' | 'usuarios';
+
+type LogModulo = "Financeiro" | "Cadastros" | "Projetos" | "Relatórios" | "Usuários";
 type LogAcao = "adição" | "remoção" | "edição" | "anexo";
 export interface LogEntry {
   id: string;
@@ -24,6 +31,7 @@ const moduloCor: Record<LogModulo, string> = {
   Cadastros: "bg-[#1a3a6b]/10 text-[#1a3a6b]",
   Projetos: "bg-violet-100 text-violet-700",
   "Relatórios": "bg-amber-100 text-amber-700",
+  "Usuários": "bg-slate-100 text-slate-700",
 }
 function fmtRelativo(d: Date) {
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
@@ -39,6 +47,7 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
   logs: LogEntry[];
   onClearLogs: () => void;
 }) {
+  const { user, logout } = useAuth();
   const [logOpen, setLogOpen] = useState(false);
   const [vistosAte, setVistosAte] = useState(0);
   const novos = logs.length - vistosAte;
@@ -49,6 +58,8 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
     { key: "projetos", label: "Projetos" },
     { key: "relatorios", label: "Relatórios" },
     { key: "cadastros", label: "Cadastros" },
+    // Só a coordenação gerencia usuários (o backend também exige isso).
+    ...(user?.perfil === "coordenador" ? [{ key: "usuarios" as const, label: "Usuários" }] : []),
   ];
 
   const abrirLog = () => {
@@ -177,9 +188,25 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
             )}
           </div>
 
-          <div className="w-7 h-7 rounded-full bg-[#0e7e6e]/30 flex items-center justify-center text-xs font-semibold text-[#0e7e6e]">
-            MO
+          <div
+            className="w-7 h-7 rounded-full bg-[#0e7e6e]/30 flex items-center justify-center text-xs font-semibold text-[#0e7e6e]"
+            title={user?.nome}
+          >
+            {user ? iniciais(user.nome) : "?"}
           </div>
+          {/* Mesma sessão: a Gestão abre já logada. */}
+          <a
+            href={URL_GESTAO}
+            className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
+          >
+            Ir para Gestão
+          </a>
+          <button
+            onClick={logout}
+            className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors cursor-pointer"
+          >
+            Sair
+          </button>
         </div>
       </div>
     </header>
