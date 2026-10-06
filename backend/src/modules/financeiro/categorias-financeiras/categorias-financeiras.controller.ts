@@ -10,10 +10,13 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CategoriasFinanceirasService } from './categorias-financeiras.service';
 import { CreateCategoriaFinanceiraDto } from './dto/create-categoria-financeira.dto';
 import { UpdateCategoriaFinanceiraDto } from './dto/update-categoria-financeira.dto';
 
+@ApiTags('Categorias financeiras')
+@ApiBearerAuth('access-token')
 @Controller('api/categorias-financeiras')
 export class CategoriasFinanceirasController {
   constructor(private readonly service: CategoriasFinanceirasService) {}

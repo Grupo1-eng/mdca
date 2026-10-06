@@ -67,6 +67,7 @@ describe('valores em dinheiro', () => {
   it('aplica a mesma regra ao orçamento total do projeto', async () => {
     const { erros } = await validarDto(CreateProjetoDto, {
       nome: 'Projeto',
+      tipo: 'PROJETO',
       status: 'ativo',
       orcamentoTotal: '1.999',
     });
@@ -122,6 +123,7 @@ describe('campos definidos pelo servidor', () => {
   it('projeto: descarta organizacaoId', async () => {
     const { valor } = await validarDto(CreateProjetoDto, {
       nome: 'Projeto',
+      tipo: 'PROJETO',
       status: 'ativo',
       organizacaoId: 2,
     });

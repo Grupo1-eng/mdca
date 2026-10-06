@@ -86,7 +86,12 @@ describe('Campos definidos pelo token (integração)', () => {
   it('projeto é criado na organização do token', async () => {
     prisma.projeto.create.mockResolvedValue({ id: 1 });
 
-    const res = await post('/api/projetos', { nome: 'Projeto', status: 'ativo', organizacaoId: 999 });
+    const res = await post('/api/projetos', {
+      nome: 'Projeto',
+      tipo: 'PROJETO',
+      status: 'ativo',
+      organizacaoId: 999,
+    });
 
     expect(res.status).toBe(201);
     expect(prisma.projeto.create).toHaveBeenCalledWith({
