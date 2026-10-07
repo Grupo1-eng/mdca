@@ -43,7 +43,7 @@ describe('Campos definidos pelo token (integração)', () => {
       organizacaoId: 3,
       nome: 'Maria',
       email: 'maria@mdca.org.br',
-      perfil: 'administrativo',
+      perfil: 'gestor_financeiro',
       ativo: true,
     });
   });

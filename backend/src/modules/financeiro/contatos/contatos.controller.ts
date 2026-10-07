@@ -9,12 +9,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { ContatosService } from './contatos.service';
 import { CreateContatoDto } from './dto/create-contato.dto';
 import { UpdateContatoDto } from './dto/update-contato.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/contatos')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class ContatosController {
   constructor(private readonly service: ContatosService) {}
 

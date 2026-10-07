@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { ContasFinanceirasService } from './contas-financeiras.service';
 import { CreateContaFinanceiraDto } from './dto/create-conta-financeira.dto';
@@ -17,8 +18,14 @@ import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/contas-financeiras')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class ContasFinanceirasController {
   constructor(private readonly service: ContasFinanceirasService) {}
 

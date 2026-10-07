@@ -9,12 +9,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { CategoriasFinanceirasService } from './categorias-financeiras.service';
 import { CreateCategoriaFinanceiraDto } from './dto/create-categoria-financeira.dto';
 import { UpdateCategoriaFinanceiraDto } from './dto/update-categoria-financeira.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/categorias-financeiras')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class CategoriasFinanceirasController {
   constructor(private readonly service: CategoriasFinanceirasService) {}
 
