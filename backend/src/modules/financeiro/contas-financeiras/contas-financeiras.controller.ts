@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ContasFinanceirasService } from './contas-financeiras.service';
@@ -18,10 +19,16 @@ import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @ApiTags('Contas financeiras')
 @ApiBearerAuth('access-token')
 @Controller('api/contas-financeiras')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class ContasFinanceirasController {
   constructor(private readonly service: ContasFinanceirasService) {}
 
