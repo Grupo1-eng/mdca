@@ -1,6 +1,9 @@
-import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Dinheiro } from '../../../../common/transformers/dinheiro';
+
+export const TIPOS_PROJETO = ['PROJETO', 'SERVICO', 'PROGRAMA'] as const;
+export type TipoProjeto = (typeof TIPOS_PROJETO)[number];
 
 // organizacaoId vem do token do usuário.
 export class CreateProjetoDto {

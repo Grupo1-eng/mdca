@@ -10,6 +10,7 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ContasFinanceirasService } from './contas-financeiras.service';
 import { CreateContaFinanceiraDto } from './dto/create-conta-financeira.dto';
 import { UpdateContaFinanceiraDto } from './dto/update-conta-financeira.dto';
@@ -18,6 +19,8 @@ import {
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
 
+@ApiTags('Contas financeiras')
+@ApiBearerAuth('access-token')
 @Controller('api/contas-financeiras')
 export class ContasFinanceirasController {
   constructor(private readonly service: ContasFinanceirasService) {}
