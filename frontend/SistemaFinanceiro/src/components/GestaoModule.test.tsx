@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
+import { GestaoAgendaProvider } from "@/modules/gestao/agenda/AgendaContext"
 import { GestaoEducandosProvider } from "@/modules/gestao/educandos/EducandosContext"
 import GestaoModule from "./GestaoModule"
 
@@ -20,9 +21,11 @@ function renderizarRota(pathname: string): string {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[pathname]}>
       <GestaoEducandosProvider>
-        <Routes>
-          <Route path="/gestao/*" element={<GestaoModule />} />
-        </Routes>
+        <GestaoAgendaProvider>
+          <Routes>
+            <Route path="/gestao/*" element={<GestaoModule />} />
+          </Routes>
+        </GestaoAgendaProvider>
       </GestaoEducandosProvider>
     </MemoryRouter>,
   )
@@ -33,6 +36,7 @@ describe("rotas migradas da Gestão", () => {
     const html = renderizarRota("/gestao")
     expect(html).toContain("Visão geral")
     expect(html).toContain('href="/gestao/educandos"')
+    expect(html).toContain('href="/gestao/agenda"')
     expect(html).toContain('href="/financeiro"')
     expect(html).toContain("Sair")
   })
@@ -60,6 +64,18 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Ficha cadastral")
     expect(html).toContain("Fichas de evolução")
     expect(html).toContain("Histórico de frequência")
+    expect(html).toContain('href="/gestao/educandos"')
+  })
+
+  it("renderiza a Agenda em /gestao/agenda", () => {
+    const html = renderizarRota("/gestao/agenda")
+    expect(html).toContain("Compromissos da equipe")
+    expect(html).toContain("Novo compromisso")
+    expect(html).toContain("Atendimento individual – Ana Beatriz")
+    expect(html).toContain("Dia")
+    expect(html).toContain("Semana")
+    expect(html).toContain("Mês")
+    expect(html).toContain('href="/gestao"')
     expect(html).toContain('href="/gestao/educandos"')
   })
 })

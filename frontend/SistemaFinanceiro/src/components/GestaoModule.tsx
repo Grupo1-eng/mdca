@@ -2,6 +2,7 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import mdcaLogo from "@/imports/coisaaa.png"
 import { useAuth } from "@/context/AuthContext"
 import GestaoDashboard from "@/components/GestaoDashboard"
+import AgendaPage from "@/modules/gestao/agenda/AgendaPage"
 import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
 import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
 import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
@@ -11,7 +12,7 @@ const menu = [
   { label: "Dashboard", to: "/gestao", habilitado: true },
   { label: "Educandos", to: "/gestao/educandos", habilitado: true },
   { label: "Atividades e Frequência", habilitado: false },
-  { label: "Agenda", habilitado: false },
+  { label: "Agenda", to: "/gestao/agenda", habilitado: true },
   { label: "Projetos, Serviços e Programas", habilitado: false },
 ] as const
 
@@ -131,6 +132,7 @@ export default function GestaoModule() {
           <Route path="educandos" element={<EducandosPage />} />
           <Route path="educandos/novo" element={<EducandoNovoPage />} />
           <Route path="educandos/:id" element={<EducandoDetalhePage />} />
+          <Route path="agenda" element={<AgendaPage />} />
           <Route path="*" element={<Navigate to="/gestao" replace />} />
         </Routes>
       </main>

@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
-import App from "./App"
+import App, { chaveEstadoGestao } from "./App"
 
 vi.mock("@/context/AuthContext", () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => children,
@@ -20,6 +20,12 @@ vi.mock("@/context/AuthContext", () => ({
 vi.mock("@/modules/gestao/educandos/EducandosContext", () => ({
   GestaoEducandosProvider: ({ children }: { children: ReactNode }) => (
     <div data-estado-educandos="montado">{children}</div>
+  ),
+}))
+
+vi.mock("@/modules/gestao/agenda/AgendaContext", () => ({
+  GestaoAgendaProvider: ({ children }: { children: ReactNode }) => (
+    <div data-estado-agenda="montado">{children}</div>
   ),
 }))
 
@@ -44,14 +50,22 @@ function renderizar(pathname: string): string {
   )
 }
 
-describe("tempo de vida do estado de Educandos", () => {
-  it("mantém o provider acima das rotas Financeiro e Gestão", () => {
+describe("tempo de vida dos estados temporários da Gestão", () => {
+  it("mantém os providers acima das rotas Financeiro e Gestão", () => {
     const financeiro = renderizar("/financeiro")
     const gestao = renderizar("/gestao")
 
     expect(financeiro).toContain('data-estado-educandos="montado"')
+    expect(financeiro).toContain('data-estado-agenda="montado"')
     expect(financeiro).toContain("Financeiro ativo")
     expect(gestao).toContain('data-estado-educandos="montado"')
+    expect(gestao).toContain('data-estado-agenda="montado"')
     expect(gestao).toContain("Gestão ativa")
+  })
+
+  it("troca a chave dos estados no logout ou na troca de usuário", () => {
+    expect(chaveEstadoGestao(1)).toBe(chaveEstadoGestao(1))
+    expect(chaveEstadoGestao(1)).not.toBe(chaveEstadoGestao(2))
+    expect(chaveEstadoGestao(1)).not.toBe(chaveEstadoGestao(undefined))
   })
 })
