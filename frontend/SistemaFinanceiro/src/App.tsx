@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import NavBar, { type LogEntry, type Module } from "@/components/NavBar";
 import Dashboard from "@/components/Dashboard";
 import Financeiro from "@/components/Financeiro";
@@ -7,8 +8,10 @@ import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
 import Usuarios from "@/components/Usuarios";
 import { LoginScreen } from "@/components/AuthScreens";
+import GestaoModule from "@/components/GestaoModule";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { moduloDaNavegacao, rotaPosLogin, type ModuloDestino } from "@/lib/moduloDestino";
 import type { AuthUser } from "@/types/financeiro";
 
 function AreaLogada({ user }: { user: AuthUser }) {
@@ -36,19 +39,65 @@ function AreaLogada({ user }: { user: AuthUser }) {
   </div>;
 }
 
-function AppShell() {
+function RotaInicial() {
+  const { user, restaurando } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const modulo = moduloDaNavegacao(location.state);
+
+  if (restaurando) return <LoadingState label="Verificando sessão…" />;
+  if (user) return <Navigate to={rotaPosLogin(location.state)} replace />;
+
+  const selecionarModulo = (proximo: ModuloDestino) => {
+    navigate("/", { replace: true, state: { modulo: proximo } });
+  };
+
+  return <LoginScreen modulo={modulo} onModuloChange={selecionarModulo} />;
+}
+
+function RotaProtegida({ children }: { children: ReactNode }) {
   const { user, restaurando } = useAuth();
 
   if (restaurando) return <LoadingState label="Verificando sessão…" />;
-  if (!user) return <LoginScreen />;
+  return user ? children : <Navigate to="/" replace />;
+}
+
+function FinanceiroRoute() {
+  const { user } = useAuth();
+  if (!user) return null;
   // key: trocar de usuário recomeça a área logada (módulo aberto e log de atividades).
   return <AreaLogada key={user.id} user={user} />;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<RotaInicial />} />
+      <Route
+        path="/financeiro"
+        element={
+          <RotaProtegida>
+            <FinanceiroRoute />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/gestao"
+        element={
+          <RotaProtegida>
+            <GestaoModule />
+          </RotaProtegida>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <AppRoutes />
     </AuthProvider>
   );
 }

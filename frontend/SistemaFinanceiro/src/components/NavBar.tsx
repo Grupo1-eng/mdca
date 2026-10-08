@@ -1,7 +1,7 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
-import { URL_GESTAO } from "@/lib/sistemas";
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/);
@@ -194,13 +194,12 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
           >
             {user ? iniciais(user.nome) : "?"}
           </div>
-          {/* Mesma sessão: a Gestão abre já logada. */}
-          <a
-            href={URL_GESTAO}
+          <Link
+            to="/gestao"
             className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
           >
             Ir para Gestão
-          </a>
+          </Link>
           <button
             onClick={logout}
             className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors cursor-pointer"
@@ -212,4 +211,3 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
     </header>
   );
 }
-

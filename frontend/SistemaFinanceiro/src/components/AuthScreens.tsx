@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
-import { URL_FINANCEIRO, URL_GESTAO } from "@/lib/sistemas";
+import { MODULO_PADRAO, type ModuloDestino } from "@/lib/moduloDestino";
 
 function BussolaLogo({ size = 28, light = false }: { size?: number; light?: boolean }) {
   return (
@@ -17,21 +17,11 @@ function BussolaLogo({ size = 28, light = false }: { size?: number; light?: bool
 }
 
 // ─── Auth screens ─────────────────────────────────────────────────────────────
-// Esta tela existe, idêntica, nos dois frontends: aqui e em
-// frontend/SistemaGestao/src/components/LoginScreen.tsx. Os dois entram pelo
-// mesmo POST /api/auth/login e a sessão é a mesma. Ao mudar uma, mude a outra —
-// só SISTEMA_ATUAL, o logo, a chamada de login e a classe de fontes diferem.
-//
-// A tela é a mesma para os dois sistemas: escolher um sistema só troca o que a
-// tela mostra. A troca de sistema acontece depois do login, quando quem
-// escolheu o outro sistema é levado a ele já logado.
-type Sistema = "financeiro" | "gestao";
-
-const SISTEMA_ATUAL: Sistema = "financeiro";
-
-const sistemasConfig: Record<Sistema, {
+// Esta é a entrada única do host unificado. A escolha do sistema só define a
+// rota interna de destino; autenticação e sessão são compartilhadas.
+const sistemasConfig: Record<ModuloDestino, {
   label: string; sublabel: string; desc: string; accent: string; ring: string;
-  marca: string; titulo: string; resumo: string; destaques: string[]; url: string;
+  marca: string; titulo: string; resumo: string; destaques: string[];
 }> = {
   financeiro: {
     label: "Sistema Financeiro MDCA",
@@ -47,7 +37,6 @@ const sistemasConfig: Record<Sistema, {
       "Fluxo de caixa e conciliação bancária",
       "Relatórios para prestação de contas",
     ],
-    url: URL_FINANCEIRO,
   },
   gestao: {
     label: "Sistema Gestão MDCA",
@@ -63,11 +52,10 @@ const sistemasConfig: Record<Sistema, {
       "Evoluções, encaminhamentos e acompanhamentos",
       "Agenda compartilhada da equipe",
     ],
-    url: URL_GESTAO,
   },
 };
 
-function AuthBrand({ sistema }: { sistema: Sistema }) {
+function AuthBrand({ sistema }: { sistema: ModuloDestino }) {
   const cfg = sistemasConfig[sistema];
   return (
     <div className="hidden lg:flex flex-col justify-between bg-[#0f1e3d] text-white p-12 relative overflow-hidden">
@@ -106,12 +94,12 @@ function AuthBrand({ sistema }: { sistema: Sistema }) {
   );
 }
 
-function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Sistema) => void }) {
+function SistemaSelector({ value, onChange }: { value: ModuloDestino; onChange: (s: ModuloDestino) => void }) {
   return (
     <div className="mb-7">
       <p className="text-xs font-mono uppercase tracking-widest text-[#6b7a99] mb-2">Acessar sistema</p>
       <div className="grid grid-cols-2 gap-2">
-        {(["financeiro", "gestao"] as Sistema[]).map((s) => {
+        {(["financeiro", "gestao"] as ModuloDestino[]).map((s) => {
           const cfg = sistemasConfig[s];
           const active = value === s;
           return (
@@ -145,20 +133,31 @@ function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Si
   );
 }
 
-export function LoginScreen() {
+export function LoginScreen({
+  modulo,
+  onModuloChange,
+}: {
+  modulo?: ModuloDestino;
+  onModuloChange?: (modulo: ModuloDestino) => void;
+}) {
   const { login, loading, error } = useAuth();
-  const [sistema, setSistema] = useState<Sistema>(SISTEMA_ATUAL);
+  const [moduloLocal, setModuloLocal] = useState<ModuloDestino>(MODULO_PADRAO);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
 
+  const sistema = modulo ?? moduloLocal;
   const cfg = sistemasConfig[sistema];
+
+  const selecionarSistema = (proximo: ModuloDestino) => {
+    setModuloLocal(proximo);
+    onModuloChange?.(proximo);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Escolheu o outro sistema: entra e vai para ele, já com a sessão aberta.
-      await login({ email, senha }, sistema === SISTEMA_ATUAL ? undefined : cfg.url);
+      await login({ email, senha });
     } catch {
       // erro já fica disponível em `error`, vindo do contexto de autenticação
     }
@@ -179,7 +178,7 @@ export function LoginScreen() {
           <h1 className="font-serif text-3xl text-[#0f1e3d] mb-1">Entrar</h1>
           <p className="text-sm text-[#6b7a99] mb-6">Selecione o sistema e acesse sua conta</p>
 
-          <SistemaSelector value={sistema} onChange={setSistema} />
+          <SistemaSelector value={sistema} onChange={selecionarSistema} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
