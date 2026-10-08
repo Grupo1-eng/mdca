@@ -49,7 +49,10 @@ export interface EncontroGestao {
   horario: string
   local: string
   situacao: "Planejado" | "Realizado" | "Cancelado"
-  presencas: { educandoId: string presente: boolean }[]
+  presencas: Array<{
+    educandoId: string
+    presente: boolean
+  }>
 }
 
 export interface CompromissoGestao {

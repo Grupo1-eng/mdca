@@ -1,15 +1,18 @@
-import { Link } from "react-router-dom"
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import mdcaLogo from "@/imports/coisaaa.png"
 import { useAuth } from "@/context/AuthContext"
 import GestaoDashboard from "@/components/GestaoDashboard"
+import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
+import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
+import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
 import type { Perfil } from "@/types/financeiro"
 
 const menu = [
-  "Dashboard",
-  "Educandos",
-  "Atividades e Frequência",
-  "Agenda",
-  "Projetos, Serviços e Programas",
+  { label: "Dashboard", to: "/gestao", habilitado: true },
+  { label: "Educandos", to: "/gestao/educandos", habilitado: true },
+  { label: "Atividades e Frequência", habilitado: false },
+  { label: "Agenda", habilitado: false },
+  { label: "Projetos, Serviços e Programas", habilitado: false },
 ] as const
 
 const perfilLabel: Record<Perfil, string> = {
@@ -33,6 +36,7 @@ function iniciais(nome: string): string {
 
 export default function GestaoModule() {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -88,24 +92,32 @@ export default function GestaoModule() {
             className="flex items-center gap-1 overflow-x-auto pb-2"
             aria-label="Navegação da Gestão"
           >
-            {menu.map((item, index) =>
-              index === 0 ? (
+            {menu.map((item) =>
+              item.habilitado ? (
                 <Link
-                  key={item}
-                  to="/gestao"
-                  className="shrink-0 px-4 py-1.5 rounded text-sm font-medium bg-white/10 text-white"
+                  key={item.label}
+                  to={item.to}
+                  className={`shrink-0 px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                    (
+                      item.to === "/gestao"
+                        ? pathname === "/gestao" || pathname === "/gestao/"
+                        : pathname.startsWith(item.to)
+                    )
+                      ? "bg-white/10 text-white"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
                 >
-                  {item}
+                  {item.label}
                 </Link>
               ) : (
                 <button
-                  key={item}
+                  key={item.label}
                   type="button"
                   disabled
                   title="Disponível em uma próxima etapa da migração"
                   className="shrink-0 px-4 py-1.5 rounded text-sm font-medium text-white/45 cursor-not-allowed"
                 >
-                  {item}
+                  {item.label}
                 </button>
               ),
             )}
@@ -114,7 +126,13 @@ export default function GestaoModule() {
       </header>
 
       <main className="max-w-screen-xl mx-auto px-6 py-7">
-        <GestaoDashboard />
+        <Routes>
+          <Route index element={<GestaoDashboard />} />
+          <Route path="educandos" element={<EducandosPage />} />
+          <Route path="educandos/novo" element={<EducandoNovoPage />} />
+          <Route path="educandos/:id" element={<EducandoDetalhePage />} />
+          <Route path="*" element={<Navigate to="/gestao" replace />} />
+        </Routes>
       </main>
     </div>
   )

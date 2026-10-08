@@ -12,6 +12,7 @@ import GestaoModule from "@/components/GestaoModule";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { moduloDaNavegacao, rotaPosLogin, type ModuloDestino } from "@/lib/moduloDestino";
+import { GestaoEducandosProvider } from "@/modules/gestao/educandos/EducandosContext";
 import type { AuthUser } from "@/types/financeiro";
 
 function AreaLogada({ user }: { user: AuthUser }) {
@@ -82,7 +83,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/gestao"
+        path="/gestao/*"
         element={
           <RotaProtegida>
             <GestaoModule />
@@ -94,10 +95,24 @@ function AppRoutes() {
   );
 }
 
+function EstadoEducandosDaSessao({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  // O estado mock acompanha a sessão autenticada, não a rota atualmente aberta.
+  // A chave também impede que dados temporários passem de um usuário para outro.
+  return (
+    <GestaoEducandosProvider key={user?.id ?? "sem-usuario"}>
+      {children}
+    </GestaoEducandosProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <EstadoEducandosDaSessao>
+        <AppRoutes />
+      </EstadoEducandosDaSessao>
     </AuthProvider>
   );
 }
