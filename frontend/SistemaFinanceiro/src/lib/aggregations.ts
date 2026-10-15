@@ -8,11 +8,13 @@ import type {
 } from "@/types/financeiro";
 import { dataLocal } from "./format";
 
-export type PeriodoDash = "semana" | "mes" | "trimestre" | "ano" | "personalizado";
+export type PeriodoDash = "semana" | "mes" | "trimestre" | "ano" | "todos" | "personalizado";
 
+// Limite `null` = aberto: sem início é "até a data final", sem fim é "a partir
+// da data inicial" e sem nenhum dos dois é todo o período.
 export interface Intervalo {
-  inicio: Date;
-  fim: Date;
+  inicio: Date | null;
+  fim: Date | null;
 }
 
 function startOfWeek(d: Date): Date {
@@ -40,12 +42,20 @@ export function getIntervaloPeriodo(
       return { inicio: new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1), fim: fimHoje };
     case "ano":
       return { inicio: new Date(hoje.getFullYear(), 0, 1), fim: fimHoje };
+    case "todos":
+      return { inicio: null, fim: null };
     case "personalizado":
+      // Campo vazio deixa aquele lado em aberto; os dois limites são inclusivos.
       return {
-        inicio: dataIni ? dataLocal(dataIni) : new Date(hoje.getFullYear(), hoje.getMonth(), 1),
-        fim: dataFim ? new Date(dataLocal(dataFim).setHours(23, 59, 59, 999)) : fimHoje,
+        inicio: dataIni ? dataLocal(dataIni) : null,
+        fim: dataFim ? new Date(dataLocal(dataFim).setHours(23, 59, 59, 999)) : null,
       };
   }
+}
+
+/** Falso quando a data inicial é posterior à final, o que não seleciona nada. */
+export function intervaloValido(intervalo: Intervalo): boolean {
+  return !intervalo.inicio || !intervalo.fim || intervalo.inicio <= intervalo.fim;
 }
 
 /** Data que situa o lançamento no tempo: competência, senão pagamento, senão criação. */
@@ -55,7 +65,12 @@ export function dataDoLancamento(l: Lancamento): string {
 
 function dentroDoIntervalo(l: Lancamento, intervalo: Intervalo): boolean {
   const data = dataLocal(dataDoLancamento(l));
-  return data >= intervalo.inicio && data <= intervalo.fim;
+  return (!intervalo.inicio || data >= intervalo.inicio) && (!intervalo.fim || data <= intervalo.fim);
+}
+
+/** Lançamentos do intervalo — a mesma lista alimenta a tabela e os totais. */
+export function filtrarPorIntervalo(lancamentos: Lancamento[], intervalo: Intervalo): Lancamento[] {
+  return lancamentos.filter((l) => dentroDoIntervalo(l, intervalo));
 }
 
 function soma(lancamentos: Lancamento[]): number {
@@ -69,7 +84,7 @@ export interface ResumoPeriodo {
 }
 
 export function resumoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): ResumoPeriodo {
-  const doPeriodo = lancamentos.filter((l) => dentroDoIntervalo(l, intervalo));
+  const doPeriodo = filtrarPorIntervalo(lancamentos, intervalo);
   return {
     entradas: soma(doPeriodo.filter((l) => l.tipo === "entrada")),
     saidas: soma(doPeriodo.filter((l) => l.tipo === "saida")),

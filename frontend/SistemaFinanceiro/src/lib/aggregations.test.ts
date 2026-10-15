@@ -5,6 +5,9 @@ import {
   contasPendentes,
   dataDoLancamento,
   execucaoOrcamentaria,
+  filtrarPorIntervalo,
+  getIntervaloPeriodo,
+  intervaloValido,
   resumoPeriodo,
   serieFluxoCaixa,
 } from "./aggregations";
@@ -42,6 +45,81 @@ describe("resumoPeriodo", () => {
   it("conta um lançamento do dia 1º no mês certo", () => {
     const r = resumoPeriodo([lanc({ dataCompetencia: "2026-09-01T00:00:00.000Z" })], setembro);
     expect(r.qtdLancamentos).toBe(1);
+  });
+});
+
+describe("getIntervaloPeriodo personalizado", () => {
+  const hoje = new Date(2026, 8, 15);
+
+  it("usa as duas datas, com o dia final inteiro", () => {
+    const { inicio, fim } = getIntervaloPeriodo("personalizado", hoje, "2026-08-01", "2026-08-31");
+    expect(inicio).toEqual(new Date(2026, 7, 1));
+    expect(fim).toEqual(new Date(2026, 7, 31, 23, 59, 59, 999));
+  });
+
+  it("deixa em aberto o lado cujo campo está vazio", () => {
+    expect(getIntervaloPeriodo("personalizado", hoje, "", "2026-08-31").inicio).toBeNull();
+    expect(getIntervaloPeriodo("personalizado", hoje, "2026-08-01", "").fim).toBeNull();
+  });
+
+  it("todo o período não tem limites", () => {
+    expect(getIntervaloPeriodo("todos", hoje)).toEqual({ inicio: null, fim: null });
+  });
+});
+
+describe("filtrarPorIntervalo", () => {
+  const hoje = new Date(2026, 8, 15);
+  const julho = lanc({ id: 1, dataCompetencia: "2026-07-20T00:00:00.000Z" });
+  const inicioAgosto = lanc({ id: 2, dataCompetencia: "2026-08-01T00:00:00.000Z" });
+  const fimAgosto = lanc({ id: 3, dataCompetencia: "2026-08-31T00:00:00.000Z" });
+  const setembroL = lanc({ id: 4, dataCompetencia: "2026-09-05T00:00:00.000Z" });
+  const todos = [julho, inicioAgosto, fimAgosto, setembroL];
+  const ids = (ls: Lancamento[]) => ls.map((l) => l.id);
+  const filtrar = (de: string, ate: string) =>
+    ids(filtrarPorIntervalo(todos, getIntervaloPeriodo("personalizado", hoje, de, ate)));
+
+  it("entre duas datas inclui os dois dias dos limites", () => {
+    expect(filtrar("2026-08-01", "2026-08-31")).toEqual([2, 3]);
+  });
+
+  it("só com a data final traz tudo até ela (antes de uma data)", () => {
+    expect(filtrar("", "2026-08-01")).toEqual([1, 2]);
+  });
+
+  it("só com a data inicial traz tudo a partir dela", () => {
+    expect(filtrar("2026-08-31", "")).toEqual([3, 4]);
+  });
+
+  it("sem datas traz tudo", () => {
+    expect(filtrar("", "")).toEqual([1, 2, 3, 4]);
+  });
+
+  it("usa a data de pagamento quando não há competência", () => {
+    const pago = lanc({ id: 5, dataCompetencia: null, dataPagamento: "2026-08-10T00:00:00.000Z" });
+    const agosto = getIntervaloPeriodo("personalizado", hoje, "2026-08-01", "2026-08-31");
+    expect(ids(filtrarPorIntervalo([pago], agosto))).toEqual([5]);
+  });
+
+  it("os totais do período somam só os lançamentos filtrados", () => {
+    const r = resumoPeriodo([
+      lanc({ tipo: "entrada", valor: 500, dataCompetencia: "2026-07-20T00:00:00.000Z" }),
+      lanc({ tipo: "entrada", valor: 200, dataCompetencia: "2026-08-10T00:00:00.000Z" }),
+      lanc({ tipo: "saida", valor: 80, dataCompetencia: "2026-08-12T00:00:00.000Z" }),
+    ], getIntervaloPeriodo("personalizado", hoje, "2026-08-01", "2026-08-31"));
+    expect(r).toEqual({ entradas: 200, saidas: 80, qtdLancamentos: 2 });
+  });
+});
+
+describe("intervaloValido", () => {
+  const hoje = new Date(2026, 8, 15);
+
+  it("recusa data inicial depois da final", () => {
+    expect(intervaloValido(getIntervaloPeriodo("personalizado", hoje, "2026-08-31", "2026-08-01"))).toBe(false);
+  });
+
+  it("aceita o mesmo dia e intervalos abertos", () => {
+    expect(intervaloValido(getIntervaloPeriodo("personalizado", hoje, "2026-08-10", "2026-08-10"))).toBe(true);
+    expect(intervaloValido(getIntervaloPeriodo("personalizado", hoje, "", "2026-08-10"))).toBe(true);
   });
 });
 
