@@ -13,8 +13,10 @@ import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/ane
 import FiltroPeriodo, { formatIntervalo } from './FiltroPeriodo';
 import {
   dataDoLancamento, filtrarPorIntervalo, getIntervaloPeriodo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieSemanalMesAtual, type PeriodoDash,
+  serieFluxoPeriodo, type AgrupamentoFluxo, type PeriodoDash,
 } from '@/lib/aggregations';
+
+const rotuloAgrupamento: Record<AgrupamentoFluxo, string> = { semana: "semana", mes: "mês", ano: "ano" };
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -374,13 +376,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const totalEntradas = filtered.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
   const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + b.valor, 0);
 
-  const mesAtualLabel = useMemo(() => {
-    const texto = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
-    return texto.charAt(0).toUpperCase() + texto.slice(1);
-  }, []);
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
-  const barData = useMemo(() => serieSemanalMesAtual(lancamentos), [lancamentos]);
+  const fluxo = useMemo(() => serieFluxoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
 
   const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
 
@@ -492,9 +490,18 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
               {tab === "fluxo" ? (
                 <div className="p-5">
-                  <p className="text-sm text-[var(--muted-foreground)] mb-4">Entradas vs. Saídas por semana — {mesAtualLabel}</p>
+                  <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                    Entradas vs. Saídas por {rotuloAgrupamento[fluxo.agrupamento]} — {periodoLabel}
+                  </p>
+                  {fluxo.pontos.length === 0 ? (
+                    <p className="h-[260px] flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+                      {periodoValido
+                        ? "Nenhum lançamento no período selecionado."
+                        : "Período inválido: a data inicial deve ser anterior ou igual à final."}
+                    </p>
+                  ) : (
                   <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={barData} barGap={4}>
+                    <BarChart data={fluxo.pontos} barGap={4}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                       <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
@@ -504,6 +511,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                       <Bar dataKey="saidas" name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">

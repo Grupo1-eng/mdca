@@ -167,28 +167,76 @@ export function serieFluxoCaixa(lancamentos: Lancamento[], meses = 6, hoje: Date
   return pontos;
 }
 
-export interface PontoSemanal {
+export interface PontoFluxoPeriodo {
   label: string;
   entradas: number;
   saidas: number;
 }
 
-/** Entradas vs. saídas por semana do mês corrente — usado no gráfico de fluxo da tela Financeiro. */
-export function serieSemanalMesAtual(lancamentos: Lancamento[], hoje: Date = new Date()): PontoSemanal[] {
-  const semanas = new Map<number, { entradas: number; saidas: number }>();
-  for (const l of lancamentos) {
-    const d = dataLocal(dataDoLancamento(l));
-    if (d.getFullYear() !== hoje.getFullYear() || d.getMonth() !== hoje.getMonth()) continue;
-    const semana = Math.floor((d.getDate() - 1) / 7) + 1;
-    const atual = semanas.get(semana) ?? { entradas: 0, saidas: 0 };
-    if (l.tipo === "entrada") atual.entradas += l.valor;
-    else atual.saidas += l.valor;
-    semanas.set(semana, atual);
-  }
+export type AgrupamentoFluxo = "semana" | "mes" | "ano";
 
-  return Array.from(semanas.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([semana, valores]) => ({ label: `Sem ${semana}`, ...valores }));
+export interface SerieFluxoPeriodo {
+  agrupamento: AgrupamentoFluxo;
+  pontos: PontoFluxoPeriodo[];
+}
+
+// Dia como número inteiro, imune ao horário de verão (que mudaria a conta em horas).
+function numeroDoDia(d: Date): number {
+  return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+}
+
+const MAX_DIAS_POR_SEMANA = 62;
+const MAX_MESES_POR_MES = 24;
+
+/**
+ * Entradas vs. saídas do período, para o gráfico de fluxo da tela Financeiro.
+ * Agrupa por semana em períodos de até ~2 meses, por mês até 2 anos e por ano
+ * acima disso. Um limite em aberto vai até o lançamento mais antigo/recente.
+ * Semanas e meses sem lançamento aparecem zerados, para o eixo ser contínuo.
+ */
+export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): SerieFluxoPeriodo {
+  const doPeriodo = filtrarPorIntervalo(lancamentos, intervalo);
+  if (doPeriodo.length === 0) return { agrupamento: "semana", pontos: [] };
+
+  const datas = doPeriodo.map((l) => dataLocal(dataDoLancamento(l)));
+  const inicio = intervalo.inicio ?? new Date(Math.min(...datas.map(Number)));
+  const fim = intervalo.fim ?? new Date(Math.max(...datas.map(Number)));
+
+  const dias = numeroDoDia(fim) - numeroDoDia(inicio) + 1;
+  const meses = (fim.getFullYear() - inicio.getFullYear()) * 12 + fim.getMonth() - inicio.getMonth() + 1;
+  const agrupamento: AgrupamentoFluxo =
+    dias <= MAX_DIAS_POR_SEMANA ? "semana" : meses <= MAX_MESES_POR_MES ? "mes" : "ano";
+
+  // Índice do grupo de cada data, contado a partir do início do período.
+  const indice = (d: Date): number => {
+    if (agrupamento === "semana") return Math.floor((numeroDoDia(d) - numeroDoDia(inicio)) / 7);
+    if (agrupamento === "mes") return (d.getFullYear() - inicio.getFullYear()) * 12 + d.getMonth() - inicio.getMonth();
+    return d.getFullYear() - inicio.getFullYear();
+  };
+
+  const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
+  const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+  const rotulo = (i: number): string => {
+    if (agrupamento === "semana") {
+      const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i * 7);
+      return diaMes.format(d);
+    }
+    if (agrupamento === "mes") {
+      return mesAno.format(new Date(inicio.getFullYear(), inicio.getMonth() + i, 1)).replace(".", "");
+    }
+    return String(inicio.getFullYear() + i);
+  };
+
+  const pontos: PontoFluxoPeriodo[] = Array.from({ length: indice(fim) + 1 }, (_, i) => ({
+    label: rotulo(i), entradas: 0, saidas: 0,
+  }));
+  doPeriodo.forEach((l, i) => {
+    const ponto = pontos[indice(datas[i])];
+    if (l.tipo === "entrada") ponto.entradas += l.valor;
+    else ponto.saidas += l.valor;
+  });
+
+  return { agrupamento, pontos };
 }
 
 export interface NoCategoria {
