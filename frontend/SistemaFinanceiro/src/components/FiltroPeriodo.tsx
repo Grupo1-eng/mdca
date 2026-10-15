@@ -50,13 +50,13 @@ export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-[var(--border)] rounded-lg shadow-lg w-56 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-[var(--border)] rounded-lg shadow-lg w-48 overflow-hidden">
             <div className="py-1">
               {periodoOpcoes.map(op => (
                 <button
                   key={op.key}
                   onClick={() => { setPeriodo(op.key); if (op.key !== "personalizado") setOpen(false); }}
-                  className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer transition-colors ${periodo === op.key ? "bg-[#0f1e3d]/5 text-[#0f1e3d] font-medium" : "text-[var(--foreground)] hover:bg-[var(--muted)]"}`}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${periodo === op.key ? "bg-[#0f1e3d]/5 text-[#0f1e3d] font-medium" : "text-[var(--foreground)] hover:bg-[var(--muted)]"}`}
                 >
                   {op.label}
                   {periodo === op.key && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -64,7 +64,7 @@ export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni
               ))}
             </div>
             {periodo === "personalizado" && (
-              <div className="border-t border-[var(--border)] px-4 py-3 space-y-2">
+              <div className="border-t border-[var(--border)] px-3 py-2.5 space-y-2">
                 <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] mb-2">Intervalo de datas</p>
                 <div>
                   <label className="text-[10px] text-[var(--muted-foreground)] block mb-1">De</label>
