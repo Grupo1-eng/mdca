@@ -10,6 +10,7 @@ import {
   intervaloValido,
   resumoPeriodo,
   serieFluxoCaixa,
+  serieFluxoCaixaPeriodo,
   serieFluxoPeriodo,
 } from "./aggregations";
 
@@ -158,6 +159,38 @@ describe("serieFluxoPeriodo", () => {
     ], periodo("", "2026-08-16"));
     expect(pontos.map((p) => p.label)).toEqual(["10/08"]);
     expect(pontos[0].entradas).toBe(30);
+  });
+});
+
+describe("serieFluxoCaixaPeriodo", () => {
+  const hoje = new Date(2026, 8, 15);
+  const periodo = (de: string, ate: string) => getIntervaloPeriodo("personalizado", hoje, de, ate);
+
+  it("separa realizado e previsto em cada grupo do período", () => {
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
+      lanc({ tipo: "entrada", valor: 300, situacao: "recebido", dataCompetencia: "2026-07-05T00:00:00.000Z" }),
+      lanc({ tipo: "entrada", valor: 200, situacao: "pendente", dataCompetencia: "2026-07-20T00:00:00.000Z" }),
+      lanc({ tipo: "saida", valor: 50, situacao: "pago", dataCompetencia: "2026-09-02T00:00:00.000Z" }),
+      lanc({ tipo: "saida", valor: 25, situacao: "pendente", dataCompetencia: "2026-09-03T00:00:00.000Z" }),
+    ], periodo("2026-07-01", "2026-09-30"));
+    expect(agrupamento).toBe("mes");
+    expect(pontos).toHaveLength(3);
+    expect(pontos[0]).toMatchObject({ realizado: 300, previsto: 500, saidasRealizado: 0, saidasPrevisto: 0 });
+    expect(pontos[1]).toMatchObject({ realizado: 0, previsto: 0 });
+    expect(pontos[2]).toMatchObject({ realizado: 0, previsto: 0, saidasRealizado: 50, saidasPrevisto: 75 });
+  });
+
+  it("agrupa como o gráfico do Financeiro e ignora o que está fora do período", () => {
+    const lancamentos = [
+      lanc({ valor: 100, dataCompetencia: "2026-08-03T00:00:00.000Z" }),
+      lanc({ valor: 999, dataCompetencia: "2026-06-01T00:00:00.000Z" }),
+    ];
+    const agosto = periodo("2026-08-01", "2026-08-31");
+    const caixa = serieFluxoCaixaPeriodo(lancamentos, agosto);
+    const fluxo = serieFluxoPeriodo(lancamentos, agosto);
+    expect(caixa.agrupamento).toBe(fluxo.agrupamento);
+    expect(caixa.pontos.map((p) => p.label)).toEqual(fluxo.pontos.map((p) => p.label));
+    expect(caixa.pontos.reduce((a, p) => a + p.previsto, 0)).toBe(100);
   });
 });
 

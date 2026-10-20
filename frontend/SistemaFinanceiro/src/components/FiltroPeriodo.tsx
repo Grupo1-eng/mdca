@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { getIntervaloPeriodo, intervaloValido, type Intervalo, type PeriodoDash } from '@/lib/aggregations';
+import { getIntervaloPeriodo, intervaloValido, type AgrupamentoFluxo, type Intervalo, type PeriodoDash } from '@/lib/aggregations';
+
+// Duração (ms) da transição dos gráficos ao trocar de período; o padrão do
+// Recharts (1500 ms) deixava a troca lenta.
+export const DURACAO_ANIMACAO_GRAFICO = 400;
+
+/** "por semana", "por mês"… — subtítulo dos gráficos de fluxo que seguem o período. */
+export const rotuloAgrupamento: Record<AgrupamentoFluxo, string> = { semana: "semana", mes: "mês", ano: "ano" };
 
 // Filtro de período usado pelo Dashboard e pela tela Financeiro.
 const periodoOpcoes: { key: PeriodoDash; label: string }[] = [
@@ -32,12 +39,44 @@ export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni
   dataFim: string; setDataFim: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // No "Personalizado", as datas digitadas ficam em rascunho e só chegam à tela
+  // (cartões, tabela e gráfico) ao clicar em Aplicar. Fechar sem aplicar descarta.
+  const [editandoPersonalizado, setEditandoPersonalizado] = useState(false);
+  const [rascunhoIni, setRascunhoIni] = useState(dataIni);
+  const [rascunhoFim, setRascunhoFim] = useState(dataFim);
   const selected = periodoOpcoes.find(o => o.key === periodo)!;
-  const invalido = !intervaloValido(getIntervaloPeriodo("personalizado", new Date(), dataIni, dataFim));
+  const destacado = editandoPersonalizado ? "personalizado" : periodo;
+  const invalido = !intervaloValido(getIntervaloPeriodo("personalizado", new Date(), rascunhoIni, rascunhoFim));
+
+  const alternar = () => {
+    if (!open) {
+      setRascunhoIni(dataIni);
+      setRascunhoFim(dataFim);
+      setEditandoPersonalizado(periodo === "personalizado");
+    }
+    setOpen(o => !o);
+  };
+
+  const escolher = (key: PeriodoDash) => {
+    if (key === "personalizado") {
+      setEditandoPersonalizado(true);
+      return;
+    }
+    setEditandoPersonalizado(false);
+    setPeriodo(key);
+    setOpen(false);
+  };
+
+  const aplicar = () => {
+    setDataIni(rascunhoIni);
+    setDataFim(rascunhoFim);
+    setPeriodo("personalizado");
+    setOpen(false);
+  };
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={alternar}
         className="flex items-center gap-2 text-xs border border-[var(--border)] rounded-md px-3 py-1.5 bg-white hover:bg-[var(--muted)] transition-colors cursor-pointer"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--muted-foreground)]">
@@ -55,30 +94,30 @@ export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni
               {periodoOpcoes.map(op => (
                 <button
                   key={op.key}
-                  onClick={() => { setPeriodo(op.key); if (op.key !== "personalizado") setOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${periodo === op.key ? "bg-[#0f1e3d]/5 text-[#0f1e3d] font-medium" : "text-[var(--foreground)] hover:bg-[var(--muted)]"}`}
+                  onClick={() => escolher(op.key)}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${destacado === op.key ? "bg-[#0f1e3d]/5 text-[#0f1e3d] font-medium" : "text-[var(--foreground)] hover:bg-[var(--muted)]"}`}
                 >
                   {op.label}
-                  {periodo === op.key && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                  {destacado === op.key && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                 </button>
               ))}
             </div>
-            {periodo === "personalizado" && (
+            {editandoPersonalizado && (
               <div className="border-t border-[var(--border)] px-3 py-2.5 space-y-2">
                 <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] mb-2">Intervalo de datas</p>
                 <div>
                   <label className="text-[10px] text-[var(--muted-foreground)] block mb-1">De</label>
-                  <input type="date" value={dataIni} onChange={e => setDataIni(e.target.value)}
+                  <input type="date" value={rascunhoIni} onChange={e => setRascunhoIni(e.target.value)}
                     className="w-full h-8 px-2 text-xs border border-[var(--border)] rounded focus:outline-none focus:border-[#1a3a6b] font-mono" />
                 </div>
                 <div>
                   <label className="text-[10px] text-[var(--muted-foreground)] block mb-1">Até</label>
-                  <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                  <input type="date" value={rascunhoFim} onChange={e => setRascunhoFim(e.target.value)}
                     className="w-full h-8 px-2 text-xs border border-[var(--border)] rounded focus:outline-none focus:border-[#1a3a6b] font-mono" />
                 </div>
                 <p className="text-[10px] text-[var(--muted-foreground)]">Deixe um campo vazio para não limitar aquele lado.</p>
                 {invalido && <p role="alert" className="text-[10px] text-red-600">A data inicial deve ser anterior ou igual à final.</p>}
-                <button onClick={() => setOpen(false)} disabled={invalido} className="w-full h-8 bg-[#0f1e3d] text-white text-xs rounded hover:bg-[#1a3060] transition-colors cursor-pointer mt-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button onClick={aplicar} disabled={invalido} className="w-full h-8 bg-[#0f1e3d] text-white text-xs rounded hover:bg-[#1a3060] transition-colors cursor-pointer mt-1 disabled:opacity-50 disabled:cursor-not-allowed">
                   Aplicar
                 </button>
               </div>

@@ -189,12 +189,18 @@ const MAX_DIAS_POR_SEMANA = 62;
 const MAX_MESES_POR_MES = 24;
 
 /**
- * Entradas vs. saídas do período, para o gráfico de fluxo da tela Financeiro.
+ * Distribui os lançamentos do período em grupos para os gráficos de fluxo.
  * Agrupa por semana em períodos de até ~2 meses, por mês até 2 anos e por ano
  * acima disso. Um limite em aberto vai até o lançamento mais antigo/recente.
  * Semanas e meses sem lançamento aparecem zerados, para o eixo ser contínuo.
+ * `vazio` cria os valores de um grupo e `somar` acumula um lançamento nele.
  */
-export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): SerieFluxoPeriodo {
+function agruparNoPeriodo<T extends object>(
+  lancamentos: Lancamento[],
+  intervalo: Intervalo,
+  vazio: () => T,
+  somar: (ponto: T, l: Lancamento) => void,
+): { agrupamento: AgrupamentoFluxo; pontos: (T & { label: string })[] } {
   const doPeriodo = filtrarPorIntervalo(lancamentos, intervalo);
   if (doPeriodo.length === 0) return { agrupamento: "semana", pontos: [] };
 
@@ -227,16 +233,51 @@ export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Interval
     return String(inicio.getFullYear() + i);
   };
 
-  const pontos: PontoFluxoPeriodo[] = Array.from({ length: indice(fim) + 1 }, (_, i) => ({
-    label: rotulo(i), entradas: 0, saidas: 0,
-  }));
-  doPeriodo.forEach((l, i) => {
-    const ponto = pontos[indice(datas[i])];
-    if (l.tipo === "entrada") ponto.entradas += l.valor;
-    else ponto.saidas += l.valor;
-  });
+  const pontos = Array.from({ length: indice(fim) + 1 }, (_, i) => ({ label: rotulo(i), ...vazio() }));
+  doPeriodo.forEach((l, i) => somar(pontos[indice(datas[i])], l));
 
   return { agrupamento, pontos };
+}
+
+/** Entradas vs. saídas do período — gráfico de fluxo da tela Financeiro. */
+export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): SerieFluxoPeriodo {
+  return agruparNoPeriodo(
+    lancamentos,
+    intervalo,
+    () => ({ entradas: 0, saidas: 0 }),
+    (ponto, l) => {
+      if (l.tipo === "entrada") ponto.entradas += l.valor;
+      else ponto.saidas += l.valor;
+    },
+  );
+}
+
+export interface PontoFluxoCaixaPeriodo extends Omit<PontoFluxo, "mes"> {
+  label: string;
+}
+
+/**
+ * Realizado vs. previsto do período — gráfico de fluxo do Dashboard. Mesmos
+ * valores da `serieFluxoCaixa`, agrupados como na `serieFluxoPeriodo`.
+ */
+export function serieFluxoCaixaPeriodo(
+  lancamentos: Lancamento[],
+  intervalo: Intervalo,
+): { agrupamento: AgrupamentoFluxo; pontos: PontoFluxoCaixaPeriodo[] } {
+  return agruparNoPeriodo(
+    lancamentos,
+    intervalo,
+    () => ({ realizado: 0, previsto: 0, saidasRealizado: 0, saidasPrevisto: 0 }),
+    (ponto, l) => {
+      if (l.tipo === "entrada") {
+        ponto.previsto += l.valor;
+        if (l.situacao === "recebido") ponto.realizado += l.valor;
+      } else {
+        ponto.saidasPrevisto += l.valor;
+        if (l.situacao === "pago") ponto.saidasRealizado += l.valor;
+      }
+    },
+  );
 }
 
 export interface NoCategoria {

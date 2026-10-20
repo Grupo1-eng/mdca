@@ -4,11 +4,11 @@ import { fmt, formatDate } from '@/lib/format';
 import { useLancamentos } from '@/hooks/useLancamentos';
 import { useContas } from '@/hooks/useContas';
 import {
-  getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixa,
+  getIntervaloPeriodo, intervaloValido, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixaPeriodo,
   type PeriodoDash,
 } from '@/lib/aggregations';
 import { LoadingState, ErrorState } from './StatusMessage';
-import FiltroPeriodo, { formatIntervalo, labelPeriodo } from './FiltroPeriodo';
+import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, labelPeriodo, rotuloAgrupamento } from './FiltroPeriodo';
 
 export function SummaryCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -33,7 +33,7 @@ export default function Dashboard() {
   const intervalo = useMemo(() => getIntervaloPeriodo(periodo, new Date(), dataIni, dataFim), [periodo, dataIni, dataFim]);
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const { vencidas, vencendo } = useMemo(() => contasPendentes(lancamentos), [lancamentos]);
-  const chartData = useMemo(() => serieFluxoCaixa(lancamentos), [lancamentos]);
+  const fluxo = useMemo(() => serieFluxoCaixaPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
 
   return (
@@ -80,11 +80,20 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="font-semibold text-sm text-[var(--foreground)]">Fluxo de Caixa</h2>
-                  <p className="text-xs text-[var(--muted-foreground)]">Realizado vs. Previsto — últimos 6 meses</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Realizado vs. Previsto por {rotuloAgrupamento[fluxo.agrupamento]} — {formatIntervalo(periodo, intervalo)}
+                  </p>
                 </div>
               </div>
+              {fluxo.pontos.length === 0 ? (
+                <p className="h-[220px] flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+                  {intervaloValido(intervalo)
+                    ? "Nenhum lançamento no período selecionado."
+                    : "Período inválido: a data inicial deve ser anterior ou igual à final."}
+                </p>
+              ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <AreaChart data={fluxo.pontos} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="colorRealizado" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#0e7e6e" stopOpacity={0.15} />
@@ -96,17 +105,18 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" />
-                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                   <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                   <Tooltip
                     formatter={(v) => fmt(Number(v))}
                     contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6, fontFamily: "Instrument Sans" }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#0e7e6e" strokeWidth={2} fill="url(#colorRealizado)" dot={{ r: 3, fill: "#0e7e6e" }} />
-                  <Area type="monotone" dataKey="previsto" name="Previsto" stroke="#1a3a6b" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#colorPrevisto)" dot={false} />
+                  <Area type="monotone" dataKey="realizado" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Realizado" stroke="#0e7e6e" strokeWidth={2} fill="url(#colorRealizado)" dot={{ r: 3, fill: "#0e7e6e" }} />
+                  <Area type="monotone" dataKey="previsto" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Previsto" stroke="#1a3a6b" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#colorPrevisto)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </div>
 
             <div className="space-y-4">

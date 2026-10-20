@@ -10,13 +10,11 @@ import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
-import FiltroPeriodo, { formatIntervalo } from './FiltroPeriodo';
+import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
 import {
   dataDoLancamento, filtrarPorIntervalo, getIntervaloPeriodo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieFluxoPeriodo, type AgrupamentoFluxo, type PeriodoDash,
+  serieFluxoPeriodo, type PeriodoDash,
 } from '@/lib/aggregations';
-
-const rotuloAgrupamento: Record<AgrupamentoFluxo, string> = { semana: "semana", mes: "mês", ano: "ano" };
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -507,8 +505,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                       <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                       <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="entradas" name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="saidas" name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="entradas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="saidas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                   )}
