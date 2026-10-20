@@ -8,6 +8,7 @@ import {
   filtrarPorIntervalo,
   getIntervaloPeriodo,
   intervaloValido,
+  msAteProximoDia,
   resumoPeriodo,
   serieFluxoCaixa,
   serieFluxoCaixaPeriodo,
@@ -47,6 +48,52 @@ describe("resumoPeriodo", () => {
   it("conta um lançamento do dia 1º no mês certo", () => {
     const r = resumoPeriodo([lanc({ dataCompetencia: "2026-09-01T00:00:00.000Z" })], setembro);
     expect(r.qtdLancamentos).toBe(1);
+  });
+});
+
+describe("getIntervaloPeriodo até o fim do período", () => {
+  // 20/10/2026 é uma terça-feira.
+  const hoje = new Date(2026, 9, 20, 10, 30);
+
+  it("semana vai de domingo a sábado", () => {
+    expect(getIntervaloPeriodo("semana", hoje)).toEqual({
+      inicio: new Date(2026, 9, 18),
+      fim: new Date(2026, 9, 24, 23, 59, 59, 999),
+    });
+  });
+
+  it("semana que atravessa a virada do mês começa no mês anterior", () => {
+    // 01/10/2026 é uma quinta-feira: a semana vai de 27/09 a 03/10.
+    expect(getIntervaloPeriodo("semana", new Date(2026, 9, 1))).toEqual({
+      inicio: new Date(2026, 8, 27),
+      fim: new Date(2026, 9, 3, 23, 59, 59, 999),
+    });
+  });
+
+  it("mês, trimestre e ano terminam no último dia, não hoje", () => {
+    expect(getIntervaloPeriodo("mes", hoje).fim).toEqual(new Date(2026, 9, 31, 23, 59, 59, 999));
+    expect(getIntervaloPeriodo("trimestre", hoje)).toEqual({
+      inicio: new Date(2026, 7, 1),
+      fim: new Date(2026, 9, 31, 23, 59, 59, 999),
+    });
+    expect(getIntervaloPeriodo("ano", hoje).fim).toEqual(new Date(2026, 11, 31, 23, 59, 59, 999));
+  });
+
+  it("fevereiro termina no dia 28 ou 29", () => {
+    expect(getIntervaloPeriodo("mes", new Date(2026, 1, 10)).fim).toEqual(new Date(2026, 1, 28, 23, 59, 59, 999));
+    expect(getIntervaloPeriodo("mes", new Date(2028, 1, 10)).fim).toEqual(new Date(2028, 1, 29, 23, 59, 59, 999));
+  });
+
+  it("inclui no mês uma conta a pagar com vencimento depois de hoje", () => {
+    const futura = lanc({ id: 9, tipo: "saida", dataCompetencia: "2026-10-25T00:00:00.000Z" });
+    expect(filtrarPorIntervalo([futura], getIntervaloPeriodo("mes", hoje))).toHaveLength(1);
+  });
+});
+
+describe("msAteProximoDia", () => {
+  it("conta até a próxima meia-noite local", () => {
+    expect(msAteProximoDia(new Date(2026, 9, 20, 23, 0, 0))).toBe(60 * 60 * 1000);
+    expect(msAteProximoDia(new Date(2026, 9, 20, 0, 0, 0))).toBe(24 * 60 * 60 * 1000);
   });
 });
 
@@ -135,6 +182,7 @@ describe("serieFluxoPeriodo", () => {
       lanc({ tipo: "saida", valor: 30, dataCompetencia: "2026-03-01T00:00:00.000Z" }),
     ], periodo("2026-01-01", "2026-03-31"));
     expect(agrupamento).toBe("mes");
+    expect(pontos.map((p) => p.label)).toEqual(["jan/26", "fev/26", "mar/26"]);
     expect(pontos.map((p) => [p.entradas, p.saidas])).toEqual([[100, 0], [0, 0], [0, 30]]);
   });
 

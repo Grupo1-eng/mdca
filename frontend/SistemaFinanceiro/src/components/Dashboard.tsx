@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fmt, formatDate } from '@/lib/format';
 import { useLancamentos } from '@/hooks/useLancamentos';
 import { useContas } from '@/hooks/useContas';
 import {
-  getIntervaloPeriodo, intervaloValido, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixaPeriodo,
-  type PeriodoDash,
+  intervaloValido, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixaPeriodo,
 } from '@/lib/aggregations';
+import { usePeriodo } from '@/context/PeriodoContext';
 import { LoadingState, ErrorState } from './StatusMessage';
 import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, labelPeriodo, rotuloAgrupamento } from './FiltroPeriodo';
 
@@ -23,14 +23,11 @@ export function SummaryCard({ label, value, sub, color }: { label: string; value
 export default function Dashboard() {
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos } = useLancamentos();
   const { data: contas, loading: loadingContas, error: errorContas } = useContas();
-  const [periodo, setPeriodo] = useState<PeriodoDash>("semana");
-  const [dataIni, setDataIni] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  const { periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim, intervalo } = usePeriodo();
 
   const loading = loadingLancamentos || loadingContas;
   const error = errorLancamentos ?? errorContas;
 
-  const intervalo = useMemo(() => getIntervaloPeriodo(periodo, new Date(), dataIni, dataFim), [periodo, dataIni, dataFim]);
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const { vencidas, vencendo } = useMemo(() => contasPendentes(lancamentos), [lancamentos]);
   const fluxo = useMemo(() => serieFluxoCaixaPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);

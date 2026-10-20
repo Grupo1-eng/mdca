@@ -12,9 +12,10 @@ import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
 import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
 import {
-  dataDoLancamento, filtrarPorIntervalo, getIntervaloPeriodo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieFluxoPeriodo, type PeriodoDash,
+  dataDoLancamento, filtrarPorIntervalo, intervaloValido, resumoPeriodo, saldoTotalContas,
+  serieFluxoPeriodo,
 } from '@/lib/aggregations';
+import { usePeriodo } from '@/context/PeriodoContext';
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -329,9 +330,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
   const [anexosLoading, setAnexosLoading] = useState(false);
   const [modalNovo, setModalNovo] = useState(false);
-  const [periodo, setPeriodo] = useState<PeriodoDash>("mes");
-  const [dataIni, setDataIni] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  const { periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim, intervalo } = usePeriodo();
 
   const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
 
@@ -359,7 +358,6 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
   // Tabela, cartões e rodapé partem da mesma lista do período, para os
   // números sempre baterem.
-  const intervalo = useMemo(() => getIntervaloPeriodo(periodo, new Date(), dataIni, dataFim), [periodo, dataIni, dataFim]);
   const periodoValido = intervaloValido(intervalo);
   const periodoLabel = formatIntervalo(periodo, intervalo);
   const doPeriodo = useMemo(() => filtrarPorIntervalo(lancamentos, intervalo), [lancamentos, intervalo]);

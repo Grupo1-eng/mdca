@@ -24,24 +24,34 @@ function startOfWeek(d: Date): Date {
   return date;
 }
 
+/** Último instante do dia `dia` de `mes`; dia 0 é o último dia do mês anterior. */
+function fimDoDia(ano: number, mes: number, dia: number): Date {
+  return new Date(ano, mes, dia, 23, 59, 59, 999);
+}
+
+// Os períodos vão até o fim da semana/mês/trimestre/ano, e não até hoje, para
+// incluir o que já está lançado com data futura (ex.: contas a pagar do mês).
 export function getIntervaloPeriodo(
   periodo: PeriodoDash,
   hoje: Date = new Date(),
   dataIni?: string,
   dataFim?: string,
 ): Intervalo {
-  const fimHoje = new Date(hoje);
-  fimHoje.setHours(23, 59, 59, 999);
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth();
 
   switch (periodo) {
-    case "semana":
-      return { inicio: startOfWeek(hoje), fim: fimHoje };
+    case "semana": {
+      const inicio = startOfWeek(hoje);
+      return { inicio, fim: fimDoDia(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6) };
+    }
     case "mes":
-      return { inicio: new Date(hoje.getFullYear(), hoje.getMonth(), 1), fim: fimHoje };
+      return { inicio: new Date(ano, mes, 1), fim: fimDoDia(ano, mes + 1, 0) };
     case "trimestre":
-      return { inicio: new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1), fim: fimHoje };
+      // Os últimos 3 meses, contando o atual.
+      return { inicio: new Date(ano, mes - 2, 1), fim: fimDoDia(ano, mes + 1, 0) };
     case "ano":
-      return { inicio: new Date(hoje.getFullYear(), 0, 1), fim: fimHoje };
+      return { inicio: new Date(ano, 0, 1), fim: fimDoDia(ano, 12, 0) };
     case "todos":
       return { inicio: null, fim: null };
     case "personalizado":
@@ -51,6 +61,12 @@ export function getIntervaloPeriodo(
         fim: dataFim ? new Date(dataLocal(dataFim).setHours(23, 59, 59, 999)) : null,
       };
   }
+}
+
+/** Milissegundos até a próxima meia-noite local, para recalcular "hoje" na virada do dia. */
+export function msAteProximoDia(agora: Date = new Date()): number {
+  const amanha = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+  return amanha.getTime() - agora.getTime();
 }
 
 /** Falso quando a data inicial é posterior à final, o que não seleciona nada. */
@@ -221,14 +237,16 @@ function agruparNoPeriodo<T extends object>(
   };
 
   const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
-  const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+  const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "short" });
   const rotulo = (i: number): string => {
     if (agrupamento === "semana") {
       const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i * 7);
       return diaMes.format(d);
     }
     if (agrupamento === "mes") {
-      return mesAno.format(new Date(inicio.getFullYear(), inicio.getMonth() + i, 1)).replace(".", "");
+      // "out/26": o formato do Intl com ano ("out de 26") é longo para o eixo.
+      const d = new Date(inicio.getFullYear(), inicio.getMonth() + i, 1);
+      return `${nomeMes.format(d).replace(".", "")}/${String(d.getFullYear()).slice(-2)}`;
     }
     return String(inicio.getFullYear() + i);
   };
