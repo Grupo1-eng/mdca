@@ -45,14 +45,16 @@ Para restringir uma rota a perfis específicos:
 ## Acesso ao módulo financeiro
 
 O módulo financeiro guarda dados sensíveis da organização. Por isso, **só
-usuários com perfil financeiro podem acessá-lo**. Quem não tem esse perfil
-não consegue ver nem alterar nada do financeiro, mesmo estando logado.
+usuários com perfil financeiro ou administrativo podem acessá-lo**. Quem não
+tem um desses perfis não consegue ver nem alterar nada do financeiro, mesmo
+estando logado.
 
 ### O que foi feito
 
 - Criados 3 perfis de usuário: coordenador financeiro, gestor financeiro e
   analista financeiro.
 - Todas as rotas do módulo financeiro passaram a exigir um desses 3 perfis.
+- O perfil `administrativo` também passou a acessar o financeiro.
 - Criado um teste automático que confirma a regra
   (`src/modules/financeiro/financeiro-acesso.integration.spec.ts`).
 
@@ -63,10 +65,11 @@ não consegue ver nem alterar nada do financeiro, mesmo estando logado.
 | `coordenador_financeiro` | Sim                  |
 | `gestor_financeiro`      | Sim                  |
 | `analista_financeiro`    | Sim                  |
+| `administrativo`         | Sim                  |
 | Qualquer outro perfil    | Não                  |
 
 Os outros perfis são: `coordenador`, `tecnico_servico_social`,
-`tecnico_psicologia`, `educador` e `administrativo`.
+`tecnico_psicologia` e `educador`.
 
 ### Rotas protegidas
 
@@ -88,14 +91,14 @@ Continuam abertas a qualquer usuário logado as rotas `/api/projetos` e
 | Situação                                  | Resposta        |
 |-------------------------------------------|-----------------|
 | Sem token (não logado)                    | `401`           |
-| Logado, mas com perfil que não é financeiro | `403 Forbidden` |
-| Logado com perfil financeiro              | Acesso normal   |
+| Logado, mas com perfil sem acesso         | `403 Forbidden` |
+| Logado com perfil com acesso              | Acesso normal   |
 
 ### Como dar acesso a um usuário
 
-Ao cadastrar ou editar um usuário em `/api/usuarios`, informe um dos 3 perfis
-financeiros no campo `perfil`. Como no restante do sistema, só a coordenação
-cadastra usuários.
+Ao cadastrar ou editar um usuário em `/api/usuarios`, informe no campo `perfil`
+um dos perfis com acesso (os 3 financeiros ou `administrativo`). Como no
+restante do sistema, só a coordenação cadastra usuários.
 
 ### Onde está no código
 
@@ -113,5 +116,5 @@ npm test
 ```
 
 O teste `financeiro-acesso.integration.spec.ts` confere que os 3 perfis
-financeiros entram, que os demais perfis recebem 403 em todas as rotas
-financeiras e que quem não tem permissão não consegue gravar lançamento.
+financeiros e o `administrativo` entram, que os demais perfis recebem 403 em
+todas as rotas financeiras e que quem não tem permissão não consegue gravar lançamento.

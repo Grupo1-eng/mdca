@@ -10,7 +10,12 @@ import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
-import { dataDoLancamento, getIntervaloPeriodo, resumoPeriodo, saldoTotalContas, serieSemanalMesAtual } from '@/lib/aggregations';
+import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
+import {
+  dataDoLancamento, filtrarPorIntervalo, intervaloValido, resumoPeriodo, saldoTotalContas,
+  serieFluxoPeriodo,
+} from '@/lib/aggregations';
+import { usePeriodo } from '@/context/PeriodoContext';
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -325,6 +330,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
   const [anexosLoading, setAnexosLoading] = useState(false);
   const [modalNovo, setModalNovo] = useState(false);
+  const { periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim, intervalo } = usePeriodo();
 
   const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
 
@@ -350,23 +356,25 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
     { key: "fluxo", label: "Fluxo de Caixa" },
   ];
 
+  // Tabela, cartões e rodapé partem da mesma lista do período, para os
+  // números sempre baterem.
+  const periodoValido = intervaloValido(intervalo);
+  const periodoLabel = formatIntervalo(periodo, intervalo);
+  const doPeriodo = useMemo(() => filtrarPorIntervalo(lancamentos, intervalo), [lancamentos, intervalo]);
+
   const filtered =
     tab === "entradas"
-      ? lancamentos.filter((l) => l.tipo === "entrada")
+      ? doPeriodo.filter((l) => l.tipo === "entrada")
       : tab === "saidas"
-      ? lancamentos.filter((l) => l.tipo === "saida")
-      : lancamentos;
+      ? doPeriodo.filter((l) => l.tipo === "saida")
+      : doPeriodo;
 
   const totalEntradas = filtered.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
   const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + b.valor, 0);
 
-  const mesAtualLabel = useMemo(() => {
-    const texto = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
-    return texto.charAt(0).toUpperCase() + texto.slice(1);
-  }, []);
-  const resumoMes = useMemo(() => resumoPeriodo(lancamentos, getIntervaloPeriodo("mes")), [lancamentos]);
+  const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
-  const barData = useMemo(() => serieSemanalMesAtual(lancamentos), [lancamentos]);
+  const fluxo = useMemo(() => serieFluxoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
 
   const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
 
@@ -434,12 +442,14 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         <div className="flex items-baseline justify-between">
           <div>
             <h1 className="font-serif text-2xl text-[var(--foreground)]">Financeiro</h1>
-            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{mesAtualLabel}</p>
+            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{periodoLabel}</p>
           </div>
           <div className="flex gap-2">
-            <button className="text-xs border border-[var(--border)] rounded px-3 py-1.5 hover:bg-[var(--muted)] transition-colors">
-              Período ▾
-            </button>
+            <FiltroPeriodo
+              periodo={periodo} setPeriodo={setPeriodo}
+              dataIni={dataIni} setDataIni={setDataIni}
+              dataFim={dataFim} setDataFim={setDataFim}
+            />
             <button onClick={() => setModalNovo(true)} className="text-xs bg-[#1a3a6b] text-white rounded px-3 py-1.5 hover:bg-[#142e57] transition-colors cursor-pointer">
               + Lançamento
             </button>
@@ -451,9 +461,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         {loading ? <LoadingState /> : (
           <>
             <div className="grid grid-cols-4 gap-4">
-              <SummaryCard label="Total entradas" value={fmt(resumoMes.entradas)} sub={mesAtualLabel} color="text-[#0e7e6e]" />
-              <SummaryCard label="Total saídas" value={fmt(resumoMes.saidas)} sub={mesAtualLabel} color="text-red-600" />
-              <SummaryCard label="Saldo do período" value={fmt(resumoMes.entradas - resumoMes.saidas)} sub="Resultado operacional" />
+              <SummaryCard label="Total entradas" value={fmt(resumo.entradas)} sub={periodoLabel} color="text-[#0e7e6e]" />
+              <SummaryCard label="Total saídas" value={fmt(resumo.saidas)} sub={periodoLabel} color="text-red-600" />
+              <SummaryCard label="Saldo do período" value={fmt(resumo.entradas - resumo.saidas)} sub="Resultado operacional" />
               <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
             </div>
 
@@ -476,18 +486,28 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
               {tab === "fluxo" ? (
                 <div className="p-5">
-                  <p className="text-sm text-[var(--muted-foreground)] mb-4">Entradas vs. Saídas por semana — {mesAtualLabel}</p>
+                  <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                    Entradas vs. Saídas por {rotuloAgrupamento[fluxo.agrupamento]} — {periodoLabel}
+                  </p>
+                  {fluxo.pontos.length === 0 ? (
+                    <p className="h-[260px] flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+                      {periodoValido
+                        ? "Nenhum lançamento no período selecionado."
+                        : "Período inválido: a data inicial deve ser anterior ou igual à final."}
+                    </p>
+                  ) : (
                   <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={barData} barGap={4}>
+                    <BarChart data={fluxo.pontos} barGap={4}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                       <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
                       <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="entradas" name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="saidas" name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="entradas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="saidas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -502,6 +522,15 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                       </tr>
                     </thead>
                     <tbody>
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td colSpan={ANEXOS_DISPONIVEIS ? 7 : 6} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                            {periodoValido
+                              ? "Nenhum lançamento no período selecionado."
+                              : "Período inválido: a data inicial deve ser anterior ou igual à final."}
+                          </td>
+                        </tr>
+                      )}
                       {filtered.map((l) => {
                         const qtd = (anexosPorLanc[l.id] ?? []).length;
                         return (

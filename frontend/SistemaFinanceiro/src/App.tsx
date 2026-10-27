@@ -9,6 +9,7 @@ import Usuarios from "@/components/Usuarios";
 import { LoginScreen } from "@/components/AuthScreens";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { PeriodoProvider } from "@/context/PeriodoContext";
 import type { AuthUser } from "@/types/financeiro";
 
 function AreaLogada({ user }: { user: AuthUser }) {
@@ -23,17 +24,20 @@ function AreaLogada({ user }: { user: AuthUser }) {
     }]);
   };
 
-  return <div className="min-h-screen bg-[var(--background)]">
-    <NavBar active={module} setModule={setModule} logs={logs} onClearLogs={() => setLogs([])} />
-    <main className="max-w-screen-xl mx-auto px-6 py-7">
-      {module === "inicio" && <Dashboard />}
-      {module === "financeiro" && <Financeiro addLog={addLog} />}
-      {module === "projetos" && <Projetos addLog={addLog} />}
-      {module === "relatorios" && <Relatorios />}
-      {module === "cadastros" && <Cadastros addLog={addLog} />}
-      {module === "usuarios" && user.perfil === "coordenador" && <Usuarios addLog={addLog} />}
-    </main>
-  </div>;
+  // PeriodoProvider: o filtro de período é o mesmo no Início e no Financeiro.
+  return <PeriodoProvider>
+    <div className="min-h-screen bg-[var(--background)]">
+      <NavBar active={module} setModule={setModule} logs={logs} onClearLogs={() => setLogs([])} />
+      <main className="max-w-screen-xl mx-auto px-6 py-7">
+        {module === "inicio" && <Dashboard />}
+        {module === "financeiro" && <Financeiro addLog={addLog} />}
+        {module === "projetos" && <Projetos addLog={addLog} />}
+        {module === "relatorios" && <Relatorios />}
+        {module === "cadastros" && <Cadastros addLog={addLog} />}
+        {module === "usuarios" && user.perfil === "coordenador" && <Usuarios addLog={addLog} />}
+      </main>
+    </div>
+  </PeriodoProvider>;
 }
 
 function AppShell() {
