@@ -7,6 +7,8 @@ import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { UsuarioAutenticado } from '../../auth/decorators/usuario-atual.decorator';
+import { PERFIS_FINANCEIRO, Perfil } from '../../auth/perfis.constants';
+import { RegistroAuditoriaService } from '../auditorias/registro-auditoria.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 
@@ -20,10 +22,19 @@ const usuarioSelect = {
   criadoEm: true,
 } as const;
 
+// O log do financeiro registra o que muda o acesso a ele: usuários que têm ou
+// passam a ter um perfil financeiro.
+function envolveFinanceiro(...perfis: (string | undefined)[]) {
+  return perfis.some((p) => p !== undefined && PERFIS_FINANCEIRO.includes(p as Perfil));
+}
+
 // Todas as operações ficam restritas à organização de quem está autenticado.
 @Injectable()
 export class UsuariosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditoria: RegistroAuditoriaService,
+  ) {}
 
   async listarTodos(organizacaoId: number) {
     return this.prisma.usuario.findMany({
@@ -35,8 +46,12 @@ export class UsuariosService {
     });
   }
 
-  async buscarPorId(id: number, organizacaoId: number) {
-    const usuario = await this.prisma.usuario.findFirst({
+  async buscarPorId(
+    id: number,
+    organizacaoId: number,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
+    const usuario = await db.usuario.findFirst({
       where: { id, organizacaoId },
       select: usuarioSelect,
     });
@@ -62,9 +77,15 @@ export class UsuariosService {
       senhaHash,
     };
 
-    return this.prisma.usuario.create({
-      data,
-      select: usuarioSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.create({
+        data,
+        select: usuarioSelect,
+      });
+      if (envolveFinanceiro(usuario.perfil)) {
+        await this.auditoria.criacao(tx, 'usuario', usuario);
+      }
+      return usuario;
     });
   }
 
@@ -73,7 +94,7 @@ export class UsuariosService {
     dados: UpdateUsuarioDto,
     autor: UsuarioAutenticado,
   ) {
-    await this.buscarPorId(id, autor.organizacaoId);
+    const antes = await this.buscarPorId(id, autor.organizacaoId);
 
     // Impede que a coordenação se tranque para fora: sem isso, a única conta
     // de coordenação poderia se rebaixar ou se desativar e ninguém mais
@@ -100,26 +121,44 @@ export class UsuariosService {
       data.senhaHash = await bcrypt.hash(senha, 10);
     }
 
-    return this.prisma.usuario.update({
-      where: { id },
-      data,
-      select: usuarioSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const depois = await tx.usuario.update({
+        where: { id },
+        data,
+        select: usuarioSelect,
+      });
+      if (envolveFinanceiro(antes.perfil, depois.perfil)) {
+        await this.auditoria.atualizacao(
+          tx,
+          'usuario',
+          antes,
+          depois,
+          senha ? { senha: { alterado: true } } : {},
+        );
+      }
+      return depois;
     });
   }
 
   async inativar(id: number, autor: UsuarioAutenticado) {
-    await this.buscarPorId(id, autor.organizacaoId);
+    const antes = await this.buscarPorId(id, autor.organizacaoId);
 
     if (id === autor.id) {
       throw new BadRequestException('Você não pode inativar a própria conta.');
     }
 
-    return this.prisma.usuario.update({
-      where: { id },
-      data: {
-        ativo: false,
-      },
-      select: usuarioSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const depois = await tx.usuario.update({
+        where: { id },
+        data: {
+          ativo: false,
+        },
+        select: usuarioSelect,
+      });
+      if (envolveFinanceiro(depois.perfil)) {
+        await this.auditoria.atualizacao(tx, 'usuario', antes, depois);
+      }
+      return depois;
     });
   }
 }

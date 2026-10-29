@@ -9,6 +9,8 @@ const RECURSOS = {
   fonte_de_recurso: { nome: 'Fonte de recurso', feminino: true },
   orcamento: { nome: 'Orçamento', feminino: false },
   projeto: { nome: 'Projeto', feminino: false },
+  // Só quando a alteração envolve acesso ao financeiro.
+  usuario: { nome: 'Usuário', feminino: false },
 } as const;
 
 export type RecursoAuditado = keyof typeof RECURSOS;
@@ -28,6 +30,7 @@ const CAMPOS_ATIVO = ['ativa', 'ativo'];
 // distinguir "pagou o lançamento" ou "inativou a conta" de uma edição comum.
 export function acaoDeAtualizacao(alteracoes: Alteracoes): string {
   const campos = Object.keys(alteracoes);
+  if (campos.includes('perfil')) return 'mudar_perfil';
   if (campos.includes('saldoAtual')) return 'ajustar_saldo';
   if (campos.length !== 1) return 'atualizar';
 
@@ -54,6 +57,10 @@ export function resumoAuditoria(
     const [campo] = Object.keys(alteracoes);
     const alteracao = alteracoes[campo];
     if ('para' in alteracao) return `${alvo}: situação ${alteracao.de} → ${alteracao.para}`;
+  }
+  if (acao === 'mudar_perfil') {
+    const alteracao = alteracoes.perfil;
+    if ('para' in alteracao) return `${alvo}: perfil ${alteracao.de} → ${alteracao.para}`;
   }
   if (acao === 'ajustar_saldo') return `${alvo}: saldo atual ajustado`;
 

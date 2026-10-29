@@ -14,6 +14,8 @@ describe('Acesso ao módulo financeiro por perfil (integração)', () => {
   const prisma = {
     usuario: { findUnique: jest.fn() },
     lancamento: { findMany: jest.fn(), create: jest.fn() },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -57,6 +59,7 @@ describe('Acesso ao módulo financeiro por perfil (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
   });
 
   function logadoComo(perfil: string) {

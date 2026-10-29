@@ -41,8 +41,10 @@ export class RegistroAuditoriaService {
     recursoTipo: RecursoAuditado,
     antes: Registro,
     depois: Registro,
+    // Alterações que não aparecem no registro lido do banco (ex.: senha redefinida).
+    extras: Alteracoes = {},
   ) {
-    const alteracoes = diferencas(antes, depois);
+    const alteracoes = { ...diferencas(antes, depois), ...extras };
     if (Object.keys(alteracoes).length === 0) return;
     await this.alteracao(tx, recursoTipo, acaoDeAtualizacao(alteracoes), depois, alteracoes);
   }
