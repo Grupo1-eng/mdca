@@ -9,6 +9,7 @@ import { getFontes } from "./fontes";
 import { getOrcamentos } from "./orcamentos";
 import { getProjetos } from "./projetos";
 import { createUsuario, inativarUsuario, updateUsuario } from "./usuarios";
+import { exportarAuditoriaCsv, getAuditoria, getHistorico } from "./auditorias";
 
 function resposta(status: number, corpo?: unknown) {
   return {
@@ -155,5 +156,34 @@ describe("recursos", () => {
     await updateLancamento(5, { situacao: "pago" });
     expect(chamada().url).toBe("http://localhost:3000/api/lancamentos/5");
     expect(chamada().init.method).toBe("PUT");
+  });
+});
+
+describe("auditoria", () => {
+  it("envia só os filtros preenchidos e o cursor na query", async () => {
+    fetchMock.mockResolvedValue(resposta(200, { itens: [], proximoCursor: null }));
+    await getAuditoria({ acao: "excluir", recursoTipo: "", de: "2026-10-01" }, 40);
+    expect(chamada().url).toBe("http://localhost:3000/api/auditorias?acao=excluir&de=2026-10-01&cursor=40");
+  });
+
+  it("histórico de um registro usa tipo e id na rota", async () => {
+    fetchMock.mockResolvedValue(resposta(200, { itens: [], proximoCursor: null }));
+    await getHistorico("conta_financeira", 3);
+    expect(chamada().url).toBe("http://localhost:3000/api/auditorias/conta_financeira/3");
+  });
+
+  it("exportação baixa o CSV com o token e devolve o arquivo", async () => {
+    setToken("abc");
+    const csv = new Blob(["data_hora;acao"], { type: "text/csv" });
+    fetchMock.mockResolvedValue({ ...resposta(200), blob: async () => csv });
+    const arquivo = await exportarAuditoriaCsv({ ate: "2026-10-31" });
+    expect(chamada().url).toBe("http://localhost:3000/api/auditorias/exportar?ate=2026-10-31");
+    expect(chamada().init.headers.Authorization).toBe("Bearer abc");
+    expect(arquivo).toBe(csv);
+  });
+
+  it("exportação recusada repassa a mensagem do backend", async () => {
+    fetchMock.mockResolvedValue(resposta(400, { message: "Restrinja o período." }));
+    await expect(exportarAuditoriaCsv({})).rejects.toThrow("Restrinja o período.");
   });
 });

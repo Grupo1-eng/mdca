@@ -6,6 +6,8 @@ import Projetos from "@/components/Projetos";
 import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
 import Usuarios from "@/components/Usuarios";
+import Auditoria from "@/components/Auditoria";
+import { podeVerAuditoria } from "@/lib/auditoria";
 import { LoginScreen } from "@/components/AuthScreens";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -35,6 +37,7 @@ function AreaLogada({ user }: { user: AuthUser }) {
         {module === "relatorios" && <Relatorios />}
         {module === "cadastros" && <Cadastros addLog={addLog} />}
         {module === "usuarios" && user.perfil === "coordenador" && <Usuarios addLog={addLog} />}
+        {module === "auditoria" && podeVerAuditoria(user.perfil) && <Auditoria />}
       </main>
     </div>
   </PeriodoProvider>;

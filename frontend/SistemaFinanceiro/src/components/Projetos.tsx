@@ -6,6 +6,7 @@ import { LoadingState, ErrorState } from './StatusMessage';
 import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
 import { type LogEntry } from './NavBar';
 import type { NovoProjeto, TipoProjeto } from '@/types/financeiro';
+import BotaoHistorico from './BotaoHistorico';
 
 const statusColors: Record<string, string> = {
   "Em andamento": "bg-emerald-100 text-emerald-800",
@@ -228,9 +229,12 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
                         </div>
                         {p.descricao && <p className="text-xs text-[var(--muted-foreground)]">{p.descricao}</p>}
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-3 ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
-                        {p.status}
-                      </span>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <BotaoHistorico recursoTipo="projeto" recursoId={p.id} titulo={p.nome} />
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
+                          {p.status}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)] font-mono mb-4">

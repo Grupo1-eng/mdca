@@ -4,6 +4,7 @@ import { arvoreCategorias } from '@/lib/aggregations';
 import { type LogEntry } from './NavBar';
 import { LoadingState, ErrorState } from './StatusMessage';
 import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
+import BotaoHistorico from './BotaoHistorico';
 import { useContatos } from '@/hooks/useContatos';
 import { useContas } from '@/hooks/useContas';
 import { useFontes } from '@/hooks/useFontes';
@@ -164,6 +165,7 @@ function CadContatos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp"
                       <td className="px-4 py-3 text-xs font-mono text-[var(--muted-foreground)]">{c.telefone ?? "—"}</td>
                       <td className="px-4 py-3 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => abrirEdicao(c)} className="text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
+                        <span className="ml-3"><BotaoHistorico recursoTipo="contato" recursoId={c.id} titulo={c.nome} /></span>
                       </td>
                     </tr>
                   ))}
@@ -341,6 +343,8 @@ function CadContas({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
                     <p className="text-lg font-semibold text-[#0e7e6e] font-mono">{fmt(c.saldoAtual)}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded font-medium ${c.ativa?"bg-[#0e7e6e]/10 text-[#0e7e6e]":"bg-[var(--muted)] text-[var(--muted-foreground)]"}`}>{c.ativa ? "Ativa" : "Inativa"}</span>
+                  <BotaoHistorico recursoTipo="conta_financeira" recursoId={c.id} titulo={c.nome}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-xs border border-[var(--border)] rounded px-2.5 py-1 hover:bg-[var(--muted)] cursor-pointer" />
                   <button onClick={() => abrirEdicao(c)} className="opacity-0 group-hover:opacity-100 transition-opacity text-xs border border-[var(--border)] rounded px-2.5 py-1 hover:bg-[var(--muted)] cursor-pointer">Editar</button>
                 </div>
               </div>
@@ -466,6 +470,7 @@ function CadFontes({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">)
                     </td>
                     <td className="px-4 py-3.5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => abrirEdicao(f)} className="text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
+                      <span className="ml-3"><BotaoHistorico recursoTipo="fonte_de_recurso" recursoId={f.id} titulo={f.nome} /></span>
                     </td>
                   </tr>
                 ))}
@@ -690,7 +695,10 @@ function CadCategorias({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestam
                             <span className="w-1 h-1 rounded-full bg-[var(--muted-foreground)]" />
                             <span className="text-sm text-[var(--muted-foreground)]">{sub.nome}</span>
                           </div>
-                          <button onClick={() => setEditandoSub(sub)} className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                            <BotaoHistorico recursoTipo="categoria_financeira" recursoId={sub.id} titulo={sub.nome} />
+                            <button onClick={() => setEditandoSub(sub)} className="text-xs text-[#1a3a6b] hover:underline cursor-pointer">Editar</button>
+                          </div>
                         </div>
                       ))}
                       <div className="px-5 py-3 pl-16">
