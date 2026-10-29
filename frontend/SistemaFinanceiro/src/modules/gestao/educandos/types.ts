@@ -79,6 +79,8 @@ export interface Encaminhamento {
   dataHora: string
   destino: string
   motivo: string
+  // Situação atual guardada no servidor; usada quando não há acompanhamentos.
+  situacao?: StatusEncaminhamento
   acompanhamentos: AcompanhamentoEncaminhamento[]
 }
 

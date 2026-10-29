@@ -11,24 +11,10 @@ import { useAuth } from "@/context/AuthContext"
 import * as api from "../api/educandos"
 import { deEducandoApi, ehIdPersistido } from "../api/educandosMapper"
 import { salvarEducandoRemoto } from "../api/educandosFluxo"
-import {
-  atendimentosSeed,
-  atividadesSeed,
-  encaminhamentosSeed,
-  encontrosSeed,
-  iniciativasSeed,
-} from "./data/mock"
+import { atividadesSeed, encontrosSeed, iniciativasSeed } from "./data/mock"
 import { salvarAtividadeEmMemoria } from "../atividades/model"
 import { permissoesEducandos } from "./model"
-import type {
-  AcompanhamentoEncaminhamento,
-  Atendimento,
-  Atividade,
-  Educando,
-  Encaminhamento,
-  Encontro,
-  Iniciativa,
-} from "./types"
+import type { Atividade, Educando, Encontro, Iniciativa } from "./types"
 
 export type SaveState = "idle" | "saving" | "saved" | "error"
 
@@ -37,8 +23,9 @@ export type CargaEducandos = "ociosa" | "carregando" | "pronta" | "erro"
 
 interface EducandosContextValue {
   iniciativas: Iniciativa[]
-  // Educandos vêm da API real (GET /api/educandos). Os demais dados desta
-  // tela ainda são mock, até as próximas fases da integração.
+  // Educandos vêm da API real (GET /api/educandos); atendimentos e
+  // encaminhamentos, de useEvolucoesEducando. Atividades, encontros e
+  // iniciativas ainda são mock, até as próximas fases da integração.
   educandos: Educando[]
   cargaEducandos: CargaEducandos
   erroEducandos: string | null
@@ -46,20 +33,12 @@ interface EducandosContextValue {
   carregarEducandos: () => void
   // Busca a ficha completa (com responsáveis) e atualiza a lista.
   carregarEducando: (id: string) => Promise<void>
-  atendimentos: Atendimento[]
-  encaminhamentos: Encaminhamento[]
   atividades: Atividade[]
   encontros: Encontro[]
   iniciativaNome: (id: string) => string
   // Devolve o registro salvo, com o id definitivo do servidor.
   salvarEducando: (educando: Educando) => Promise<Educando>
   alternarSituacaoEducando: (id: string) => Promise<void>
-  registrarEvolucao: (atendimento: Atendimento) => void
-  registrarEncaminhamento: (encaminhamento: Encaminhamento) => void
-  registrarAcompanhamento: (
-    encaminhamentoId: string,
-    acompanhamento: AcompanhamentoEncaminhamento,
-  ) => void
   salvarAtividade: (atividade: Atividade) => void
 }
 
@@ -72,8 +51,6 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     useState<CargaEducandos>("ociosa")
   const cargaAtual = useRef<CargaEducandos>("ociosa")
   const [erroEducandos, setErroEducandos] = useState<string | null>(null)
-  const [atendimentos, setAtendimentos] = useState(atendimentosSeed)
-  const [encaminhamentos, setEncaminhamentos] = useState(encaminhamentosSeed)
   const [atividades, setAtividades] = useState(atividadesSeed)
   const atividadesAtuais = useRef(atividadesSeed)
 
@@ -163,39 +140,6 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     [mesclarEducando],
   )
 
-  const registrarEvolucao = useCallback((atendimento: Atendimento) => {
-    setAtendimentos((atuais) => [atendimento, ...atuais])
-  }, [])
-
-  const registrarEncaminhamento = useCallback(
-    (encaminhamento: Encaminhamento) => {
-      setEncaminhamentos((atuais) => [encaminhamento, ...atuais])
-    },
-    [],
-  )
-
-  const registrarAcompanhamento = useCallback(
-    (
-      encaminhamentoId: string,
-      acompanhamento: AcompanhamentoEncaminhamento,
-    ) => {
-      setEncaminhamentos((atuais) =>
-        atuais.map((encaminhamento) =>
-          encaminhamento.id === encaminhamentoId
-            ? {
-                ...encaminhamento,
-                acompanhamentos: [
-                  ...encaminhamento.acompanhamentos,
-                  acompanhamento,
-                ],
-              }
-            : encaminhamento,
-        ),
-      )
-    },
-    [],
-  )
-
   const salvarAtividade = useCallback((registro: Atividade) => {
     // Mesmo padrão de salvarEducando: a validação lança erro de forma síncrona.
     const proximas = salvarAtividadeEmMemoria(atividadesAtuais.current, registro)
@@ -211,16 +155,11 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       erroEducandos,
       carregarEducandos,
       carregarEducando,
-      atendimentos,
-      encaminhamentos,
       atividades,
       encontros: encontrosSeed,
       iniciativaNome,
       salvarEducando,
       alternarSituacaoEducando,
-      registrarEvolucao,
-      registrarEncaminhamento,
-      registrarAcompanhamento,
       salvarAtividade,
     }),
     [
@@ -229,16 +168,11 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       erroEducandos,
       carregarEducandos,
       carregarEducando,
-      atendimentos,
-      encaminhamentos,
       atividades,
       salvarAtividade,
       iniciativaNome,
       salvarEducando,
       alternarSituacaoEducando,
-      registrarEvolucao,
-      registrarEncaminhamento,
-      registrarAcompanhamento,
     ],
   )
 

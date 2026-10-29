@@ -232,7 +232,7 @@ export function situacaoAtualEncaminhamento(
   const ultimo = [...encaminhamento.acompanhamentos]
     .sort((a, b) => a.data.localeCompare(b.data))
     .at(-1)
-  return ultimo?.situacao ?? "Pendente"
+  return ultimo?.situacao ?? encaminhamento.situacao ?? "Pendente"
 }
 
 export function nomePerfil(perfil: Perfil): string {

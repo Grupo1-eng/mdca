@@ -1,16 +1,15 @@
 import { useState, type FormEvent } from "react"
 import { useAuth } from "@/context/AuthContext"
-import {
-  useEducandosGestao,
-  usePermissoesEducandos,
-  useSalvarGestao,
-} from "../EducandosContext"
-import { nomePerfil, novoId, situacaoAtualEncaminhamento } from "../model"
+import { ErrorState, LoadingState } from "@/components/StatusMessage"
+import { CAMPOS_AGUARDANDO_MIGRACAO } from "../../api/educandosMapper"
+import { usePermissoesEducandos, useSalvarGestao } from "../EducandosContext"
+import { nomePerfil, situacaoAtualEncaminhamento } from "../model"
 import type {
   Atendimento,
   Encaminhamento,
   StatusEncaminhamento,
 } from "../types"
+import { useEvolucoesEducando } from "../useEvolucoesEducando"
 import { useRascunho } from "../useRascunho"
 import {
   Badge,
@@ -24,6 +23,17 @@ import {
 
 const primaryButton =
   "inline-flex h-9 items-center rounded-md bg-[#0f1e3d] px-3 text-sm font-medium text-white hover:bg-[#1a3060] disabled:opacity-50"
+// Campos sem coluna no banco até a migration da Sprint 3 ser aplicada.
+const pendente = CAMPOS_AGUARDANDO_MIGRACAO
+const AVISO_PENDENTE =
+  "Ainda não é salvo no servidor: aguardando a migration da Sprint 3."
+
+type FormAcompanhamento = {
+  data: string
+  situacao: StatusEncaminhamento
+  observacao: string
+}
+
 const secondaryButton =
   "inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-white px-3 text-sm font-medium hover:bg-[var(--muted)]"
 
@@ -53,9 +63,11 @@ function AtendimentoCard({
       </div>
       <p className="mt-2 text-sm font-medium">
         {atendimento.profissional}{" "}
-        <span className="text-xs font-normal text-[var(--muted-foreground)]">
-          ({atendimento.perfilProfissional})
-        </span>
+        {atendimento.perfilProfissional && (
+          <span className="text-xs font-normal text-[var(--muted-foreground)]">
+            ({atendimento.perfilProfissional})
+          </span>
+        )}
       </p>
       {oculto ? (
         <div className="mt-3">
@@ -87,15 +99,16 @@ function AtendimentoCard({
 
 function EncaminhamentoCard({
   encaminhamento,
+  onAcompanhar,
 }: {
   encaminhamento: Encaminhamento
+  onAcompanhar: (form: FormAcompanhamento) => Promise<void>
 }) {
-  const { registrarAcompanhamento } = useEducandosGestao()
   const { estado, mensagem, salvar } = useSalvarGestao()
   const [formAberto, setFormAberto] = useState(false)
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const situacao = situacaoAtualEncaminhamento(encaminhamento)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormAcompanhamento>({
     data: new Date().toISOString().slice(0, 10),
     situacao,
     observacao: "",
@@ -106,14 +119,7 @@ function EncaminhamentoCard({
 
   const gravar = async (event: FormEvent) => {
     event.preventDefault()
-    const ok = await salvar(() =>
-      registrarAcompanhamento(encaminhamento.id, {
-        id: novoId("acp"),
-        data: form.data,
-        situacao: form.situacao,
-        observacao: form.observacao,
-      }),
-    )
+    const ok = await salvar(() => onAcompanhar(form))
     if (ok) {
       setForm({ ...form, observacao: "" })
       setFormAberto(false)
@@ -152,13 +158,19 @@ function EncaminhamentoCard({
           {formatarDataHora(encaminhamento.dataHora)}
         </span>
       </div>
-      <p className="mt-2 text-sm font-medium">{encaminhamento.destino}</p>
-      <p className="text-sm text-[var(--muted-foreground)]">
-        {encaminhamento.motivo}
+      <p className="mt-2 text-sm font-medium">
+        {encaminhamento.destino || "Destino não informado"}
       </p>
-      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-        Registrado por {encaminhamento.profissional}
-      </p>
+      {encaminhamento.motivo && (
+        <p className="text-sm text-[var(--muted-foreground)]">
+          {encaminhamento.motivo}
+        </p>
+      )}
+      {encaminhamento.profissional && (
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          Registrado por {encaminhamento.profissional}
+        </p>
+      )}
 
       {historicoAberto && (
         <ul className="mt-3 space-y-2 border-l border-dashed border-[var(--border)] pl-4">
@@ -255,9 +267,13 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
   const {
     atendimentos,
     encaminhamentos,
-    registrarEvolucao,
+    carga,
+    erro,
+    recarregar,
+    registrarAtendimento,
     registrarEncaminhamento,
-  } = useEducandosGestao()
+    registrarAcompanhamento,
+  } = useEvolucoesEducando(educandoId, permissoes.verEvolucao)
   const { estado, mensagem, salvar } = useSalvarGestao()
   const [novoAtendimento, setNovoAtendimento] = useState(false)
   const [novoEncaminhamento, setNovoEncaminhamento] = useState(false)
@@ -304,14 +320,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
   const salvarAtendimento = async (event: FormEvent) => {
     event.preventDefault()
     if (!user) return
-    const registro: Atendimento = {
-      id: novoId("at"),
-      educandoId,
-      profissional: user.nome,
-      perfilProfissional: nomePerfil(user.perfil),
-      ...form,
-    }
-    const ok = await salvar(() => registrarEvolucao(registro))
+    const ok = await salvar(() => registrarAtendimento(form))
     if (ok) {
       limparForm()
       setForm({
@@ -327,16 +336,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
   const salvarEncaminhamento = async (event: FormEvent) => {
     event.preventDefault()
     if (!user) return
-    const registro: Encaminhamento = {
-      id: novoId("enc"),
-      educandoId,
-      profissional: user.nome,
-      dataHora: new Date().toISOString().slice(0, 16),
-      destino: formEnc.destino,
-      motivo: formEnc.motivo,
-      acompanhamentos: [],
-    }
-    const ok = await salvar(() => registrarEncaminhamento(registro))
+    const ok = await salvar(() => registrarEncaminhamento(formEnc))
     if (ok) {
       limparEnc()
       setFormEnc({ destino: "", motivo: "" })
@@ -354,13 +354,23 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
           + Novo atendimento
         </button>
         <button
-          className={secondaryButton}
+          className={`${secondaryButton} disabled:cursor-not-allowed disabled:opacity-50`}
           onClick={() => setNovoEncaminhamento((atual) => !atual)}
+          disabled={pendente}
+          title={pendente ? "Destino e motivo dependem da migration da Sprint 3." : undefined}
         >
           + Novo encaminhamento
         </button>
         <SaveStatus estado={estado} />
       </div>
+      {pendente && (
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Novos encaminhamentos ficam disponíveis quando a migration da Sprint
+          3 for aplicada (destino, motivo e profissional ainda não têm coluna
+          no banco). Os acompanhamentos dos encaminhamentos existentes já
+          funcionam.
+        </p>
+      )}
       {mensagem && <SensitiveNote>{mensagem}</SensitiveNote>}
 
       {novoAtendimento && (
@@ -399,6 +409,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
                   rows={3}
                   className={textareaClass}
                   value={form.intervencaoUsuario}
+                  disabled={pendente}
                   onChange={(event) =>
                     setForm({ ...form, intervencaoUsuario: event.target.value })
                   }
@@ -409,6 +420,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
                   rows={3}
                   className={textareaClass}
                   value={form.intervencaoFamilia}
+                  disabled={pendente}
                   onChange={(event) =>
                     setForm({ ...form, intervencaoFamilia: event.target.value })
                   }
@@ -418,6 +430,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                disabled={pendente}
                 checked={form.sigiloso}
                 onChange={(event) =>
                   setForm({ ...form, sigiloso: event.target.checked })
@@ -426,6 +439,11 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
               Marcar conteúdo como sigiloso (restrito à equipe técnica e
               coordenação)
             </label>
+            {pendente && (
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Intervenções e sigilo: {AVISO_PENDENTE.toLowerCase()}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <button className={primaryButton} disabled={estado === "saving"}>
                 Salvar atendimento
@@ -485,6 +503,21 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
         </Card>
       )}
 
+      {carga === "carregando" && <LoadingState label="Carregando linha do tempo…" />}
+      {carga === "erro" && (
+        <div className="space-y-2">
+          <ErrorState message={erro ?? "Não foi possível carregar a linha do tempo."} />
+          <button
+            type="button"
+            onClick={recarregar}
+            className="text-sm text-[#1a3a6b] hover:underline"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {carga === "pronta" && (
       <div className="space-y-4 border-l-2 border-[var(--border)] pl-5">
         {linha.map((registro) =>
           registro.tipo === "atendimento" ? (
@@ -497,6 +530,9 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
             <EncaminhamentoCard
               key={registro.item.id}
               encaminhamento={registro.item}
+              onAcompanhar={(dados) =>
+                registrarAcompanhamento(registro.item.id, dados)
+              }
             />
           ),
         )}
@@ -506,6 +542,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
           </p>
         )}
       </div>
+      )}
     </div>
   )
 }
