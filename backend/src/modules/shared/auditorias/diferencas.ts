@@ -12,8 +12,9 @@ const OMITIDOS = new Set(['cpfCnpj', 'senhaHash']);
 const SO_INDICA_ALTERACAO = new Set(['telefone', 'observacoes']);
 // Dados bancários: só os últimos caracteres ficam visíveis.
 const ULTIMOS_CARACTERES: Record<string, number> = { agencia: 2, numero: 4 };
-// Metadados que não são alteração feita pelo usuário.
-const IGNORADOS = new Set(['id', 'criadoEm']);
+// Metadados que não são alteração feita pelo usuário (organizacaoId já é
+// coluna do próprio registro de auditoria).
+const IGNORADOS = new Set(['id', 'criadoEm', 'organizacaoId']);
 
 type Valor = string | number | boolean | null;
 

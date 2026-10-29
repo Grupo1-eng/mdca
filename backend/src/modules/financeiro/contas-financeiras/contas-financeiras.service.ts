@@ -1,18 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RegistroAuditoriaService } from '../../shared/auditorias/registro-auditoria.service';
 import { CreateContaFinanceiraDto } from './dto/create-conta-financeira.dto';
 import { UpdateContaFinanceiraDto } from './dto/update-conta-financeira.dto';
 
+// Toda alteração grava a auditoria na mesma transação: se o log falhar,
+// a alteração é desfeita.
 @Injectable()
 export class ContasFinanceirasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditoria: RegistroAuditoriaService,
+  ) {}
 
   async listarTodas() {
     return this.prisma.contaFinanceira.findMany();
   }
 
-  async buscarPorId(id: number) {
-    const conta = await this.prisma.contaFinanceira.findUnique({
+  async buscarPorId(id: number, db: Prisma.TransactionClient = this.prisma) {
+    const conta = await db.contaFinanceira.findUnique({
       where: { id },
     });
     if (!conta) {
@@ -22,21 +29,27 @@ export class ContasFinanceirasService {
   }
 
   async criar(dados: CreateContaFinanceiraDto, organizacaoId: number) {
-    return this.prisma.contaFinanceira.create({
-      data: { ...dados, organizacaoId },
+    return this.prisma.$transaction(async (tx) => {
+      const conta = await tx.contaFinanceira.create({ data: { ...dados, organizacaoId } });
+      await this.auditoria.criacao(tx, 'conta_financeira', conta);
+      return conta;
     });
   }
 
   async atualizar(id: number, dados: UpdateContaFinanceiraDto) {
-    await this.buscarPorId(id);
-    return this.prisma.contaFinanceira.update({
-      where: { id },
-      data: dados,
+    return this.prisma.$transaction(async (tx) => {
+      const antes = await this.buscarPorId(id, tx);
+      const depois = await tx.contaFinanceira.update({ where: { id }, data: dados });
+      await this.auditoria.atualizacao(tx, 'conta_financeira', antes, depois);
+      return depois;
     });
   }
 
   async deletar(id: number) {
-    await this.buscarPorId(id);
-    await this.prisma.contaFinanceira.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      const conta = await this.buscarPorId(id, tx);
+      await tx.contaFinanceira.delete({ where: { id } });
+      await this.auditoria.exclusao(tx, 'conta_financeira', conta);
+    });
   }
 }

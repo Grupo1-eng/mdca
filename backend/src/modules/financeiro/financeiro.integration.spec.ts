@@ -16,6 +16,7 @@ describe('Campos definidos pelo token (integração)', () => {
     contaFinanceira: { create: jest.fn() },
     projeto: { create: jest.fn() },
     auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -38,6 +39,8 @@ describe('Campos definidos pelo token (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    // A transação usa o próprio mock como cliente.
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     prisma.usuario.findUnique.mockResolvedValue({
       id: 7,
       organizacaoId: 3,
