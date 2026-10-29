@@ -3,13 +3,7 @@
 // que os componentes nunca chamem fetch() diretamente.
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:3000";
-
-// O token fica num cookie, e não no localStorage, porque cookies são
-// compartilhados entre portas do mesmo host: assim o Financeiro (:8443) e a
-// Gestão (:8080) usam a mesma sessão. Em produção, os dois frontends precisam
-// estar no mesmo domínio. A Gestão lê e grava o mesmo cookie
-// (frontend/SistemaGestao/src/lib/auth-api.ts).
-const TOKEN_COOKIE = "mdca_token";
+const TOKEN_KEY = "mdca_token";
 
 /** Disparado em `window` quando o backend recusa o token (expirado ou usuário inativado). */
 export const EVENTO_SESSAO_EXPIRADA = "mdca:sessao-expirada";
@@ -25,18 +19,7 @@ export class ApiError extends Error {
 
 export function getToken(): string | null {
   try {
-    const par = document.cookie.split("; ").find((c) => c.startsWith(`${TOKEN_COOKIE}=`));
-    return par ? decodeURIComponent(par.slice(TOKEN_COOKIE.length + 1)) : null;
-  } catch {
-    return null;
-  }
-}
-
-// Segundos até o JWT expirar, para o cookie sumir junto com ele.
-function validadeDoToken(token: string): number | null {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof payload.exp === "number" ? Math.max(0, payload.exp - Math.floor(Date.now() / 1000)) : null;
+    return localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
@@ -44,14 +27,10 @@ function validadeDoToken(token: string): number | null {
 
 export function setToken(token: string | null): void {
   try {
-    if (!token) {
-      document.cookie = `${TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-      return;
-    }
-    const validade = validadeDoToken(token);
-    document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; SameSite=Lax${validade === null ? "" : `; Max-Age=${validade}`}`;
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
   } catch {
-    // Cookies indisponíveis (bloqueados pelo navegador) — sessão não persiste.
+    // localStorage indisponível (modo privado, cookies bloqueados etc.) — sessão não persiste.
   }
 }
 

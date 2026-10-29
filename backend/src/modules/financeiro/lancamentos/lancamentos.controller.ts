@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { LancamentosService } from './lancamentos.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
@@ -17,8 +18,14 @@ import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/lancamentos')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class LancamentosController {
   constructor(private readonly service: LancamentosService) {}
 

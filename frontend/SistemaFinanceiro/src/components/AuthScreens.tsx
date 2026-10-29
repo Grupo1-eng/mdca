@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
-import { MODULO_PADRAO, type ModuloDestino } from "@/lib/moduloDestino";
 
 function BussolaLogo({ size = 28, light = false }: { size?: number; light?: boolean }) {
   return (
@@ -17,46 +16,7 @@ function BussolaLogo({ size = 28, light = false }: { size?: number; light?: bool
 }
 
 // ─── Auth screens ─────────────────────────────────────────────────────────────
-// Esta é a entrada única do host unificado. A escolha do sistema só define a
-// rota interna de destino; autenticação e sessão são compartilhadas.
-const sistemasConfig: Record<ModuloDestino, {
-  label: string; sublabel: string; desc: string; accent: string; ring: string;
-  marca: string; titulo: string; resumo: string; destaques: string[];
-}> = {
-  financeiro: {
-    label: "Sistema Financeiro MDCA",
-    sublabel: "FINANCEIRO",
-    desc: "Lançamentos, fluxo de caixa e prestação de contas",
-    accent: "#0e7e6e",
-    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
-    marca: "Financeiro MDCA",
-    titulo: "Sistema Financeiro",
-    resumo: "Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.",
-    destaques: [
-      "Controle de projetos e fontes de recursos",
-      "Fluxo de caixa e conciliação bancária",
-      "Relatórios para prestação de contas",
-    ],
-  },
-  gestao: {
-    label: "Sistema Gestão MDCA",
-    sublabel: "GESTÃO",
-    desc: "Educandos, atendimentos, encaminhamentos e agenda",
-    accent: "#1a3a6b",
-    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
-    marca: "Gestão MDCA",
-    titulo: "Sistema de Gestão",
-    resumo: "Acompanhe educandos, atendimentos e encaminhamentos da sua equipe em um só lugar — do cadastro ao histórico.",
-    destaques: [
-      "Cadastro e acompanhamento de educandos",
-      "Evoluções, encaminhamentos e acompanhamentos",
-      "Agenda compartilhada da equipe",
-    ],
-  },
-};
-
-function AuthBrand({ sistema }: { sistema: ModuloDestino }) {
-  const cfg = sistemasConfig[sistema];
+function AuthBrand() {
   return (
     <div className="hidden lg:flex flex-col justify-between bg-[#0f1e3d] text-white p-12 relative overflow-hidden">
       {/* decorative rings */}
@@ -68,25 +28,29 @@ function AuthBrand({ sistema }: { sistema: ModuloDestino }) {
         <div className="flex items-center gap-3 mb-14">
           <BussolaLogo size={32} light />
           <div>
-            <span className="font-serif text-xl leading-none tracking-tight block">{cfg.marca}</span>
+            <span className="font-serif text-xl leading-none tracking-tight block">Financeiro MDCA</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-[0.2em] block mt-0.5">Sistema</span>
           </div>
         </div>
 
         <h2 className="font-serif text-4xl leading-[1.15] mb-5">
-          {cfg.titulo}<br />
+          Sistema Financeiro<br />
           <em>MDCA</em>
         </h2>
         <p className="text-white/60 text-sm leading-relaxed max-w-xs">
-          {cfg.resumo}
+          Controle projetos, convênios e fluxo de caixa da sua ONG com clareza e segurança — do lançamento à prestação de contas.
         </p>
       </div>
 
       <div className="relative z-10 space-y-4">
-        {cfg.destaques.map((texto) => (
-          <div key={texto} className="flex items-start gap-3">
-            <span className="text-[#0e7e6e] text-[8px] mt-1">◆</span>
-            <span className="text-white/70 text-xs">{texto}</span>
+        {[
+          { icon: "◆", text: "Controle de projetos e fontes de recursos" },
+          { icon: "◆", text: "Fluxo de caixa e conciliação bancária" },
+          { icon: "◆", text: "Relatórios para prestação de contas" },
+        ].map((item) => (
+          <div key={item.text} className="flex items-start gap-3">
+            <span className="text-[#0e7e6e] text-[8px] mt-1">{item.icon}</span>
+            <span className="text-white/70 text-xs">{item.text}</span>
           </div>
         ))}
       </div>
@@ -94,12 +58,33 @@ function AuthBrand({ sistema }: { sistema: ModuloDestino }) {
   );
 }
 
-function SistemaSelector({ value, onChange }: { value: ModuloDestino; onChange: (s: ModuloDestino) => void }) {
+type Sistema = "financeiro" | "gestao";
+
+const sistemasConfig: Record<Sistema, { label: string; sublabel: string; desc: string; accent: string; accentDim: string; ring: string }> = {
+  financeiro: {
+    label: "Sistema Financeiro MDCA",
+    sublabel: "FINANCEIRO",
+    desc: "Lançamentos, fluxo de caixa e prestação de contas",
+    accent: "#0e7e6e",
+    accentDim: "#0e7e6e1a",
+    ring: "focus:ring-[#0e7e6e]/30 focus:border-[#0e7e6e]",
+  },
+  gestao: {
+    label: "Sistema Gestão MDCA",
+    sublabel: "GESTÃO",
+    desc: "Projetos, equipes, metas e monitoramento de impacto",
+    accent: "#1a3a6b",
+    accentDim: "#1a3a6b1a",
+    ring: "focus:ring-[#1a3a6b]/30 focus:border-[#1a3a6b]",
+  },
+};
+
+function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Sistema) => void }) {
   return (
     <div className="mb-7">
       <p className="text-xs font-mono uppercase tracking-widest text-[#6b7a99] mb-2">Acessar sistema</p>
       <div className="grid grid-cols-2 gap-2">
-        {(["financeiro", "gestao"] as ModuloDestino[]).map((s) => {
+        {(["financeiro", "gestao"] as Sistema[]).map((s) => {
           const cfg = sistemasConfig[s];
           const active = value === s;
           return (
@@ -133,26 +118,28 @@ function SistemaSelector({ value, onChange }: { value: ModuloDestino; onChange: 
   );
 }
 
+// `modulo` e `onModuloChange` são opcionais: o app unificado usa a escolha para
+// decidir a rota depois do login (/financeiro ou /gestao). Sem eles, a escolha
+// fica só nesta tela, como antes.
 export function LoginScreen({
   modulo,
   onModuloChange,
 }: {
-  modulo?: ModuloDestino;
-  onModuloChange?: (modulo: ModuloDestino) => void;
-}) {
+  modulo?: Sistema;
+  onModuloChange?: (s: Sistema) => void;
+} = {}) {
   const { login, loading, error } = useAuth();
-  const [moduloLocal, setModuloLocal] = useState<ModuloDestino>(MODULO_PADRAO);
+  const [sistemaLocal, setSistemaLocal] = useState<Sistema>("financeiro");
+  const sistema = modulo ?? sistemaLocal;
+  const setSistema = (s: Sistema) => {
+    setSistemaLocal(s);
+    onModuloChange?.(s);
+  };
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
 
-  const sistema = modulo ?? moduloLocal;
   const cfg = sistemasConfig[sistema];
-
-  const selecionarSistema = (proximo: ModuloDestino) => {
-    setModuloLocal(proximo);
-    onModuloChange?.(proximo);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,20 +152,20 @@ export function LoginScreen({
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[480px_1fr] bg-white">
-      <AuthBrand sistema={sistema} />
+      <AuthBrand />
       <div className="flex items-center justify-center px-8 py-12 bg-[#f4f6f9]">
         <div className="w-full max-w-sm">
           {/* mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-10">
             <BussolaLogo size={24} />
-            <span className="font-serif text-xl text-[#0f1e3d]">{cfg.marca}</span>
+            <span className="font-serif text-xl text-[#0f1e3d]">Financeiro MDCA</span>
             <span className="text-[10px] text-[#0e7e6e] font-mono uppercase tracking-widest">Sistema</span>
           </div>
 
           <h1 className="font-serif text-3xl text-[#0f1e3d] mb-1">Entrar</h1>
           <p className="text-sm text-[#6b7a99] mb-6">Selecione o sistema e acesse sua conta</p>
 
-          <SistemaSelector value={sistema} onChange={selecionarSistema} />
+          <SistemaSelector value={sistema} onChange={setSistema} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

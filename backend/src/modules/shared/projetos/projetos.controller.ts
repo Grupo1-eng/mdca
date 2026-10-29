@@ -10,6 +10,7 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProjetosService } from './projetos.service';
 import { CreateProjetoDto } from './dto/create-projeto.dto';
 import { UpdateProjetoDto } from './dto/update-projeto.dto';
@@ -18,6 +19,8 @@ import {
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
 
+@ApiTags('Projetos')
+@ApiBearerAuth('access-token')
 @Controller('api/projetos')
 export class ProjetosController {
   constructor(private readonly service: ProjetosService) {}

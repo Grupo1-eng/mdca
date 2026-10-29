@@ -9,12 +9,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { OrcamentosService } from './orcamentos.service';
 import { CreateOrcamentoDto } from './dto/create-orcamento.dto';
 import { UpdateOrcamentoDto } from './dto/update-orcamento.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/orcamentos')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class OrcamentosController {
   constructor(private readonly service: OrcamentosService) {}
 

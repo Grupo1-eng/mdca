@@ -9,12 +9,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { FontesDeRecursoService } from './fontes-de-recurso.service';
 import { CreateFonteDeRecursoDto } from './dto/create-fonte-de-recurso.dto';
 import { UpdateFonteDeRecursoDto } from './dto/update-fonte-de-recurso.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PerfisGuard } from '../../auth/guards/perfis.guard';
+import { Perfis } from '../../auth/decorators/perfis.decorator';
+import { PERFIS_FINANCEIRO } from '../../auth/perfis.constants';
 
 @Controller('api/fontes-de-recurso')
+@UseGuards(JwtAuthGuard, PerfisGuard)
+@Perfis(...PERFIS_FINANCEIRO)
 export class FontesDeRecursoController {
   constructor(private readonly service: FontesDeRecursoService) {}
 

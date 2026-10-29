@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LoginThrottlerGuard } from './guards/login-throttler.guard';
 import { PerfisGuard } from './guards/perfis.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { obterJwtSecret } from './jwt-config';
@@ -14,8 +15,17 @@ import { obterJwtSecret } from './jwt-config';
 @Module({
   imports: [
     PassportModule,
-    // Só vale onde o ThrottlerGuard é aplicado (hoje, apenas o login).
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
+    // Só vale onde o LoginThrottlerGuard é aplicado (login e register).
+    // Limite padrão: 5 requisições por minuto para cada par IP + e-mail.
+    // ttl em milissegundos.
+    ThrottlerModule.forRootAsync({
+      useFactory: () => [
+        {
+          ttl: Number(process.env.LOGIN_RATE_TTL ?? 60_000),
+          limit: Number(process.env.LOGIN_RATE_LIMIT ?? 5),
+        },
+      ],
+    }),
     JwtModule.registerAsync({
       useFactory: () => ({
         secret: obterJwtSecret(),
@@ -31,6 +41,7 @@ import { obterJwtSecret } from './jwt-config';
     JwtStrategy,
     JwtAuthGuard,
     PerfisGuard,
+    LoginThrottlerGuard,
     { provide: APP_GUARD, useExisting: JwtAuthGuard },
   ],
   exports: [

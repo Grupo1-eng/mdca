@@ -194,6 +194,7 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
           >
             {user ? iniciais(user.nome) : "?"}
           </div>
+          {/* App unificado: troca para a Gestão sem novo login. */}
           <Link
             to="/gestao"
             className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
@@ -211,3 +212,4 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
     </header>
   );
 }
+
