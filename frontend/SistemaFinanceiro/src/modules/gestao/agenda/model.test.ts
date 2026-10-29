@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 import {
   compromissosDaVisao,
   criarCompromissoEmMemoria,
+  fimDaSemana,
+  inicioDaSemana,
+  rotuloPeriodo,
   editarCompromissoEmMemoria,
   mudarStatusCompromissoEmMemoria,
   navegarPeriodo,
@@ -43,6 +46,25 @@ describe("Agenda temporária", () => {
     expect(compromissosDaVisao(compromissos, "2026-10-08", "mes")).toHaveLength(
       2,
     )
+  })
+
+  it("a semana vai de segunda a domingo (7 dias)", () => {
+    // 2026-10-08 é quinta-feira: semana de 05/10 (seg) a 11/10 (dom).
+    expect(inicioDaSemana("2026-10-08")).toBe("2026-10-05")
+    expect(fimDaSemana("2026-10-08")).toBe("2026-10-11")
+    // Segunda e domingo pertencem à própria semana.
+    expect(inicioDaSemana("2026-10-05")).toBe("2026-10-05")
+    expect(inicioDaSemana("2026-10-11")).toBe("2026-10-05")
+    // Semana que atravessa o mês.
+    expect(inicioDaSemana("2026-11-01")).toBe("2026-10-26")
+    expect(fimDaSemana("2026-10-29")).toBe("2026-11-01")
+
+    const doDia = (data: string) => ({ ...compromissoBase, id: data, data })
+    const lista = ["2026-10-04", "2026-10-05", "2026-10-11", "2026-10-12"].map(doDia)
+    expect(
+      compromissosDaVisao(lista, "2026-10-08", "semana").map((c) => c.data),
+    ).toEqual(["2026-10-05", "2026-10-11"])
+    expect(rotuloPeriodo("2026-10-08", "semana")).toMatch(/05.*out.*11.*out/i)
   })
 
   it("cria compromisso com os campos obrigatórios", () => {

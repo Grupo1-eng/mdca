@@ -5,14 +5,26 @@ import type {
   VisaoAgenda,
 } from "./types"
 
-const DIA_EM_MS = 86_400_000
-
 function paraData(valor: string): Date {
   return new Date(`${valor}T12:00:00`)
 }
 
 function paraIso(data: Date): string {
   return data.toISOString().slice(0, 10)
+}
+
+// Segunda-feira da semana da data (semana de segunda a domingo).
+export function inicioDaSemana(valor: string): string {
+  const data = paraData(valor)
+  const diasDesdeSegunda = (data.getDay() + 6) % 7
+  data.setDate(data.getDate() - diasDesdeSegunda)
+  return paraIso(data)
+}
+
+export function fimDaSemana(valor: string): string {
+  const data = paraData(inicioDaSemana(valor))
+  data.setDate(data.getDate() + 6)
+  return paraIso(data)
 }
 
 export function novoIdCompromisso(): string {
@@ -70,9 +82,8 @@ export function compromissoDentroDaVisao(
   if (visao === "dia") return data === referencia
   if (visao === "mes") return data.slice(0, 7) === referencia.slice(0, 7)
 
-  const diferenca =
-    (paraData(data).getTime() - paraData(referencia).getTime()) / DIA_EM_MS
-  return diferenca >= -3 && diferenca <= 7
+  // Datas "AAAA-MM-DD" comparam em ordem cronológica como texto.
+  return data >= inicioDaSemana(referencia) && data <= fimDaSemana(referencia)
 }
 
 export function compromissosDaVisao(
@@ -119,9 +130,7 @@ export function rotuloPeriodo(referencia: string, visao: VisaoAgenda): string {
     }).format(referenciaData)
   }
 
-  const inicio = paraData(referencia)
-  inicio.setDate(inicio.getDate() - 3)
-  const fim = paraData(referencia)
-  fim.setDate(fim.getDate() + 7)
+  const inicio = paraData(inicioDaSemana(referencia))
+  const fim = paraData(fimDaSemana(referencia))
   return `${formatador.format(inicio)} a ${formatador.format(fim)}`
 }
