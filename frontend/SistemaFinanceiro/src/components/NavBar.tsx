@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
 
@@ -193,6 +194,13 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
           >
             {user ? iniciais(user.nome) : "?"}
           </div>
+          {/* App unificado: troca para a Gestão sem novo login. */}
+          <Link
+            to="/gestao"
+            className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
+          >
+            Ir para Gestão
+          </Link>
           <button
             onClick={logout}
             className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors cursor-pointer"

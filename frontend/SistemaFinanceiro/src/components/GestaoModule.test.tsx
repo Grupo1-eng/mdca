@@ -1,0 +1,93 @@
+import { renderToStaticMarkup } from "react-dom/server"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { describe, expect, it, vi } from "vitest"
+import { GestaoAgendaProvider } from "@/modules/gestao/agenda/AgendaContext"
+import { GestaoEducandosProvider } from "@/modules/gestao/educandos/EducandosContext"
+import GestaoModule from "./GestaoModule"
+
+vi.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({
+    user: {
+      id: 1,
+      nome: "Helena Martins",
+      email: "helena@mdca.org.br",
+      perfil: "coordenador",
+    },
+    logout: vi.fn(),
+  }),
+}))
+
+function renderizarRota(pathname: string): string {
+  return renderToStaticMarkup(
+    <MemoryRouter initialEntries={[pathname]}>
+      <GestaoEducandosProvider>
+        <GestaoAgendaProvider>
+          <Routes>
+            <Route path="/gestao/*" element={<GestaoModule />} />
+          </Routes>
+        </GestaoAgendaProvider>
+      </GestaoEducandosProvider>
+    </MemoryRouter>,
+  )
+}
+
+describe("rotas migradas da Gestão", () => {
+  it("mantém o Dashboard em /gestao", () => {
+    const html = renderizarRota("/gestao")
+    expect(html).toContain("Visão geral")
+    expect(html).toContain('href="/gestao/educandos"')
+    expect(html).toContain('href="/gestao/agenda"')
+    expect(html).toContain('href="/financeiro"')
+    expect(html).toContain("Sair")
+  })
+
+  it("renderiza a listagem em /gestao/educandos", () => {
+    const html = renderizarRota("/gestao/educandos")
+    expect(html).toContain("Crianças e adolescentes vinculados")
+    expect(html).toContain("Ana Beatriz Souza")
+    expect(html).toContain("Novo educando")
+    expect(html).toContain('href="/gestao/educandos/novo"')
+    expect(html).toContain('href="/gestao/educandos/edu-1"')
+  })
+
+  it("renderiza o cadastro completo em /gestao/educandos/novo", () => {
+    const html = renderizarRota("/gestao/educandos/novo")
+    expect(html).toContain("Dados pessoais")
+    expect(html).toContain("Responsáveis familiares")
+    expect(html).toContain("Ingresso e encaminhamento")
+    expect(html).toContain('href="/gestao/educandos"')
+  })
+
+  it("renderiza a ficha de um id válido", () => {
+    const html = renderizarRota("/gestao/educandos/edu-1")
+    expect(html).toContain("Ana Beatriz Souza")
+    expect(html).toContain("Ficha cadastral")
+    expect(html).toContain("Fichas de evolução")
+    expect(html).toContain("Histórico de frequência")
+    expect(html).toContain('href="/gestao/educandos"')
+  })
+
+  it("renderiza a listagem de atividades em /gestao/atividades", () => {
+    const html = renderizarRota("/gestao/atividades")
+    expect(html).toContain("Atividades e Frequência")
+    expect(html).toContain("Oficina de Música")
+    expect(html).toContain("Educador Marcos Reis")
+    expect(html).toContain("Convivência e Fortalecimento de Vínculos")
+    expect(html).toContain('href="/gestao/atividades"')
+    // Coordenação pode registrar atividades.
+    expect(html).toContain("Nova atividade")
+    expect(html).toContain("Editar")
+  })
+
+  it("renderiza a Agenda em /gestao/agenda", () => {
+    const html = renderizarRota("/gestao/agenda")
+    expect(html).toContain("Compromissos da equipe")
+    expect(html).toContain("Novo compromisso")
+    expect(html).toContain("Atendimento individual – Ana Beatriz")
+    expect(html).toContain("Dia")
+    expect(html).toContain("Semana")
+    expect(html).toContain("Mês")
+    expect(html).toContain('href="/gestao"')
+    expect(html).toContain('href="/gestao/educandos"')
+  })
+})

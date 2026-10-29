@@ -9,7 +9,7 @@ import { Type } from 'class-transformer';
 export class CreateEncaminhamentoDto {
   @Type(() => Number)
   @IsInt()
-  educandoId: number;
+  educandoId!: number;
 
   @IsOptional()
   @Type(() => Number)

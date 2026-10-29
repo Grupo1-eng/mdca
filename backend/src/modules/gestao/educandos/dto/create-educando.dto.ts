@@ -9,13 +9,9 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateEducandoDto {
-  @Type(() => Number)
-  @IsInt()
-  organizacaoId: number;
-
   @IsString()
   @IsNotEmpty()
-  nome: string;
+  nome!: string;
 
   @IsOptional()
   @IsString()
