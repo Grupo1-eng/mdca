@@ -81,7 +81,8 @@ describe("rotas migradas da Gestão", () => {
     const html = renderizarRota("/gestao/agenda")
     expect(html).toContain("Compromissos da equipe")
     expect(html).toContain("Novo compromisso")
-    expect(html).toContain("Atendimento individual – Ana Beatriz")
+    // Compromissos vêm da API: a lista abre em carregamento.
+    expect(html).toContain("Carregando agenda")
     expect(html).toContain("Dia")
     expect(html).toContain("Semana")
     expect(html).toContain("Mês")

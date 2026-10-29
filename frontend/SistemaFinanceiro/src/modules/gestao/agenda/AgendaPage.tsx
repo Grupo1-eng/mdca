@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
+import { ErrorState, LoadingState } from "@/components/StatusMessage"
+import { CAMPOS_AGUARDANDO_MIGRACAO } from "@/modules/gestao/api/educandosMapper"
 import { useSalvarGestao } from "@/modules/gestao/educandos/EducandosContext"
 import {
   Badge,
@@ -16,7 +18,6 @@ import { dataRelativa } from "./data/mock"
 import {
   compromissosDaVisao,
   navegarPeriodo,
-  novoIdCompromisso,
   rotuloPeriodo,
 } from "./model"
 import type {
@@ -64,10 +65,17 @@ export default function AgendaPage() {
   const { user } = useAuth()
   const {
     compromissos,
+    carga,
+    erro,
+    carregarCompromissos,
     criarCompromisso,
     editarCompromisso,
     mudarStatusCompromisso,
   } = useAgendaGestao()
+
+  useEffect(() => {
+    carregarCompromissos()
+  }, [carregarCompromissos])
   const { estado, salvar, mensagem } = useSalvarGestao()
   const hoje = dataRelativa(0)
   const [visao, setVisao] = useState<VisaoAgenda>("semana")
@@ -117,18 +125,9 @@ export default function AgendaPage() {
       tipo: form.tipo,
       observacoes: form.observacoes,
     }
-    const ok = await salvar(() => {
-      if (editando) {
-        editarCompromisso(editando, dados)
-        return
-      }
-      criarCompromisso({
-        id: novoIdCompromisso(),
-        ...dados,
-        responsavel: user.nome,
-        status: "Agendado",
-      })
-    })
+    const ok = await salvar(() =>
+      editando ? editarCompromisso(editando, dados) : criarCompromisso(dados),
+    )
 
     if (ok) fecharFormulario()
   }
@@ -250,10 +249,17 @@ export default function AgendaPage() {
                 <input
                   className={inputClass}
                   value={form.local}
+                  disabled={CAMPOS_AGUARDANDO_MIGRACAO}
                   onChange={(event) =>
                     setForm({ ...form, local: event.target.value })
                   }
                 />
+                {CAMPOS_AGUARDANDO_MIGRACAO && (
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Ainda não é salvo no servidor: aguardando a migration da
+                    Sprint 3.
+                  </p>
+                )}
               </Field>
               <Field label="Responsável">
                 <input
@@ -311,6 +317,15 @@ export default function AgendaPage() {
         </Card>
       )}
 
+      {carga === "erro" && (
+        <div className="mb-4 space-y-2">
+          <ErrorState message={erro ?? "Não foi possível carregar a agenda."} />
+        </div>
+      )}
+
+      {carga === "ociosa" || carga === "carregando" ? (
+        <LoadingState label="Carregando agenda…" />
+      ) : (
       <div className="space-y-3">
         {lista.map((compromisso) => {
           const doDia = compromisso.data === hoje
@@ -387,6 +402,7 @@ export default function AgendaPage() {
           </Card>
         )}
       </div>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-4 text-sm">
         <Link to="/gestao" className="text-[#1a3a6b] hover:underline">
