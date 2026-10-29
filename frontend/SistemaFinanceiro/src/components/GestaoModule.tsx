@@ -7,6 +7,7 @@ import AtividadesPage from "@/modules/gestao/atividades/AtividadesPage"
 import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
 import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
 import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
+import { podeAcessarModulo } from "@/lib/moduloDestino"
 import type { Perfil } from "@/types/financeiro"
 
 const menu = [
@@ -74,12 +75,14 @@ export default function GestaoModule() {
               >
                 {user ? iniciais(user.nome) : "?"}
               </div>
-              <Link
-                to="/financeiro"
-                className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
-              >
-                Ir para Financeiro
-              </Link>
+              {podeAcessarModulo("financeiro", user?.perfil) && (
+                <Link
+                  to="/financeiro"
+                  className="text-xs text-white/60 hover:text-white hover:bg-white/5 rounded px-2 py-1 transition-colors"
+                >
+                  Ir para Financeiro
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={logout}

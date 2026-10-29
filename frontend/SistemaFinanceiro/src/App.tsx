@@ -12,7 +12,13 @@ import GestaoModule from "@/components/GestaoModule";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { PeriodoProvider } from "@/context/PeriodoContext";
-import { moduloDaNavegacao, rotaPosLogin, type ModuloDestino } from "@/lib/moduloDestino";
+import {
+  moduloDaNavegacao,
+  moduloPermitido,
+  rotaDoModulo,
+  rotaPosLogin,
+  type ModuloDestino,
+} from "@/lib/moduloDestino";
 import { GestaoAgendaProvider } from "@/modules/gestao/agenda/AgendaContext";
 import { GestaoEducandosProvider } from "@/modules/gestao/educandos/EducandosContext";
 import type { AuthUser } from "@/types/financeiro";
@@ -52,7 +58,7 @@ function RotaInicial() {
   const modulo = moduloDaNavegacao(location.state);
 
   if (restaurando) return <LoadingState label="Verificando sessão…" />;
-  if (user) return <Navigate to={rotaPosLogin(location.state)} replace />;
+  if (user) return <Navigate to={rotaPosLogin(location.state, user.perfil)} replace />;
 
   const selecionarModulo = (proximo: ModuloDestino) => {
     navigate("/", { replace: true, state: { modulo: proximo } });
@@ -61,11 +67,18 @@ function RotaInicial() {
   return <LoginScreen modulo={modulo} onModuloChange={selecionarModulo} />;
 }
 
-function RotaProtegida({ children }: { children: ReactNode }) {
+// Exige sessão e, com `modulo`, que o perfil tenha acesso a ele: quem não tem
+// vai para o outro módulo (ex.: coordenador da Gestão em /financeiro).
+function RotaProtegida({ children, modulo }: { children: ReactNode; modulo?: ModuloDestino }) {
   const { user, restaurando } = useAuth();
 
   if (restaurando) return <LoadingState label="Verificando sessão…" />;
-  return user ? children : <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+  if (modulo) {
+    const permitido = moduloPermitido(modulo, user.perfil);
+    if (permitido !== modulo) return <Navigate to={rotaDoModulo(permitido)} replace />;
+  }
+  return children;
 }
 
 function FinanceiroRoute() {
@@ -82,7 +95,7 @@ function AppRoutes() {
       <Route
         path="/financeiro"
         element={
-          <RotaProtegida>
+          <RotaProtegida modulo="financeiro">
             <FinanceiroRoute />
           </RotaProtegida>
         }
@@ -90,7 +103,7 @@ function AppRoutes() {
       <Route
         path="/gestao/*"
         element={
-          <RotaProtegida>
+          <RotaProtegida modulo="gestao">
             <GestaoModule />
           </RotaProtegida>
         }

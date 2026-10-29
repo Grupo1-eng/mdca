@@ -4,6 +4,9 @@ import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
 import App, { chaveEstadoGestao } from "./App"
 
+// "administrativo" acessa os dois módulos; os testes de acesso trocam o perfil.
+const sessao = vi.hoisted(() => ({ perfil: "administrativo" }))
+
 vi.mock("@/context/AuthContext", () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => children,
   useAuth: () => ({
@@ -11,7 +14,7 @@ vi.mock("@/context/AuthContext", () => ({
       id: 1,
       nome: "Helena Martins",
       email: "helena@mdca.org.br",
-      perfil: "coordenador",
+      perfil: sessao.perfil,
     },
     restaurando: false,
   }),
@@ -61,6 +64,18 @@ describe("tempo de vida dos estados temporários da Gestão", () => {
     expect(gestao).toContain('data-estado-educandos="montado"')
     expect(gestao).toContain('data-estado-agenda="montado"')
     expect(gestao).toContain("Gestão ativa")
+  })
+
+  it("leva cada perfil só ao módulo que ele acessa", () => {
+    sessao.perfil = "coordenador"
+    expect(renderizar("/financeiro")).not.toContain("Financeiro ativo")
+    expect(renderizar("/gestao")).toContain("Gestão ativa")
+
+    sessao.perfil = "gestor_financeiro"
+    expect(renderizar("/gestao")).not.toContain("Gestão ativa")
+    expect(renderizar("/financeiro")).toContain("Financeiro ativo")
+
+    sessao.perfil = "administrativo"
   })
 
   it("troca a chave dos estados no logout ou na troca de usuário", () => {
