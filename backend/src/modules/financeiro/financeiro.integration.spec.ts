@@ -99,19 +99,14 @@ describe('Campos definidos pelo token (integração)', () => {
     });
   });
 
-  it('auditoria é registrada com o usuário do token', async () => {
-    prisma.auditoria.create.mockResolvedValue({ id: 1 });
-
+  it('auditoria não pode ser criada pelo cliente', async () => {
     const res = await post('/api/auditorias', {
       recursoId: '1',
       recursoTipo: 'lancamento',
       acao: 'criar',
-      usuarioId: 999,
     });
 
-    expect(res.status).toBe(201);
-    expect(prisma.auditoria.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ usuarioId: 7 }),
-    });
+    expect(res.status).toBe(404);
+    expect(prisma.auditoria.create).not.toHaveBeenCalled();
   });
 });

@@ -1,21 +1,5 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseIntPipe,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { AuditoriasService } from './auditorias.service';
-import { CreateAuditoriaDto } from './dto/create-auditoria.dto';
-import {
-  UsuarioAtual,
-  UsuarioAutenticado,
-} from '../../auth/decorators/usuario-atual.decorator';
 
 @Controller('api/auditorias')
 export class AuditoriasController {
@@ -29,17 +13,5 @@ export class AuditoriasController {
   @Get(':id')
   buscar(@Param('id', ParseIntPipe) id: number) {
     return this.service.buscarPorId(id);
-  }
-
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  criar(@Body() dados: CreateAuditoriaDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
-    return this.service.criar(dados, usuario.id);
-  }
-
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deletar(@Param('id', ParseIntPipe) id: number) {
-    await this.service.deletar(id);
   }
 }

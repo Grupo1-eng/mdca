@@ -1,5 +1,4 @@
 import { validarDto } from '../../../test/validar-dto';
-import { CreateAuditoriaDto } from '../shared/auditorias/dto/create-auditoria.dto';
 import { CreateProjetoDto } from '../shared/projetos/dto/create-projeto.dto';
 import { CreateContaFinanceiraDto } from './contas-financeiras/dto/create-conta-financeira.dto';
 import { UpdateContaFinanceiraDto } from './contas-financeiras/dto/update-conta-financeira.dto';
@@ -128,17 +127,5 @@ describe('campos definidos pelo servidor', () => {
       organizacaoId: 2,
     });
     expect(valor).not.toHaveProperty('organizacaoId');
-  });
-
-  it('auditoria: descarta usuarioId e dataHora', async () => {
-    const { valor } = await validarDto(CreateAuditoriaDto, {
-      recursoId: '1',
-      recursoTipo: 'lancamento',
-      acao: 'criar',
-      usuarioId: 1,
-      dataHora: '2020-01-01T00:00:00Z',
-    });
-    expect(valor).not.toHaveProperty('usuarioId');
-    expect(valor).not.toHaveProperty('dataHora');
   });
 });

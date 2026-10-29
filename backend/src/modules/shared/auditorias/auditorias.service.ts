@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CreateAuditoriaDto } from './dto/create-auditoria.dto';
 
+// Somente leitura: registros de auditoria são gerados pelo próprio backend,
+// nunca enviados pelo cliente.
 @Injectable()
 export class AuditoriasService {
   constructor(private readonly prisma: PrismaService) {}
@@ -18,16 +19,5 @@ export class AuditoriasService {
       throw new NotFoundException('Registro de auditoria não encontrado');
     }
     return auditoria;
-  }
-
-  async criar(dados: CreateAuditoriaDto, usuarioId: number) {
-    return this.prisma.auditoria.create({
-      data: { ...dados, usuarioId },
-    });
-  }
-
-  async deletar(id: number) {
-    await this.buscarPorId(id);
-    await this.prisma.auditoria.delete({ where: { id } });
   }
 }
