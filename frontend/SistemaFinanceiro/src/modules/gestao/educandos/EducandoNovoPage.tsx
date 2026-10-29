@@ -1,10 +1,17 @@
+import { useEffect } from "react"
 import { Link } from "react-router-dom"
-import { usePermissoesEducandos } from "./EducandosContext"
+import { useEducandosGestao, usePermissoesEducandos } from "./EducandosContext"
 import EducandoForm from "./components/EducandoForm"
 import { PageHeader, SensitiveNote } from "./components/EducandoUi"
 
 export default function EducandoNovoPage() {
   const permissoes = usePermissoesEducandos()
+  const { carregarEducandos } = useEducandosGestao()
+
+  // A lista é usada para avisar de CPF/NIS duplicado antes de enviar.
+  useEffect(() => {
+    carregarEducandos()
+  }, [carregarEducandos])
 
   return (
     <div className="max-w-4xl">

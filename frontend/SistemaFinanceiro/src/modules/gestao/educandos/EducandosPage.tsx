@@ -1,16 +1,28 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { ErrorState, LoadingState } from "@/components/StatusMessage"
 import { Link } from "react-router-dom"
 import { useEducandosGestao, usePermissoesEducandos } from "./EducandosContext"
 import { filtrarEducandos } from "./model"
 import { Badge, Card, PageHeader, inputClass } from "./components/EducandoUi"
 
 export default function EducandosPage() {
-  const { educandos, iniciativas, iniciativaNome } = useEducandosGestao()
+  const {
+    educandos,
+    iniciativas,
+    iniciativaNome,
+    cargaEducandos,
+    erroEducandos,
+    carregarEducandos,
+  } = useEducandosGestao()
   const permissoes = usePermissoesEducandos()
   const [busca, setBusca] = useState("")
   const [iniciativa, setIniciativa] = useState("todas")
   const [situacao, setSituacao] = useState("todas")
   const lista = filtrarEducandos(educandos, busca, iniciativa, situacao)
+
+  useEffect(() => {
+    carregarEducandos()
+  }, [carregarEducandos])
 
   return (
     <div>
@@ -66,6 +78,24 @@ export default function EducandosPage() {
         </select>
       </Card>
 
+      {cargaEducandos === "erro" && (
+        <div className="mb-4 space-y-2">
+          <ErrorState
+            message={erroEducandos ?? "Não foi possível carregar os educandos."}
+          />
+          <button
+            type="button"
+            onClick={carregarEducandos}
+            className="text-sm text-[#1a3a6b] hover:underline"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {cargaEducandos === "ociosa" || cargaEducandos === "carregando" ? (
+        <LoadingState label="Carregando educandos…" />
+      ) : (
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -128,6 +158,7 @@ export default function EducandosPage() {
           </table>
         </div>
       </Card>
+      )}
     </div>
   )
 }

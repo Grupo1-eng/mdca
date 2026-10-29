@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { ErrorState, LoadingState } from "@/components/StatusMessage"
 import { Link, useParams } from "react-router-dom"
 import {
   useEducandosGestao,
@@ -20,14 +21,61 @@ type Aba = "cadastro" | "evolucao" | "frequencia"
 
 export default function EducandoDetalhePage() {
   const { id = "" } = useParams()
-  const { educandos, iniciativaNome, alternarSituacaoEducando } =
-    useEducandosGestao()
+  const {
+    educandos,
+    iniciativaNome,
+    alternarSituacaoEducando,
+    cargaEducandos,
+    erroEducandos,
+    carregarEducandos,
+    carregarEducando,
+  } = useEducandosGestao()
   const permissoes = usePermissoesEducandos()
   const { estado, mensagem, salvar } = useSalvarGestao()
   const [aba, setAba] = useState<Aba>(
     permissoes.verCadastro ? "cadastro" : "frequencia",
   )
   const educando = educandos.find((item) => item.id === id)
+  const [erroFicha, setErroFicha] = useState<string | null>(null)
+  // O formulário guarda o estado inicial; só é montado com a ficha completa,
+  // senão abriria sem os responsáveis (a listagem não os traz).
+  const [fichaPronta, setFichaPronta] = useState(!permissoes.verFichaCompleta)
+
+  useEffect(() => {
+    carregarEducandos()
+  }, [carregarEducandos])
+
+  // GET /api/educandos/:id (com responsáveis) é restrito à equipe técnica e à
+  // coordenação; os demais perfis ficam com os dados da listagem.
+  useEffect(() => {
+    if (!permissoes.verFichaCompleta) return
+    let cancelado = false
+    setErroFicha(null)
+    setFichaPronta(false)
+    carregarEducando(id)
+      .then(() => {
+        if (!cancelado) setFichaPronta(true)
+      })
+      .catch((erro: unknown) => {
+        if (cancelado) return
+        setErroFicha(
+          erro instanceof Error
+            ? erro.message
+            : "Não foi possível abrir a ficha.",
+        )
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [id, permissoes.verFichaCompleta, carregarEducando])
+
+  if (!educando && (cargaEducandos === "ociosa" || cargaEducandos === "carregando")) {
+    return <LoadingState label="Carregando ficha…" />
+  }
+
+  if (!educando && cargaEducandos === "erro") {
+    return <ErrorState message={erroEducandos ?? "Não foi possível carregar os educandos."} />
+  }
 
   if (!educando) {
     return (
@@ -105,6 +153,12 @@ export default function EducandoDetalhePage() {
         }
       />
 
+      {erroFicha && (
+        <div className="mb-4">
+          <ErrorState message={erroFicha} />
+        </div>
+      )}
+
       {mensagem && (
         <div className="mb-4">
           <SensitiveNote>{mensagem}</SensitiveNote>
@@ -149,10 +203,15 @@ export default function EducandoDetalhePage() {
 
           {aba === "cadastro" && (
             <div className="max-w-4xl">
-              <EducandoForm
-                educando={educando}
-                leitura={!permissoes.editarCadastro}
-              />
+              {fichaPronta ? (
+                <EducandoForm
+                  key={educando.id}
+                  educando={educando}
+                  leitura={!permissoes.editarCadastro}
+                />
+              ) : erroFicha ? null : (
+                <LoadingState label="Carregando ficha cadastral…" />
+              )}
             </div>
           )}
           {aba === "evolucao" && permissoes.verEvolucao && (

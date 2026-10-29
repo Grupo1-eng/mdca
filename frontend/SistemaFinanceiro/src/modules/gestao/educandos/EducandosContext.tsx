@@ -8,20 +8,18 @@ import {
   type ReactNode,
 } from "react"
 import { useAuth } from "@/context/AuthContext"
+import * as api from "../api/educandos"
+import { deEducandoApi, ehIdPersistido } from "../api/educandosMapper"
+import { salvarEducandoRemoto } from "../api/educandosFluxo"
 import {
   atendimentosSeed,
   atividadesSeed,
-  educandosSeed,
   encaminhamentosSeed,
   encontrosSeed,
   iniciativasSeed,
 } from "./data/mock"
 import { salvarAtividadeEmMemoria } from "../atividades/model"
-import {
-  alternarSituacaoEmMemoria,
-  permissoesEducandos,
-  salvarEducandoEmMemoria,
-} from "./model"
+import { permissoesEducandos } from "./model"
 import type {
   AcompanhamentoEncaminhamento,
   Atendimento,
@@ -34,16 +32,28 @@ import type {
 
 export type SaveState = "idle" | "saving" | "saved" | "error"
 
+// Situação da carga dos educandos a partir da API.
+export type CargaEducandos = "ociosa" | "carregando" | "pronta" | "erro"
+
 interface EducandosContextValue {
   iniciativas: Iniciativa[]
+  // Educandos vêm da API real (GET /api/educandos). Os demais dados desta
+  // tela ainda são mock, até as próximas fases da integração.
   educandos: Educando[]
+  cargaEducandos: CargaEducandos
+  erroEducandos: string | null
+  // Idempotente: só busca na primeira chamada (ou depois de um erro).
+  carregarEducandos: () => void
+  // Busca a ficha completa (com responsáveis) e atualiza a lista.
+  carregarEducando: (id: string) => Promise<void>
   atendimentos: Atendimento[]
   encaminhamentos: Encaminhamento[]
   atividades: Atividade[]
   encontros: Encontro[]
   iniciativaNome: (id: string) => string
-  salvarEducando: (educando: Educando) => void
-  alternarSituacaoEducando: (id: string) => void
+  // Devolve o registro salvo, com o id definitivo do servidor.
+  salvarEducando: (educando: Educando) => Promise<Educando>
+  alternarSituacaoEducando: (id: string) => Promise<void>
   registrarEvolucao: (atendimento: Atendimento) => void
   registrarEncaminhamento: (encaminhamento: Encaminhamento) => void
   registrarAcompanhamento: (
@@ -56,8 +66,12 @@ interface EducandosContextValue {
 const EducandosContext = createContext<EducandosContextValue | null>(null)
 
 export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
-  const [educandos, setEducandos] = useState(educandosSeed)
-  const educandosAtuais = useRef(educandosSeed)
+  const [educandos, setEducandos] = useState<Educando[]>([])
+  const educandosAtuais = useRef<Educando[]>([])
+  const [cargaEducandos, setCargaEducandos] =
+    useState<CargaEducandos>("ociosa")
+  const cargaAtual = useRef<CargaEducandos>("ociosa")
+  const [erroEducandos, setErroEducandos] = useState<string | null>(null)
   const [atendimentos, setAtendimentos] = useState(atendimentosSeed)
   const [encaminhamentos, setEncaminhamentos] = useState(encaminhamentosSeed)
   const [atividades, setAtividades] = useState(atividadesSeed)
@@ -69,19 +83,85 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const salvarEducando = useCallback((registro: Educando) => {
-    // Valida contra o estado mais recente antes de agendar a atualização React.
-    // Assim uma duplicidade lança erro de forma síncrona e o formulário não navega.
-    const proximos = salvarEducandoEmMemoria(educandosAtuais.current, registro)
+  const aplicarEducandos = useCallback((proximos: Educando[]) => {
     educandosAtuais.current = proximos
     setEducandos(proximos)
   }, [])
 
-  const alternarSituacaoEducando = useCallback((id: string) => {
-    const proximos = alternarSituacaoEmMemoria(educandosAtuais.current, id)
-    educandosAtuais.current = proximos
-    setEducandos(proximos)
-  }, [])
+  // Substitui (ou acrescenta) um educando, preservando os responsáveis já
+  // carregados quando a resposta não os traz (a listagem não traz).
+  const mesclarEducando = useCallback(
+    (registro: Educando) => {
+      const atuais = educandosAtuais.current
+      const anterior = atuais.find((item) => item.id === registro.id)
+      const completo =
+        anterior && registro.responsaveis.length === 0
+          ? { ...registro, responsaveis: anterior.responsaveis }
+          : registro
+      aplicarEducandos(
+        anterior
+          ? atuais.map((item) => (item.id === completo.id ? completo : item))
+          : [...atuais, completo].sort((a, b) => a.nome.localeCompare(b.nome)),
+      )
+      return completo
+    },
+    [aplicarEducandos],
+  )
+
+  const carregarEducandos = useCallback(() => {
+    if (cargaAtual.current === "carregando" || cargaAtual.current === "pronta")
+      return
+    cargaAtual.current = "carregando"
+    setCargaEducandos("carregando")
+    setErroEducandos(null)
+    api
+      .listarEducandos()
+      .then((lista) => {
+        aplicarEducandos(lista.map(deEducandoApi))
+        cargaAtual.current = "pronta"
+        setCargaEducandos("pronta")
+      })
+      .catch((erro: unknown) => {
+        cargaAtual.current = "erro"
+        setCargaEducandos("erro")
+        setErroEducandos(
+          erro instanceof Error
+            ? erro.message
+            : "Não foi possível carregar os educandos.",
+        )
+      })
+  }, [aplicarEducandos])
+
+  const carregarEducando = useCallback(
+    async (id: string) => {
+      if (!ehIdPersistido(id)) return
+      mesclarEducando(deEducandoApi(await api.buscarEducando(Number(id))))
+    },
+    [mesclarEducando],
+  )
+
+  const salvarEducando = useCallback(
+    async (registro: Educando) =>
+      mesclarEducando(
+        await salvarEducandoRemoto(registro, educandosAtuais.current),
+      ),
+    [mesclarEducando],
+  )
+
+  const alternarSituacaoEducando = useCallback(
+    async (id: string) => {
+      const atual = educandosAtuais.current.find((item) => item.id === id)
+      if (!atual || !ehIdPersistido(id)) {
+        throw new Error("Educando não encontrado.")
+      }
+      const resposta =
+        atual.situacaoVinculo === "Ativo"
+          ? await api.inativarEducando(Number(id))
+          : await api.reativarEducando(Number(id))
+      mesclarEducando(deEducandoApi(resposta))
+    },
+    [mesclarEducando],
+  )
 
   const registrarEvolucao = useCallback((atendimento: Atendimento) => {
     setAtendimentos((atuais) => [atendimento, ...atuais])
@@ -127,6 +207,10 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     () => ({
       iniciativas: iniciativasSeed,
       educandos,
+      cargaEducandos,
+      erroEducandos,
+      carregarEducandos,
+      carregarEducando,
       atendimentos,
       encaminhamentos,
       atividades,
@@ -141,6 +225,10 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     }),
     [
       educandos,
+      cargaEducandos,
+      erroEducandos,
+      carregarEducandos,
+      carregarEducando,
       atendimentos,
       encaminhamentos,
       atividades,
@@ -180,10 +268,11 @@ export function useSalvarGestao() {
   const [estado, setEstado] = useState<SaveState>("idle")
   const [mensagem, setMensagem] = useState<string | null>(null)
 
-  const salvar = useCallback(async (acao: () => void, forcarErro = false) => {
+  // `acao` pode ser síncrona (mock) ou assíncrona (API real).
+  const salvar = useCallback(
+    async (acao: () => unknown, forcarErro = false) => {
     setEstado("saving")
     setMensagem(null)
-    await new Promise((resolve) => setTimeout(resolve, 700))
 
     if (forcarErro) {
       setEstado("error")
@@ -192,7 +281,7 @@ export function useSalvarGestao() {
     }
 
     try {
-      acao()
+      await acao()
       setEstado("saved")
       window.setTimeout(() => setEstado("idle"), 2500)
       return true
@@ -203,7 +292,9 @@ export function useSalvarGestao() {
       )
       return false
     }
-  }, [])
+    },
+    [],
+  )
 
   return { estado, mensagem, salvar }
 }

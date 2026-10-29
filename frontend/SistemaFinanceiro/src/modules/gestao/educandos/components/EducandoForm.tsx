@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import {
   useEducandosGestao,
@@ -11,10 +11,13 @@ import {
   ORIGENS_ENCAMINHAMENTO,
   duplicidadeDe,
   educandoVazio,
-  novoId,
   responsavelVazio,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
+import {
+  CAMPOS_AGUARDANDO_MIGRACAO,
+  ehIdPersistido,
+} from "../../api/educandosMapper"
 import { useRascunho } from "../useRascunho"
 import {
   Card,
@@ -27,6 +30,19 @@ import {
 
 const primaryButton =
   "inline-flex h-10 items-center justify-center rounded-md bg-[#0f1e3d] px-4 text-sm font-medium text-white transition-colors hover:bg-[#1a3060] disabled:cursor-not-allowed disabled:opacity-50"
+// Campos sem coluna no banco até a migration da Sprint 3 ser aplicada.
+const pendente = CAMPOS_AGUARDANDO_MIGRACAO
+const AVISO_PENDENTE =
+  "Ainda não é salvo no servidor: aguardando a migration da Sprint 3."
+
+function AvisoPendente() {
+  return pendente ? (
+    <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+      {AVISO_PENDENTE}
+    </p>
+  ) : null
+}
+
 const secondaryButton =
   "inline-flex h-10 items-center justify-center rounded-md border border-[var(--border)] bg-white px-4 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
 
@@ -101,7 +117,6 @@ export default function EducandoForm({
   const { iniciativas, educandos, salvarEducando } = useEducandosGestao()
   const permissoes = usePermissoesEducandos()
   const { estado, mensagem, salvar } = useSalvarGestao()
-  const [simularFalha, setSimularFalha] = useState(false)
   const [form, setForm, limparRascunho] = useRascunho<Educando>(
     `rascunho:gestao:educando:${educando?.id ?? "novo"}`,
     educando ?? educandoVazio(),
@@ -133,11 +148,13 @@ export default function EducandoForm({
     event.preventDefault()
     if (leitura || duplicidade) return
 
-    const registro = { ...form, id: form.id || novoId("edu") }
-    const ok = await salvar(() => salvarEducando(registro), simularFalha)
-    if (ok) {
+    let salvo: Educando | undefined
+    const ok = await salvar(async () => {
+      salvo = await salvarEducando(form)
+    })
+    if (ok && salvo) {
       limparRascunho()
-      navigate(`/gestao/educandos/${registro.id}`)
+      navigate(`/gestao/educandos/${salvo.id}`)
     }
   }
 
@@ -167,12 +184,15 @@ export default function EducandoForm({
           onChange={(value) => set("nascimento", value)}
           disabled={leitura}
         />
-        <TextInput
-          label="Gênero"
-          value={form.genero}
-          onChange={(value) => set("genero", value)}
-          disabled={leitura}
-        />
+        <div>
+          <TextInput
+            label="Gênero"
+            value={form.genero}
+            onChange={(value) => set("genero", value)}
+            disabled={leitura || pendente}
+          />
+          <AvisoPendente />
+        </div>
         <Field label="Cor autodeclarada">
           <select
             className={inputClass}
@@ -230,7 +250,7 @@ export default function EducandoForm({
             className={inputClass}
             value={form.iniciativaId}
             onChange={(event) => set("iniciativaId", event.target.value)}
-            disabled={leitura}
+            disabled={leitura || pendente}
           >
             <option value="">Selecione a iniciativa</option>
             {iniciativas.map((iniciativa) => (
@@ -239,13 +259,14 @@ export default function EducandoForm({
               </option>
             ))}
           </select>
+          <AvisoPendente />
         </Field>
         <TextInput
           label="Data de ingresso"
           type="date"
           value={form.dataIngresso}
           onChange={(value) => set("dataIngresso", value)}
-          disabled={leitura}
+          disabled={leitura || pendente}
         />
         <TextInput
           label="Situação do vínculo"
@@ -261,12 +282,15 @@ export default function EducandoForm({
           onChange={(value) => set("escola", value)}
           disabled={leitura}
         />
-        <TextInput
-          label="Série / ano"
-          value={form.serie}
-          onChange={(value) => set("serie", value)}
-          disabled={leitura}
-        />
+        <div>
+          <TextInput
+            label="Série / ano"
+            value={form.serie}
+            onChange={(value) => set("serie", value)}
+            disabled={leitura || pendente}
+          />
+          <AvisoPendente />
+        </div>
         <TextInput
           label="Turno"
           value={form.turno}
@@ -325,7 +349,7 @@ export default function EducandoForm({
                 full={campo === "escolaridade"}
               />
             ))}
-            {!leitura && form.responsaveis.length > 1 && (
+            {!leitura && !ehIdPersistido(responsavel.id) && (
               <div className="md:col-span-2">
                 <button
                   type="button"
@@ -424,6 +448,11 @@ export default function EducandoForm({
         <h2 className="mb-4 text-base font-semibold">
           Ingresso e encaminhamento
         </h2>
+        {pendente && (
+          <div className="mb-3">
+            <SensitiveNote>{AVISO_PENDENTE}</SensitiveNote>
+          </div>
+        )}
         <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">
           Motivo de ingresso (múltipla escolha)
         </p>
@@ -434,7 +463,7 @@ export default function EducandoForm({
                 type="checkbox"
                 className="mt-0.5 size-4 accent-[#0e7e6e]"
                 checked={form.motivosIngresso.includes(motivo)}
-                disabled={leitura}
+                disabled={leitura || pendente}
                 onChange={(event) =>
                   set(
                     "motivosIngresso",
@@ -456,7 +485,7 @@ export default function EducandoForm({
               onChange={(event) =>
                 set("origemEncaminhamento", event.target.value)
               }
-              disabled={leitura}
+              disabled={leitura || pendente}
             >
               <option value="">Selecione a origem</option>
               {ORIGENS_ENCAMINHAMENTO.map((origem) => (
@@ -481,14 +510,6 @@ export default function EducandoForm({
           <Link to="/gestao/educandos" className={secondaryButton}>
             Cancelar
           </Link>
-          <label className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-            <input
-              type="checkbox"
-              checked={simularFalha}
-              onChange={(event) => setSimularFalha(event.target.checked)}
-            />
-            Simular falha de envio
-          </label>
           <SaveStatus estado={estado} />
         </div>
       )}

@@ -37,17 +37,19 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Visão geral")
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')
-    expect(html).toContain('href="/financeiro"')
+    // Coordenador da Gestão não tem acesso ao Financeiro: sem o atalho.
+    expect(html).not.toContain('href="/financeiro"')
     expect(html).toContain("Sair")
   })
 
+  // Educandos vêm da API (carregados em efeito, que a renderização estática
+  // não executa): a tela abre no estado de carregamento.
   it("renderiza a listagem em /gestao/educandos", () => {
     const html = renderizarRota("/gestao/educandos")
     expect(html).toContain("Crianças e adolescentes vinculados")
-    expect(html).toContain("Ana Beatriz Souza")
+    expect(html).toContain("Carregando educandos")
     expect(html).toContain("Novo educando")
     expect(html).toContain('href="/gestao/educandos/novo"')
-    expect(html).toContain('href="/gestao/educandos/edu-1"')
   })
 
   it("renderiza o cadastro completo em /gestao/educandos/novo", () => {
@@ -58,13 +60,9 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain('href="/gestao/educandos"')
   })
 
-  it("renderiza a ficha de um id válido", () => {
-    const html = renderizarRota("/gestao/educandos/edu-1")
-    expect(html).toContain("Ana Beatriz Souza")
-    expect(html).toContain("Ficha cadastral")
-    expect(html).toContain("Fichas de evolução")
-    expect(html).toContain("Histórico de frequência")
-    expect(html).toContain('href="/gestao/educandos"')
+  it("abre a ficha em estado de carregamento", () => {
+    const html = renderizarRota("/gestao/educandos/12")
+    expect(html).toContain("Carregando ficha")
   })
 
   it("renderiza a listagem de atividades em /gestao/atividades", () => {
