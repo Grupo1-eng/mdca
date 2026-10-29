@@ -67,6 +67,18 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain('href="/gestao/educandos"')
   })
 
+  it("renderiza a listagem de atividades em /gestao/atividades", () => {
+    const html = renderizarRota("/gestao/atividades")
+    expect(html).toContain("Atividades e Frequência")
+    expect(html).toContain("Oficina de Música")
+    expect(html).toContain("Educador Marcos Reis")
+    expect(html).toContain("Convivência e Fortalecimento de Vínculos")
+    expect(html).toContain('href="/gestao/atividades"')
+    // Coordenação pode registrar atividades.
+    expect(html).toContain("Nova atividade")
+    expect(html).toContain("Editar")
+  })
+
   it("renderiza a Agenda em /gestao/agenda", () => {
     const html = renderizarRota("/gestao/agenda")
     expect(html).toContain("Compromissos da equipe")

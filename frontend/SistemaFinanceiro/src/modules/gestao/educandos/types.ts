@@ -82,10 +82,17 @@ export interface Encaminhamento {
   acompanhamentos: AcompanhamentoEncaminhamento[]
 }
 
+export type SituacaoAtividade = "Ativa" | "Encerrada"
+
+// Mesmos campos da Atividade do SistemaGestao. O backend ainda não expõe
+// /api/atividades; ver CLAUDE.md antes de integrar.
 export interface Atividade {
   id: string
   nome: string
   iniciativaId: string
+  responsavel: string
+  situacao: SituacaoAtividade
+  descricao: string
 }
 
 export interface Encontro {

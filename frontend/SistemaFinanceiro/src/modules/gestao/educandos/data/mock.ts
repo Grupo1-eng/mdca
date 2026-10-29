@@ -363,9 +363,30 @@ export const encaminhamentosSeed: Encaminhamento[] = [
 ]
 
 export const atividadesSeed: Atividade[] = [
-  { id: "atv-1", nome: "Oficina de Música", iniciativaId: "ini-1" },
-  { id: "atv-2", nome: "Reforço Escolar – Matemática", iniciativaId: "ini-2" },
-  { id: "atv-3", nome: "Roda de Projeto de Vida", iniciativaId: "ini-3" },
+  {
+    id: "atv-1",
+    nome: "Oficina de Música",
+    iniciativaId: "ini-1",
+    responsavel: "Educador Marcos Reis",
+    situacao: "Ativa",
+    descricao: "Oficina semanal de percussão e canto coletivo.",
+  },
+  {
+    id: "atv-2",
+    nome: "Reforço Escolar – Matemática",
+    iniciativaId: "ini-2",
+    responsavel: "Educadora Paula Menezes",
+    situacao: "Ativa",
+    descricao: "Apoio pedagógico em contraturno.",
+  },
+  {
+    id: "atv-3",
+    nome: "Roda de Projeto de Vida",
+    iniciativaId: "ini-3",
+    responsavel: "Rafael Dias",
+    situacao: "Ativa",
+    descricao: "Encontros quinzenais com adolescentes do programa.",
+  },
 ]
 
 export const encontrosSeed: Encontro[] = [

@@ -16,6 +16,7 @@ import {
   encontrosSeed,
   iniciativasSeed,
 } from "./data/mock"
+import { salvarAtividadeEmMemoria } from "../atividades/model"
 import {
   alternarSituacaoEmMemoria,
   permissoesEducandos,
@@ -49,6 +50,7 @@ interface EducandosContextValue {
     encaminhamentoId: string,
     acompanhamento: AcompanhamentoEncaminhamento,
   ) => void
+  salvarAtividade: (atividade: Atividade) => void
 }
 
 const EducandosContext = createContext<EducandosContextValue | null>(null)
@@ -58,6 +60,8 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
   const educandosAtuais = useRef(educandosSeed)
   const [atendimentos, setAtendimentos] = useState(atendimentosSeed)
   const [encaminhamentos, setEncaminhamentos] = useState(encaminhamentosSeed)
+  const [atividades, setAtividades] = useState(atividadesSeed)
+  const atividadesAtuais = useRef(atividadesSeed)
 
   const iniciativaNome = useCallback(
     (id: string) =>
@@ -112,13 +116,20 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const salvarAtividade = useCallback((registro: Atividade) => {
+    // Mesmo padrão de salvarEducando: a validação lança erro de forma síncrona.
+    const proximas = salvarAtividadeEmMemoria(atividadesAtuais.current, registro)
+    atividadesAtuais.current = proximas
+    setAtividades(proximas)
+  }, [])
+
   const value = useMemo<EducandosContextValue>(
     () => ({
       iniciativas: iniciativasSeed,
       educandos,
       atendimentos,
       encaminhamentos,
-      atividades: atividadesSeed,
+      atividades,
       encontros: encontrosSeed,
       iniciativaNome,
       salvarEducando,
@@ -126,11 +137,14 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       registrarEvolucao,
       registrarEncaminhamento,
       registrarAcompanhamento,
+      salvarAtividade,
     }),
     [
       educandos,
       atendimentos,
       encaminhamentos,
+      atividades,
+      salvarAtividade,
       iniciativaNome,
       salvarEducando,
       alternarSituacaoEducando,
