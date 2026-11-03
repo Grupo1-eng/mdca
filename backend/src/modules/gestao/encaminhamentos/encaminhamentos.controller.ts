@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { EncaminhamentosService } from './encaminhamentos.service';
 import { CreateEncaminhamentoDto } from './dto/create-encaminhamento.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -17,6 +18,8 @@ import { PerfisGuard } from '../../auth/guards/perfis.guard';
 import { Perfis } from '../../auth/decorators/perfis.decorator';
 import { PERFIS_TECNICOS } from '../../auth/perfis.constants';
 
+@ApiTags('Encaminhamentos')
+@ApiBearerAuth('access-token')
 @Controller('api/encaminhamentos')
 @UseGuards(JwtAuthGuard, PerfisGuard)
 @Perfis(...PERFIS_TECNICOS)
