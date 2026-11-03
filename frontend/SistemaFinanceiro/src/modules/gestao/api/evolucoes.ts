@@ -19,9 +19,10 @@ export interface EncaminhamentoApi {
   dataEncaminhamento: string
   situacaoAtual: string
   acompanhamentos?: AcompanhamentoApi[]
-  // Colunas da migration da Sprint 3; ausentes até ela ser aplicada.
+  // Colunas das migrations da Sprint 3 (descricao vem do PR #15 e guarda o
+  // motivo do encaminhamento); ausentes até elas serem aplicadas.
+  descricao?: string | null
   destino?: string | null
-  motivo?: string | null
   profissionalId?: number | null
   profissional?: { id: number; nome: string } | null
 }
@@ -60,7 +61,7 @@ export interface EncaminhamentoPayload {
   educandoId: number
   dataEncaminhamento: string
   destino?: string | null
-  motivo?: string | null
+  descricao?: string | null
 }
 
 export interface AcompanhamentoPayload {

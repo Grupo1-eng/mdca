@@ -84,6 +84,16 @@ describe("deEncaminhamentoApi", () => {
     expect(situacaoAtualEncaminhamento(enc)).toBe("Em andamento")
   })
 
+  it("o motivo da tela é a descricao do banco, e o autor vem do servidor", () => {
+    const enc = deEncaminhamentoApi({
+      ...base,
+      descricao: "Atendimento especializado",
+      destino: "CAPS Infantil",
+      profissional: { id: 7, nome: "Ana" },
+    })
+    expect(enc).toMatchObject({ motivo: "Atendimento especializado", destino: "CAPS Infantil", profissional: "Ana" })
+  })
+
   it("com acompanhamentos, vale o mais recente", () => {
     const enc = deEncaminhamentoApi({
       ...base,
@@ -113,6 +123,16 @@ describe("payloads", () => {
     expect(isoParaDataHoraLocal(payload.dataInicio)).toBe("2026-10-29T08:15")
     if (CAMPOS_AGUARDANDO_MIGRACAO) expect(payload).not.toHaveProperty("sigiloso")
     expect(() => paraEvolucaoPayload("4", { ...form, registro: " " })).toThrow(/Descreva/)
+  })
+
+  it("encaminhamento: motivo vai na descricao quando a migration estiver no banco", () => {
+    const payload = paraEncaminhamentoPayload("4", { destino: "CRAS", motivo: " Vulnerabilidade " })
+    if (CAMPOS_AGUARDANDO_MIGRACAO) {
+      expect(payload).not.toHaveProperty("descricao")
+    } else {
+      expect(payload).toMatchObject({ destino: "CRAS", descricao: "Vulnerabilidade" })
+      expect(payload).not.toHaveProperty("motivo")
+    }
   })
 
   it("encaminhamento: usa o instante atual", () => {

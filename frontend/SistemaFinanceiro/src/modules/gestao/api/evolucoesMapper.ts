@@ -86,7 +86,8 @@ export function deEncaminhamentoApi(api: EncaminhamentoApi): Encaminhamento {
     profissional: api.profissional?.nome ?? "",
     dataHora: isoParaDataHoraLocal(api.dataEncaminhamento),
     destino: api.destino ?? "",
-    motivo: api.motivo ?? "",
+    // O "Motivo" da tela é a coluna `descricao` do banco.
+    motivo: api.descricao ?? "",
     situacao: statusParaTela(api.situacaoAtual),
     acompanhamentos: (api.acompanhamentos ?? []).map(deAcompanhamentoApi),
   }
@@ -133,7 +134,7 @@ export function paraEncaminhamentoPayload(
     const destino = form.destino.trim()
     if (!destino) throw new Error("Informe o destino do encaminhamento.")
     payload.destino = destino
-    payload.motivo = form.motivo.trim() || null
+    payload.descricao = form.motivo.trim() || null
   }
   return payload
 }
