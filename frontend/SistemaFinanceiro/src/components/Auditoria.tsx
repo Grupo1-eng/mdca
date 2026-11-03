@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LoadingState, ErrorState } from "./StatusMessage";
 import { selectCls, chevronBg } from "./ModalShell";
 import AlteracoesAuditoria from "./AlteracoesAuditoria";
+import CampoData from "./CampoData";
 import { exportarAuditoriaCsv, getAuditoria } from "@/api/auditorias";
 import { corAcao, corAcaoPadrao, formatarDataHora, rotuloAcao, rotuloRecurso } from "@/lib/auditoria";
 import { rotuloPerfil } from "@/lib/rotulos";
@@ -135,11 +136,11 @@ export default function Auditoria() {
         <div className="p-4 border-b border-[var(--border)] flex flex-wrap items-end gap-3">
           <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
             <span className="block mb-1">De</span>
-            <input type="date" value={filtro.de ?? ""} onChange={set("de")} className={inputCls} />
+            <CampoData value={filtro.de ?? ""} onChange={v => setFiltro(f => ({ ...f, de: v || undefined }))} className={inputCls + " w-32"} ariaLabel="Data inicial" />
           </label>
           <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
             <span className="block mb-1">Até</span>
-            <input type="date" value={filtro.ate ?? ""} onChange={set("ate")} className={inputCls} />
+            <CampoData value={filtro.ate ?? ""} onChange={v => setFiltro(f => ({ ...f, ate: v || undefined }))} className={inputCls + " w-32"} ariaLabel="Data final" />
           </label>
           <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] w-48">
             <span className="block mb-1">Ação</span>

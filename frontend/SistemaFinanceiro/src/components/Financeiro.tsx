@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fmt, formatDate } from '@/lib/format';
+import { fmt, formatData, formatDate } from '@/lib/format';
 import { type LogEntry } from './NavBar';
 import { SummaryCard } from './Dashboard';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -19,6 +19,7 @@ import { usePeriodo } from '@/context/PeriodoContext';
 import { useAuth } from '@/context/AuthContext';
 import { podeVerAuditoria } from '@/lib/auditoria';
 import BotaoHistorico from './BotaoHistorico';
+import CampoData from './CampoData';
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -159,7 +160,7 @@ function DrawerComprovantes({ lancamento, anexos, loading, onClose, onAddAnexos,
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--foreground)] truncate">{a.nome}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {new Date(a.dataUpload).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {formatData(new Date(a.dataUpload))}</p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <a href={a.url} download={a.nome} target="_blank" rel="noreferrer"
@@ -288,7 +289,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
           </FieldMd>
         </div>
         <FieldMd label="Data" required>
-          <input type="date" required value={form.dataCompetencia} onChange={set("dataCompetencia")} className={inputMdCls + " font-mono"} />
+          <CampoData required value={form.dataCompetencia} onChange={v => setForm(f => ({ ...f, dataCompetencia: v }))} className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Valor (R$)" required>
           <div className="relative">

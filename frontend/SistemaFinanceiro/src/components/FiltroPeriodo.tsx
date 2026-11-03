@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { getIntervaloPeriodo, intervaloValido, type AgrupamentoFluxo, type Intervalo, type PeriodoDash } from '@/lib/aggregations';
+import { formatData } from '@/lib/format';
+import CampoData from './CampoData';
 
 // Duração (ms) da transição dos gráficos ao trocar de período; o padrão do
 // Recharts (1500 ms) deixava a troca lenta.
@@ -23,14 +25,13 @@ export function labelPeriodo(key: PeriodoDash): string {
 }
 
 export function formatIntervalo(periodo: PeriodoDash, intervalo: Intervalo): string {
-  const completo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   const { inicio, fim } = intervalo;
   if (!inicio && !fim) return "Todo o período";
-  if (!inicio) return `Até ${completo.format(fim!)}`;
-  if (!fim) return `A partir de ${completo.format(inicio)}`;
-  if (periodo === "mes") return completo.format(inicio).replace(/^\d{2} de /, "");
-  const curto = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
-  return `${curto.format(inicio)} a ${completo.format(fim)}`;
+  if (!inicio) return `Até ${formatData(fim!)}`;
+  if (!fim) return `A partir de ${formatData(inicio)}`;
+  // "Este mês" mostra o nome do mês ("outubro de 2026"), não um intervalo de datas.
+  if (periodo === "mes") return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(inicio);
+  return `${formatData(inicio)} a ${formatData(fim)}`;
 }
 
 export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim }: {
@@ -107,12 +108,12 @@ export default function FiltroPeriodo({ periodo, setPeriodo, dataIni, setDataIni
                 <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] mb-2">Intervalo de datas</p>
                 <div>
                   <label className="text-[10px] text-[var(--muted-foreground)] block mb-1">De</label>
-                  <input type="date" value={rascunhoIni} onChange={e => setRascunhoIni(e.target.value)}
+                  <CampoData value={rascunhoIni} onChange={setRascunhoIni} ariaLabel="Data inicial"
                     className="w-full h-8 px-2 text-xs border border-[var(--border)] rounded focus:outline-none focus:border-[#1a3a6b] font-mono" />
                 </div>
                 <div>
                   <label className="text-[10px] text-[var(--muted-foreground)] block mb-1">Até</label>
-                  <input type="date" value={rascunhoFim} onChange={e => setRascunhoFim(e.target.value)}
+                  <CampoData value={rascunhoFim} onChange={setRascunhoFim} ariaLabel="Data final"
                     className="w-full h-8 px-2 text-xs border border-[var(--border)] rounded focus:outline-none focus:border-[#1a3a6b] font-mono" />
                 </div>
                 <p className="text-[10px] text-[var(--muted-foreground)]">Deixe um campo vazio para não limitar aquele lado.</p>

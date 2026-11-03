@@ -1,4 +1,3 @@
-import { formatDate } from "./format";
 import { rotuloPerfil, rotuloSituacao } from "./rotulos";
 import type { AlteracaoAuditoria, Perfil, SituacaoLancamento, ValorAuditoria } from "@/types/financeiro";
 
@@ -97,7 +96,7 @@ export function formatarValor(campo: string, valor: ValorAuditoria | undefined):
   const texto = String(valor);
   if (campo === "situacao") return rotuloSituacao[texto as SituacaoLancamento] ?? texto;
   if (campo === "perfil") return rotuloPerfil[texto as Perfil] ?? texto;
-  if (ISO_COM_HORARIO.test(texto)) return formatDate(texto);
+  if (ISO_COM_HORARIO.test(texto)) return dataCurta(texto);
   return texto;
 }
 
@@ -110,11 +109,22 @@ export function descreverAlteracao(campo: string, alteracao: AlteracaoAuditoria)
   return formatarValor(campo, temPara ? alteracao.para : alteracao.de);
 }
 
+// Datas da auditoria no padrão DD/MM/AAAA.
 const dataHoraBrasilia = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
-  dateStyle: "short",
-  timeStyle: "medium",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
 });
+
+/** Campo só de data (meia-noite UTC no backend): usa a parte AAAA-MM-DD, sem fuso. */
+function dataCurta(iso: string): string {
+  const [ano, mes, dia] = iso.slice(0, 10).split("-");
+  return `${dia}/${mes}/${ano}`;
+}
 
 export function formatarDataHora(iso: string): string {
   return dataHoraBrasilia.format(new Date(iso));

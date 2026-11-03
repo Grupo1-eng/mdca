@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
 import { podeVerAuditoria } from "@/lib/auditoria";
+import { formatData } from "@/lib/format";
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/);
@@ -38,7 +39,7 @@ function fmtRelativo(d: Date) {
   if (diff < 60) return "agora mesmo";
   if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
-  return d.toLocaleDateString("pt-BR");
+  return formatData(d);
 }
 
 export default function NavBar({ active, setModule, logs, onClearLogs }: {
