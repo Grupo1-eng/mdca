@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDate,
   IsInt,
   IsOptional,
@@ -41,4 +42,17 @@ export class CreateEvolucaoDto {
   @IsOptional()
   @IsString()
   situacao?: string;
+
+  // Sprint 3 (Anexo A.3).
+  @IsOptional()
+  @IsString()
+  intervencaoUsuario?: string;
+
+  @IsOptional()
+  @IsString()
+  intervencaoFamilia?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  sigiloso?: boolean;
 }

@@ -86,12 +86,16 @@ describe('Encaminhamentos (integração)', () => {
     });
 
     expect(res.status).toBe(201);
-    expect(prisma.encaminhamento.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        educandoId: 15,
-        descricao: 'Encaminhado para atendimento especializado.',
+    expect(prisma.encaminhamento.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          educandoId: 15,
+          descricao: 'Encaminhado para atendimento especializado.',
+          // RN03: o profissional vem do token (usuário 7), não do corpo.
+          profissionalId: 7,
+        }),
       }),
-    });
+    );
     expect(res.body.descricao).toBe('Encaminhado para atendimento especializado.');
   });
 
@@ -102,6 +106,22 @@ describe('Encaminhamentos (integração)', () => {
 
     expect(res.status).toBe(201);
     expect(prisma.encaminhamento.create.mock.calls[0][0].data).not.toHaveProperty('descricao');
+  });
+
+  it('POST grava o destino e ignora profissionalId enviado no corpo', async () => {
+    prisma.encaminhamento.create.mockResolvedValue({ ...encaminhamento, destino: 'CAPS Infantil' });
+
+    const res = await chamar('post', '/api/encaminhamentos').send({
+      educandoId: 15,
+      destino: 'CAPS Infantil',
+      profissionalId: 999,
+    });
+
+    expect(res.status).toBe(201);
+    expect(prisma.encaminhamento.create.mock.calls[0][0].data).toMatchObject({
+      destino: 'CAPS Infantil',
+      profissionalId: 7,
+    });
   });
 
   it('POST recusa descrição acima do tamanho máximo', async () => {

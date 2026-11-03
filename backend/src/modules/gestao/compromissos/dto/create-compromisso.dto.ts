@@ -31,4 +31,9 @@ export class CreateCompromissoDto {
   @IsOptional()
   @IsString()
   situacao?: string;
+
+  // Sprint 3 (Anexo A.4).
+  @IsOptional()
+  @IsString()
+  local?: string;
 }

@@ -1,6 +1,7 @@
 import {
   IsDate,
   IsInt,
+  IsArray,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -92,4 +93,22 @@ export class CreateEducandoDto {
   @Type(() => Number)
   @IsInt()
   tecnicoResponsavelId?: number;
+
+  // Sprint 3 (RF01/RF02, Anexo A.1/A.2).
+  @IsOptional()
+  @IsString()
+  genero?: string;
+
+  @IsOptional()
+  @IsString()
+  serie?: string;
+
+  @IsOptional()
+  @IsString()
+  origemEncaminhamento?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  motivosIngresso?: string[];
 }

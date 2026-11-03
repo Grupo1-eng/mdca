@@ -60,6 +60,7 @@ model Usuario {
   evolucoesProfissional   Evolucao[]   @relation("EvolucaoProfissional")
   compromissosCriados     Compromisso[] @relation("CompromissoCriador")
   educandosResponsavel    Educando[]   @relation("TecnicoResponsavel")
+  encaminhamentosProfissional Encaminhamento[] @relation("EncaminhamentoProfissional")
   lancamentos             Lancamento[]
   auditorias              Auditoria[]
 
@@ -130,6 +131,11 @@ model Educando {
   medicamentoContinuo    String?   @map("medicamento_continuo")
   observacaoSaude        String?   @map("observacao_saude")
   situacaoAtual          String    @default("ativo") @map("situacao_atual")
+  // Sprint 3 (RF01/RF02, Anexo A.1/A.2 do documento da Sprint 1)
+  genero                 String?
+  serie                  String?
+  origemEncaminhamento   String?   @map("origem_encaminhamento")
+  motivosIngresso        String[]  @default([]) @map("motivos_ingresso")
 
   // NOVO — decidido nesta conversa: responsável técnico fixo por educando
   tecnicoResponsavelId   Int?      @map("tecnico_responsavel_id")
@@ -207,6 +213,7 @@ model Encontro {
   horaFim    String?   @map("hora_fim")
   local      String?
   situacao   String    @default("agendado")
+  observacoes String?
 
   atividade   Atividade    @relation(fields: [atividadeId], references: [id])
   frequencias Frequencia[]
@@ -225,6 +232,8 @@ model Frequencia {
   encontro Encontro @relation(fields: [encontroId], references: [id])
   educando Educando @relation(fields: [educandoId], references: [id])
 
+  // RN06: um único registro de frequência vigente por (encontro, educando).
+  @@unique([encontroId, educandoId])
   @@map("frequencia")
   @@schema("gestao")
 }
@@ -240,6 +249,10 @@ model Evolucao {
   dataInicio     DateTime  @default(now()) @map("data_inicio") @db.Timestamp(6)
   dataFim        DateTime? @map("data_fim") @db.Timestamp(6)
   situacao       String    @default("aberta")
+  // Sprint 3 (Anexo A.3): intervenções e classificação de sigilo
+  intervencaoUsuario String?  @map("intervencao_usuario")
+  intervencaoFamilia String?  @map("intervencao_familia")
+  sigiloso           Boolean  @default(false)
 
   educando        Educando         @relation(fields: [educandoId], references: [id])
   projeto         Projeto?         @relation(fields: [projetoId], references: [id])
@@ -257,9 +270,13 @@ model Encaminhamento {
   descricao          String?
   dataEncaminhamento DateTime @default(now()) @map("data_encaminhamento") @db.Timestamp(6)
   situacaoAtual      String   @default("em andamento") @map("situacao_atual")
+  // Sprint 3 (RF08): destino e profissional que registrou. O motivo fica em `descricao`.
+  destino            String?
+  profissionalId     Int?     @map("profissional_id")
 
   educando       Educando                       @relation(fields: [educandoId], references: [id])
   evolucao       Evolucao?                      @relation(fields: [evolucaoId], references: [id])
+  profissional   Usuario?                       @relation("EncaminhamentoProfissional", fields: [profissionalId], references: [id])
   acompanhamentos AcompanhamentoEncaminhamento[]
 
   @@map("encaminhamento")
@@ -288,6 +305,7 @@ model Compromisso {
   dataInicio DateTime  @map("data_inicio") @db.Timestamp(6)
   dataFim    DateTime? @map("data_fim") @db.Timestamp(6)
   situacao   String    @default("agendado")
+  local      String?
 
   criador Usuario @relation("CompromissoCriador", fields: [criadorId], references: [id])
 

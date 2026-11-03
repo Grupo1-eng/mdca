@@ -7,6 +7,11 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEncaminhamentoDto } from './dto/create-encaminhamento.dto';
 
+// Nome de quem registrou o encaminhamento, para a linha do tempo da ficha.
+const PROFISSIONAL = {
+  profissional: { select: { id: true, nome: true } },
+} as const;
+
 @Injectable()
 export class EncaminhamentosService {
   constructor(
@@ -89,6 +94,7 @@ export class EncaminhamentosService {
       },
 
       include: {
+        ...PROFISSIONAL,
         acompanhamentos: {
           orderBy: {
             data: 'desc',
@@ -119,6 +125,7 @@ export class EncaminhamentosService {
         },
 
         include: {
+          ...PROFISSIONAL,
           acompanhamentos: {
             orderBy: {
               data: 'desc',
@@ -138,6 +145,7 @@ export class EncaminhamentosService {
 
   async criar(
     dados: CreateEncaminhamentoDto,
+    profissionalId: number,
     organizacaoId: number,
   ) {
     await this.validarEducando(
@@ -152,7 +160,11 @@ export class EncaminhamentosService {
     );
 
     return this.prisma.encaminhamento.create({
-      data: dados,
+      data: {
+        ...dados,
+        profissionalId,
+      },
+      include: PROFISSIONAL,
     });
   }
 }

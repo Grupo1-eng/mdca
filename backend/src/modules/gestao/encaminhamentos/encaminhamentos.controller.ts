@@ -71,8 +71,10 @@ export class EncaminhamentosController {
     @UsuarioAtual()
     usuario: UsuarioAutenticado,
   ) {
+    // O profissional que registra vem do token, nunca do corpo (RN03).
     return this.service.criar(
       dados,
+      usuario.id,
       usuario.organizacaoId,
     );
   }
