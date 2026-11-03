@@ -254,6 +254,7 @@ model Encaminhamento {
   id                 Int      @id @default(autoincrement())
   educandoId         Int      @map("educando_id")
   evolucaoId         Int?     @map("evolucao_id")
+  descricao          String?
   dataEncaminhamento DateTime @default(now()) @map("data_encaminhamento") @db.Timestamp(6)
   situacaoAtual      String   @default("em andamento") @map("situacao_atual")
 

@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { EncaminhamentosService } from './encaminhamentos.service';
 import { CreateEncaminhamentoDto } from './dto/create-encaminhamento.dto';
 
@@ -24,6 +24,8 @@ import {
   UsuarioAutenticado,
 } from '../../auth/decorators/usuario-atual.decorator';
 
+@ApiTags('Encaminhamentos')
+@ApiBearerAuth('access-token')
 @Controller('api/encaminhamentos')
 @UseGuards(JwtAuthGuard, PerfisGuard)
 @Perfis(...PERFIS_TECNICOS)
