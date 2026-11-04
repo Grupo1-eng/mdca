@@ -8,21 +8,17 @@ import type {
   ResponsavelPayload,
 } from "./educandos"
 
-// Enquanto a migration 20261029180000_gestao_sprint3_campos não estiver no
-// banco, o backend descarta estes campos. A tela os mostra desabilitados.
-// Trocar para false quando a migration e os DTOs entrarem.
-export const CAMPOS_AGUARDANDO_MIGRACAO = true
+// A migration 20261103130000_gestao_sprint3_campos já está no banco: gênero,
+// série, motivos, origem, intervenções, sigilo, destino e local são gravados.
+// Se precisar desligar esses campos de novo, basta voltar para true.
+export const CAMPOS_AGUARDANDO_MIGRACAO = false
+
+// Vínculo com a iniciativa (iniciativa e data de ingresso): depende do
+// endpoint de EducandoProjeto, que ainda não existe no backend.
+export const VINCULO_INICIATIVA_PENDENTE = true
 
 // Campos do formulário que ainda não são gravados no servidor.
-export const CAMPOS_EDUCANDO_PENDENTES = [
-  "genero",
-  "serie",
-  "motivosIngresso",
-  "origemEncaminhamento",
-  // Vínculo com a iniciativa: depende do endpoint de EducandoProjeto.
-  "iniciativaId",
-  "dataIngresso",
-] as const
+export const CAMPOS_EDUCANDO_PENDENTES = ["iniciativaId", "dataIngresso"] as const
 
 export function ehIdPersistido(id: string): boolean {
   return /^\d+$/.test(id)

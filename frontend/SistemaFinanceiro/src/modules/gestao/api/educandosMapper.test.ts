@@ -130,7 +130,12 @@ describe("paraEducandoPayload", () => {
     if (CAMPOS_AGUARDANDO_MIGRACAO) {
       expect(payload).not.toHaveProperty("genero")
       expect(payload).not.toHaveProperty("serie")
+    } else {
+      expect(payload).toMatchObject({ genero: "Masculino", serie: "4º ano" })
     }
+    // Iniciativa e data de ingresso dependem do vínculo com o projeto.
+    expect(payload).not.toHaveProperty("iniciativaId")
+    expect(payload).not.toHaveProperty("dataIngresso")
   })
 
   it("exige nome", () => {

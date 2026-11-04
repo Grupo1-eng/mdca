@@ -16,6 +16,7 @@ import {
 import type { Educando, Responsavel } from "../types"
 import {
   CAMPOS_AGUARDANDO_MIGRACAO,
+  VINCULO_INICIATIVA_PENDENTE,
   ehIdPersistido,
 } from "../../api/educandosMapper"
 import { useRascunho } from "../useRascunho"
@@ -34,6 +35,11 @@ const primaryButton =
 const pendente = CAMPOS_AGUARDANDO_MIGRACAO
 const AVISO_PENDENTE =
   "Ainda não é salvo no servidor: aguardando a migration da Sprint 3."
+// Iniciativa e data de ingresso dependem do vínculo com o projeto
+// (EducandoProjeto), ainda sem endpoint.
+const vinculoPendente = VINCULO_INICIATIVA_PENDENTE
+const AVISO_VINCULO =
+  "Ainda não é salvo no servidor: o vínculo com a iniciativa entra numa próxima etapa."
 
 function AvisoPendente() {
   return pendente ? (
@@ -250,7 +256,7 @@ export default function EducandoForm({
             className={inputClass}
             value={form.iniciativaId}
             onChange={(event) => set("iniciativaId", event.target.value)}
-            disabled={leitura || pendente}
+            disabled={leitura || vinculoPendente}
           >
             <option value="">Selecione a iniciativa</option>
             {iniciativas.map((iniciativa) => (
@@ -259,14 +265,18 @@ export default function EducandoForm({
               </option>
             ))}
           </select>
-          <AvisoPendente />
+          {vinculoPendente && (
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              {AVISO_VINCULO}
+            </p>
+          )}
         </Field>
         <TextInput
           label="Data de ingresso"
           type="date"
           value={form.dataIngresso}
           onChange={(value) => set("dataIngresso", value)}
-          disabled={leitura || pendente}
+          disabled={leitura || vinculoPendente}
         />
         <TextInput
           label="Situação do vínculo"

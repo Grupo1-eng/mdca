@@ -122,6 +122,8 @@ describe("payloads", () => {
     expect(payload).not.toHaveProperty("profissionalId")
     expect(isoParaDataHoraLocal(payload.dataInicio)).toBe("2026-10-29T08:15")
     if (CAMPOS_AGUARDANDO_MIGRACAO) expect(payload).not.toHaveProperty("sigiloso")
+    else
+      expect(payload).toMatchObject({ intervencaoUsuario: "x", intervencaoFamilia: "y", sigiloso: true })
     expect(() => paraEvolucaoPayload("4", { ...form, registro: " " })).toThrow(/Descreva/)
   })
 
