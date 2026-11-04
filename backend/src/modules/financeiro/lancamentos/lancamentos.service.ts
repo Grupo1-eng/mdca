@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
+import { limitesDoMes, resumoSemanalDoMes } from './resumo-semanal';
 
 @Injectable()
 export class LancamentosService {
@@ -9,6 +10,30 @@ export class LancamentosService {
 
   async listarTodos() {
     return this.prisma.lancamento.findMany();
+  }
+
+  async resumoSemanal(mes: string) {
+    const { inicio, fimExclusivo } = limitesDoMes(mes);
+    const intervalo = { gte: inicio, lt: fimExclusivo };
+
+    const lancamentos = await this.prisma.lancamento.findMany({
+      where: {
+        OR: [
+          { dataCompetencia: intervalo },
+          { dataCompetencia: null, dataPagamento: intervalo },
+          { dataCompetencia: null, dataPagamento: null, criadoEm: intervalo },
+        ],
+      },
+      select: {
+        tipo: true,
+        valor: true,
+        dataCompetencia: true,
+        dataPagamento: true,
+        criadoEm: true,
+      },
+    });
+
+    return resumoSemanalDoMes(mes, lancamentos);
   }
 
   async buscarPorId(id: number) {

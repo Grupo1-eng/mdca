@@ -9,11 +9,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { LancamentosService } from './lancamentos.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
+import { ResumoSemanalQueryDto } from './dto/resumo-semanal-query.dto';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
@@ -32,6 +40,23 @@ export class LancamentosController {
   @Get()
   listarTodos() {
     return this.service.listarTodos();
+  }
+
+  @ApiTags('Lançamentos')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Resumo semanal de entradas e saídas de um mês',
+    description:
+      'Agrupa os lançamentos do mês em semanas de 7 dias, contadas a partir do dia 1 ' +
+      '(1-7, 8-14, 15-21, 22-28 e 29 até o fim do mês). Valores em reais, com 2 casas.',
+  })
+  @ApiResponse({ status: 200, description: 'Semanas do mês com entradas, saídas e saldo.' })
+  @ApiResponse({ status: 400, description: 'Mês ausente ou fora do formato AAAA-MM.' })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido.' })
+  @ApiResponse({ status: 403, description: 'Perfil sem acesso ao módulo financeiro.' })
+  @Get('resumo-semanal')
+  resumoSemanal(@Query() query: ResumoSemanalQueryDto) {
+    return this.service.resumoSemanal(query.mes);
   }
 
   @Get(':id')
