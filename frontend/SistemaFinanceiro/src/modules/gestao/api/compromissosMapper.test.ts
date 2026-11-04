@@ -68,6 +68,7 @@ describe("paraCompromissoPayload", () => {
     expect(payload).not.toHaveProperty("situacao")
     expect(payload).not.toHaveProperty("criadorId")
     if (CAMPOS_AGUARDANDO_MIGRACAO) expect(payload).not.toHaveProperty("local")
+    else expect(payload).toMatchObject({ local: "Casa da família" })
   })
 
   it("exige título e data", () => {
