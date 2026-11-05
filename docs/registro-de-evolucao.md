@@ -34,7 +34,7 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 **Pendências:**
 - `categorias-financeiras`, `contatos`, `fontes-de-recurso` e `orcamentos` não têm coluna `organizacao_id` no schema, então continuam compartilhados entre organizações. Corrigir exige migration e revisão da gestão.
 - `projetos` (módulo compartilhado) grava a organização na criação, mas a listagem, a busca, a edição e a exclusão não filtram por ela.
-- O PR #20 (auditoria) mexe nos mesmos services. Quem for mergeado por último precisa resolver o conflito e manter o filtro por organização dentro da transação de auditoria.
+- ~~O PR #20 (auditoria) mexe nos mesmos services.~~ Resolvido no merge do `main` na branch do #20 (ver a entrada da auditoria).
 
 ## 2026-11-04 — Integração do log de auditoria com o main
 
@@ -43,6 +43,8 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 **O que mudou:** o `main` foi mergeado na branch de auditoria. No conflito em `Financeiro.tsx` ficaram o `colSpan` com a coluna de histórico e a mensagem vazia por aba do filtro por tipo (#17). A migration foi renomeada de `20261028200000_auditoria_financeiro` para `20261104120000_auditoria_financeiro`, para ficar depois das migrations da gestão (`20261103...`). Os perfis financeiros foram adicionados aos mapas `Record<Perfil, string>` da gestão, que deixaram de compilar.
 
 **Por quê:** a branch estava 28 commits atrás do `main`, com conflito e com uma migration fora de ordem.
+
+Depois do merge do #21, um segundo merge do `main` juntou o isolamento por organização com a auditoria em transação: `buscarPorId` recebe `organizacaoId` e o client da transação, e a conferência de conta/projeto do corpo roda dentro da mesma transação. Os testes de auditoria passaram a simular `findFirst` e a conta da organização do usuário.
 
 **Pendências:** revisão de alguém da gestão (o PR mexe em `schema.prisma`). Antes de aplicar a migration, conferir `SELECT count(*) FROM public.auditoria;`: as colunas novas `modulo` e `resumo` são obrigatórias e não têm valor padrão, então a migration falha se a tabela tiver registros.
 
