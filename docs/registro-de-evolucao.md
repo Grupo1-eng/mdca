@@ -23,6 +23,24 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Integridade do banco da gestão
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-integridade-banco`)
+
+**O que mudou:** a migration `20261105120000_gestao_integridade` mexe só no schema `gestao`:
+- coluna `criado_em` em educando, responsável familiar, evolução, encaminhamento, acompanhamento e compromisso. Nos registros antigos de evolução, encaminhamento e acompanhamento, ela é preenchida com a data do próprio registro;
+- `data_nascimento` passa a `DATE` e `renda_familiar` a `DECIMAL(12,2)`;
+- índices nas chaves estrangeiras e nas consultas de histórico e agenda;
+- vínculo único educando + projeto;
+- regras `CHECK`: textos obrigatórios não podem ser vazios, data de fim não pode ser anterior à de início, renda e número de pessoas da família não podem ser negativos ou zero.
+
+**Por quê:** o banco aceitava dados que as regras da Sprint 1 não admitem (nome em branco, período invertido, vínculo repetido) e não guardava quando cada registro técnico foi criado (RNF05).
+
+**Pendências:**
+- as `CHECK` foram criadas como `NOT VALID`: valem para gravações novas, mas os dados antigos não foram conferidos. Rodar `VALIDATE CONSTRAINT` em cada uma depois de corrigir os registros que violarem;
+- uma violação de `CHECK` hoje chega ao frontend como erro 500, porque o `PrismaExceptionFilter` não trata esse caso. Mapear para 400 é tarefa do backend;
+- os valores de situação (`em andamento`/`Em andamento`/`pendente`) seguem em texto livre: antes de travar uma lista, frontend e backend precisam usar os mesmos valores.
+
 ## 2026-11-04 — Isolamento por organização em lançamentos e contas financeiras
 
 **Tipo:** correção (segurança) · **Grupo:** financeiro · **PR:** #21 (branch `feature/financeiro-lancamentos-por-organizacao`)

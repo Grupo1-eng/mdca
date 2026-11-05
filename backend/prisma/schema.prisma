@@ -139,14 +139,14 @@ model Educando {
   rg                     String?
   nis                    String?
   corAutodeclarada       String?   @map("cor_autodeclarada")
-  dataNascimento         DateTime? @map("data_nascimento") @db.Timestamp(6)
+  dataNascimento         DateTime? @map("data_nascimento") @db.Date
   endereco               String?
   telefone               String?
   escola                 String?
   turno                  String?
   historicoRepetencia    String?   @map("historico_repetencia")
   numerosPessoasFamilias Int?      @map("numeros_pessoas_familias")
-  rendaFamiliar          Decimal?  @map("renda_familiar")
+  rendaFamiliar          Decimal?  @map("renda_familiar") @db.Decimal(12, 2)
   beneficiosSociais      String?   @map("beneficios_sociais")
   tipoMoradia            String?   @map("tipo_moradia")
   doencaCronica          String?   @map("doenca_cronica")
@@ -161,6 +161,7 @@ model Educando {
 
   // NOVO — decidido nesta conversa: responsável técnico fixo por educando
   tecnicoResponsavelId   Int?      @map("tecnico_responsavel_id")
+  criadoEm               DateTime  @default(now()) @map("criado_em") @db.Timestamp(6)
 
   organizacao        Organizacao        @relation(fields: [organizacaoId], references: [id])
   tecnicoResponsavel Usuario?           @relation("TecnicoResponsavel", fields: [tecnicoResponsavelId], references: [id])
@@ -170,6 +171,8 @@ model Educando {
   encaminhamentos    Encaminhamento[]
   frequencias        Frequencia[]
 
+  @@index([organizacaoId, nome])
+  @@index([tecnicoResponsavelId])
   @@map("educando")
   @@schema("gestao")
 }
@@ -189,9 +192,11 @@ model ResponsavelFamiliar {
   localTrabalho String? @map("local_trabalho")
   escolaridade  String?
   telefone      String?
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamp(6)
 
   educando Educando @relation(fields: [educandoId], references: [id])
 
+  @@index([educandoId])
   @@map("responsavel_familiar")
   @@schema("gestao")
 }
@@ -206,6 +211,9 @@ model EducandoProjeto {
   educando Educando @relation(fields: [educandoId], references: [id])
   projeto  Projeto  @relation(fields: [projetoId], references: [id])
 
+  // Um educando só pode estar vinculado uma vez a cada projeto.
+  @@unique([educandoId, projetoId])
+  @@index([projetoId])
   @@map("educando_projeto")
   @@schema("gestao")
 }
@@ -222,6 +230,8 @@ model Atividade {
   responsavel Usuario   @relation("AtividadeResponsavel", fields: [responsavelId], references: [id])
   encontros   Encontro[]
 
+  @@index([projetoId])
+  @@index([responsavelId])
   @@map("atividade")
   @@schema("gestao")
 }
@@ -240,6 +250,7 @@ model Encontro {
   atividade   Atividade    @relation(fields: [atividadeId], references: [id])
   frequencias Frequencia[]
 
+  @@index([atividadeId, dataInicio])
   @@map("encontro")
   @@schema("gestao")
 }
@@ -256,6 +267,7 @@ model Frequencia {
 
   // RN06: um único registro de frequência vigente por (encontro, educando).
   @@unique([encontroId, educandoId])
+  @@index([educandoId])
   @@map("frequencia")
   @@schema("gestao")
 }
@@ -275,12 +287,18 @@ model Evolucao {
   intervencaoUsuario String?  @map("intervencao_usuario")
   intervencaoFamilia String?  @map("intervencao_familia")
   sigiloso           Boolean  @default(false)
+  // Momento real do registro (RNF05). Diferente de dataInicio, que pode ser editada.
+  criadoEm           DateTime @default(now()) @map("criado_em") @db.Timestamp(6)
 
   educando        Educando         @relation(fields: [educandoId], references: [id])
   projeto         Projeto?         @relation(fields: [projetoId], references: [id])
   profissional    Usuario          @relation("EvolucaoProfissional", fields: [profissionalId], references: [id])
   encaminhamentos Encaminhamento[]
 
+  // Histórico cronológico do educando (RF09).
+  @@index([educandoId, dataInicio])
+  @@index([profissionalId])
+  @@index([projetoId])
   @@map("evolucao")
   @@schema("gestao")
 }
@@ -295,12 +313,16 @@ model Encaminhamento {
   // Sprint 3 (RF08): destino e profissional que registrou. O motivo fica em `descricao`.
   destino            String?
   profissionalId     Int?     @map("profissional_id")
+  criadoEm           DateTime @default(now()) @map("criado_em") @db.Timestamp(6)
 
   educando       Educando                       @relation(fields: [educandoId], references: [id])
   evolucao       Evolucao?                      @relation(fields: [evolucaoId], references: [id])
   profissional   Usuario?                       @relation("EncaminhamentoProfissional", fields: [profissionalId], references: [id])
   acompanhamentos AcompanhamentoEncaminhamento[]
 
+  @@index([educandoId, dataEncaminhamento])
+  @@index([evolucaoId])
+  @@index([profissionalId])
   @@map("encaminhamento")
   @@schema("gestao")
 }
@@ -311,9 +333,11 @@ model AcompanhamentoEncaminhamento {
   situacao          String
   data              DateTime @default(now()) @db.Timestamp(6)
   observacao        String?
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamp(6)
 
   encaminhamento Encaminhamento @relation(fields: [encaminhamentoId], references: [id])
 
+  @@index([encaminhamentoId, data])
   @@map("acompanhamento_encaminhamento")
   @@schema("gestao")
 }
@@ -328,9 +352,13 @@ model Compromisso {
   dataFim    DateTime? @map("data_fim") @db.Timestamp(6)
   situacao   String    @default("agendado")
   local      String?
+  criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamp(6)
 
   criador Usuario @relation("CompromissoCriador", fields: [criadorId], references: [id])
 
+  // Consulta da agenda por período (RF14).
+  @@index([dataInicio])
+  @@index([criadorId])
   @@map("compromisso")
   @@schema("gestao")
 }
