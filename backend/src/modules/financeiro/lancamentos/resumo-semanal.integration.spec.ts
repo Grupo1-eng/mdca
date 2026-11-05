@@ -94,6 +94,45 @@ describe('GET /api/lancamentos/resumo-semanal (integração)', () => {
     expect(where.OR[0]).toEqual({ dataCompetencia: intervalo });
   });
 
+  it('sem projetoId não filtra por projeto', async () => {
+    logadoComo('analista_financeiro');
+    prisma.lancamento.findMany.mockResolvedValue([]);
+
+    await get('?mes=2026-11');
+
+    expect(prisma.lancamento.findMany.mock.calls[0][0].where).not.toHaveProperty('projetoId');
+  });
+
+  it('com projetoId traz só os lançamentos daquele projeto', async () => {
+    logadoComo('analista_financeiro');
+    prisma.lancamento.findMany.mockResolvedValue([]);
+
+    const res = await get('?mes=2026-11&projetoId=12');
+
+    expect(res.status).toBe(200);
+    const { where } = prisma.lancamento.findMany.mock.calls[0][0];
+    expect(where.projetoId).toBe(12);
+    expect(where.conta).toEqual({ organizacaoId: 3 });
+  });
+
+  it('projetoId=nenhum traz só os lançamentos sem projeto', async () => {
+    logadoComo('analista_financeiro');
+    prisma.lancamento.findMany.mockResolvedValue([]);
+
+    await get('?mes=2026-11&projetoId=nenhum');
+
+    expect(prisma.lancamento.findMany.mock.calls[0][0].where.projetoId).toBeNull();
+  });
+
+  it.each(['abc', '-1', '1.5', '0'])('recusa projetoId inválido (%s) com 400', async (projetoId) => {
+    logadoComo('analista_financeiro');
+
+    const res = await get(`?mes=2026-11&projetoId=${projetoId}`);
+
+    expect(res.status).toBe(400);
+    expect(prisma.lancamento.findMany).not.toHaveBeenCalled();
+  });
+
   it.each(['', '?mes=novembro', '?mes=2026-13', '?mes=2026-1', '?mes=2026-11-01'])(
     'recusa mês ausente ou inválido (%s) com 400',
     async (query) => {

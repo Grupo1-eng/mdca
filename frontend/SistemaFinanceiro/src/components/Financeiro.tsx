@@ -12,8 +12,8 @@ import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/ane
 import FiltroPeriodo, { formatIntervalo } from './FiltroPeriodo';
 import GraficoSemanal from './GraficoSemanal';
 import {
-  dataDoLancamento, filtrarPorIntervalo, filtrarPorTipo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  type FiltroTipo,
+  dataDoLancamento, execucaoDoProjeto, filtrarPorIntervalo, filtrarPorProjeto, filtrarPorTipo, intervaloValido,
+  resumoPeriodo, saldoTotalContas, type FiltroProjeto, type FiltroTipo,
 } from '@/lib/aggregations';
 import { mesDoPeriodo } from '@/lib/resumoSemanal';
 import { usePeriodo } from '@/context/PeriodoContext';
@@ -346,6 +346,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const [anexosLoading, setAnexosLoading] = useState(false);
   const [modalNovo, setModalNovo] = useState(false);
   const { periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim, intervalo } = usePeriodo();
+  // RF39: a tela inteira (lista, cartões e gráfico) mostra o projeto escolhido.
+  const [filtroProjeto, setFiltroProjeto] = useState<FiltroProjeto>("todos");
 
   const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
 
@@ -368,7 +370,14 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   // números sempre baterem.
   const periodoValido = intervaloValido(intervalo);
   const periodoLabel = formatIntervalo(periodo, intervalo);
-  const doPeriodo = useMemo(() => filtrarPorIntervalo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const doProjeto = useMemo(() => filtrarPorProjeto(lancamentos, filtroProjeto), [lancamentos, filtroProjeto]);
+  const doPeriodo = useMemo(() => filtrarPorIntervalo(doProjeto, intervalo), [doProjeto, intervalo]);
+  const projetoSelecionado = typeof filtroProjeto === "number" ? projetos.find(p => p.id === filtroProjeto) ?? null : null;
+  const rotuloFiltroProjeto = filtroProjeto === "nenhum" ? "Sem projeto" : projetoSelecionado?.nome ?? null;
+  const projetosOrdenados = useMemo(
+    () => [...projetos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [projetos],
+  );
 
   // Período primeiro, tipo depois: a aba nunca mostra lançamentos fora do período.
   const filtered = filtrarPorTipo(doPeriodo, tipoDaAba[tab]);
@@ -390,15 +399,20 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
     { key: "fluxo", label: "Fluxo de Caixa" },
   ];
 
+  const doFiltro = rotuloFiltroProjeto ? ` (${rotuloFiltroProjeto})` : "";
   const mensagemVazia = !periodoValido
     ? "Período inválido: a data inicial deve ser anterior ou igual à final."
     : doPeriodo.length === 0
-    ? "Nenhum lançamento no período selecionado."
+    ? `Nenhum lançamento no período selecionado${doFiltro}.`
     : tab === "entradas"
-    ? "Nenhuma entrada no período selecionado."
-    : "Nenhuma saída no período selecionado.";
+    ? `Nenhuma entrada no período selecionado${doFiltro}.`
+    : `Nenhuma saída no período selecionado${doFiltro}.`;
 
-  const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const resumo = useMemo(() => resumoPeriodo(doProjeto, intervalo), [doProjeto, intervalo]);
+  const execucao = useMemo(
+    () => (projetoSelecionado ? execucaoDoProjeto(projetoSelecionado, lancamentos) : null),
+    [projetoSelecionado, lancamentos],
+  );
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
   const mesInicialSemanal = useMemo(() => mesDoPeriodo(intervalo), [intervalo]);
 
@@ -470,9 +484,25 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         <div className="flex items-baseline justify-between">
           <div>
             <h1 className="font-serif text-2xl text-[var(--foreground)]">Financeiro</h1>
-            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{periodoLabel}</p>
+            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
+              {periodoLabel}{rotuloFiltroProjeto && <> · <span className="text-[var(--foreground)] font-medium">{rotuloFiltroProjeto}</span></>}
+            </p>
           </div>
           <div className="flex gap-2">
+            <select
+              aria-label="Projeto"
+              value={String(filtroProjeto)}
+              onChange={e => {
+                const v = e.target.value;
+                setFiltroProjeto(v === "todos" || v === "nenhum" ? v : Number(v));
+              }}
+              className="text-xs font-medium border border-[var(--border)] rounded-md pl-3 pr-8 py-1.5 bg-white hover:bg-[var(--muted)] transition-colors cursor-pointer appearance-none focus:outline-none focus:border-[#1a3a6b]"
+              style={{ ...chevronBg, backgroundPosition: "right 10px center" }}
+            >
+              <option value="todos">Todos os projetos</option>
+              {projetosOrdenados.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              <option value="nenhum">Sem projeto</option>
+            </select>
             <FiltroPeriodo
               periodo={periodo} setPeriodo={setPeriodo}
               dataIni={dataIni} setDataIni={setDataIni}
@@ -492,7 +522,19 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
               <SummaryCard label="Total entradas" value={fmt(resumo.entradas)} sub={periodoLabel} color="text-[#0e7e6e]" />
               <SummaryCard label="Total saídas" value={fmt(resumo.saidas)} sub={periodoLabel} color="text-red-600" />
               <SummaryCard label="Saldo do período" value={fmt(resumo.entradas - resumo.saidas)} sub="Resultado operacional" />
-              <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
+              {execucao ? (
+                // RF05 / RF12: com um projeto escolhido, o quarto cartão é o orçamento dele.
+                <SummaryCard
+                  label="Orçamento executado"
+                  value={fmt(execucao.executado)}
+                  sub={execucao.orcamento === null || execucao.percentual === null
+                    ? "Projeto sem orçamento definido"
+                    : `de ${fmt(execucao.orcamento)} (${execucao.percentual}%)${execucao.estourado ? " · orçamento esgotado" : ""}`}
+                  color={execucao.estourado ? "text-red-600" : undefined}
+                />
+              ) : (
+                <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
+              )}
             </div>
 
             <div className="bg-white rounded-lg border border-[var(--border)]">
@@ -519,7 +561,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
               {tab === "fluxo" ? (
                 // A troca de período no filtro reabre o gráfico no mês correspondente.
-                <GraficoSemanal key={mesInicialSemanal} mesInicial={mesInicialSemanal} lancamentos={lancamentos} />
+                <GraficoSemanal key={mesInicialSemanal} mesInicial={mesInicialSemanal} projeto={filtroProjeto} lancamentos={lancamentos} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

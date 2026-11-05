@@ -4,6 +4,7 @@ import { getResumoSemanal } from "@/api/lancamentos";
 import { useFetch } from "@/hooks/useFetch";
 import { fmt } from "@/lib/format";
 import { nomeDoMes, rotuloSemana, somarMeses } from "@/lib/resumoSemanal";
+import type { FiltroProjeto } from "@/lib/aggregations";
 import type { Lancamento, ResumoSemanal } from "@/types/financeiro";
 import { DURACAO_ANIMACAO_GRAFICO } from "./FiltroPeriodo";
 import { ErrorState, LoadingState } from "./StatusMessage";
@@ -14,14 +15,19 @@ const botaoMesCls =
   "w-8 h-8 flex items-center justify-center rounded-md border border-[var(--border)] bg-white hover:bg-[var(--muted)] transition-colors cursor-pointer text-[var(--muted-foreground)]";
 
 /**
- * US10 / RF30: barras de entradas e saídas por semana do mês selecionado.
- * Os números vêm do backend (GET /api/lancamentos/resumo-semanal). Recebe os
- * lançamentos só para buscar de novo quando a lista muda.
+ * US10 / RF30: barras de entradas e saídas por semana do mês selecionado,
+ * do projeto escolhido na tela. Os números vêm do backend
+ * (GET /api/lancamentos/resumo-semanal). Recebe os lançamentos só para buscar
+ * de novo quando a lista muda.
  */
-export default function GraficoSemanal({ mesInicial, lancamentos }: { mesInicial: string; lancamentos: Lancamento[] }) {
+export default function GraficoSemanal({ mesInicial, projeto, lancamentos }: {
+  mesInicial: string;
+  projeto: FiltroProjeto;
+  lancamentos: Lancamento[];
+}) {
   const [mes, setMes] = useState(mesInicial);
   // `lancamentos` entra nas dependências só para buscar de novo quando a lista muda.
-  const buscar = useCallback(() => getResumoSemanal(mes), [mes, lancamentos]);
+  const buscar = useCallback(() => getResumoSemanal(mes, projeto), [mes, projeto, lancamentos]);
   const { data: resumo, loading, error } = useFetch(buscar, RESUMO_VAZIO);
 
   const pontos = useMemo(

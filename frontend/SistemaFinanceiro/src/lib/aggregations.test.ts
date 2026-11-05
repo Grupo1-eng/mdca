@@ -6,8 +6,10 @@ import {
   contasPendentes,
   contasParaPainel,
   dataDoLancamento,
+  execucaoDoProjeto,
   execucaoOrcamentaria,
   filtrarPorIntervalo,
+  filtrarPorProjeto,
   filtrarPorTipo,
   getIntervaloPeriodo,
   intervaloValido,
@@ -397,5 +399,53 @@ describe("contasParaPainel", () => {
     const contas = [conta({ id: 1, nome: "B" }), conta({ id: 2, nome: "A" })];
     contasParaPainel(contas);
     expect(contas.map((c) => c.nome)).toEqual(["B", "A"]);
+  });
+});
+
+// RF39: a tela Financeiro filtra por projeto.
+describe("filtrarPorProjeto", () => {
+  const lancamentos = [lanc({ id: 1, projetoId: 10 }), lanc({ id: 2, projetoId: null }), lanc({ id: 3, projetoId: 20 })];
+  const ids = (filtro: Parameters<typeof filtrarPorProjeto>[1]) => filtrarPorProjeto(lancamentos, filtro).map((l) => l.id);
+
+  it("todos não restringe nada", () => {
+    expect(ids("todos")).toEqual([1, 2, 3]);
+  });
+
+  it("um projeto traz só os lançamentos dele", () => {
+    expect(ids(10)).toEqual([1]);
+  });
+
+  it("nenhum traz só os lançamentos sem projeto", () => {
+    expect(ids("nenhum")).toEqual([2]);
+  });
+});
+
+// RF05 / RF12: orçado x executado do projeto escolhido.
+describe("execucaoDoProjeto", () => {
+  const projeto: Projeto = {
+    id: 10, organizacaoId: 1, nome: "Oficinas", descricao: null, status: "Ativo",
+    orcamentoTotal: 1000, dataInicio: null, dataFim: null,
+  };
+
+  it("executado é a soma das saídas pagas do projeto, em qualquer data", () => {
+    const e = execucaoDoProjeto(projeto, [
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 300, dataCompetencia: "2025-01-10T00:00:00.000Z" }),
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 100 }),
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pendente", valor: 999 }),
+      lanc({ projetoId: 10, tipo: "entrada", situacao: "recebido", valor: 999 }),
+      lanc({ projetoId: 20, tipo: "saida", situacao: "pago", valor: 999 }),
+    ]);
+    expect(e).toEqual({ orcamento: 1000, executado: 400, percentual: 40, estourado: false });
+  });
+
+  it("marca estourado quando o executado chega ao orçamento", () => {
+    const e = execucaoDoProjeto(projeto, [lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 1000 })]);
+    expect(e.estourado).toBe(true);
+    expect(e.percentual).toBe(100);
+  });
+
+  it("sem orçamento definido não calcula percentual", () => {
+    const e = execucaoDoProjeto({ ...projeto, orcamentoTotal: null }, [lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 50 })]);
+    expect(e).toEqual({ orcamento: null, executado: 50, percentual: null, estourado: false });
   });
 });

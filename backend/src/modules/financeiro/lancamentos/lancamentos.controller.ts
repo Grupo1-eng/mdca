@@ -21,7 +21,7 @@ import {
 import { LancamentosService } from './lancamentos.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
-import { ResumoSemanalQueryDto } from './dto/resumo-semanal-query.dto';
+import { ResumoSemanalQueryDto, SEM_PROJETO } from './dto/resumo-semanal-query.dto';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
@@ -59,7 +59,9 @@ export class LancamentosController {
     @Query() query: ResumoSemanalQueryDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
-    return this.service.resumoSemanal(query.mes, usuario.organizacaoId);
+    const projetoId =
+      query.projetoId === undefined ? undefined : query.projetoId === SEM_PROJETO ? null : Number(query.projetoId);
+    return this.service.resumoSemanal(query.mes, usuario.organizacaoId, projetoId);
   }
 
   @Get(':id')
