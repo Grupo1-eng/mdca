@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Tela Financeiro filtrada por projeto
+
+**Tipo:** evolução · **Grupo:** financeiro · **PR:** #26 (branch `feature/financeiro-filtro-projeto`)
+
+**O que mudou:** a tela Financeiro ganhou um seletor de projeto ("Todos os projetos", cada projeto ou "Sem projeto"), e tudo nela segue a escolha: a lista e as abas, os cartões e o gráfico semanal. Com um projeto escolhido, o quarto cartão deixa de ser o saldo das contas, que é da organização inteira, e mostra o orçamento executado do projeto: saídas pagas em relação ao orçamento total, em vermelho quando esgota. O endpoint `GET /api/lancamentos/resumo-semanal` aceita `projetoId` (id do projeto ou `nenhum`).
+
+**Por quê:** a tela Financeiro repetia o painel inicial: os mesmos cartões, o mesmo período e mais um gráfico geral. Com o filtro, ela responde "como está o dinheiro do projeto X?", o que nenhuma outra tela fazia. Atende o RF39 (filtro por projeto), o RF40 (totais recalculados conforme os filtros) e o RF05/RF12 (orçado × executado do projeto).
+
+**Pendências:** os outros filtros combinados do RF39 (conta, categoria, fonte de recurso e situação).
+
+---
+
 ## 2026-11-05 — Coordenação volta a acessar o financeiro
 
 **Tipo:** correção · **Grupo:** ambos · **PR:** #25 (branch `feature/financeiro-coordenador-acesso`)
