@@ -25,7 +25,7 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ## 2026-11-04 — Isolamento por organização em lançamentos e contas financeiras
 
-**Tipo:** correção (segurança) · **Grupo:** financeiro · **PR:** branch `feature/financeiro-lancamentos-por-organizacao`
+**Tipo:** correção (segurança) · **Grupo:** financeiro · **PR:** #21 (branch `feature/financeiro-lancamentos-por-organizacao`)
 
 **O que mudou:** listagem, busca, edição e exclusão de **lançamentos** e **contas financeiras**, e também o resumo semanal (US-10), passam a filtrar pela organização do usuário logado. Registros de outra organização respondem 404, como se não existissem. Criar ou editar um lançamento com `contaId` ou `projetoId` de outra organização também responde 404. Lançamento não tem `organizacao_id`: ele pertence à organização da sua conta, por isso o filtro é `conta.organizacaoId`. Teste em `backend/src/modules/financeiro/isolamento-organizacao.integration.spec.ts`.
 
