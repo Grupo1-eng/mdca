@@ -38,8 +38,8 @@ export class LancamentosController {
   constructor(private readonly service: LancamentosService) {}
 
   @Get()
-  listarTodos() {
-    return this.service.listarTodos();
+  listarTodos(@UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.listarTodos(usuario.organizacaoId);
   }
 
   @ApiTags('Lançamentos')
@@ -55,29 +55,42 @@ export class LancamentosController {
   @ApiResponse({ status: 401, description: 'Token ausente ou inválido.' })
   @ApiResponse({ status: 403, description: 'Perfil sem acesso ao módulo financeiro.' })
   @Get('resumo-semanal')
-  resumoSemanal(@Query() query: ResumoSemanalQueryDto) {
-    return this.service.resumoSemanal(query.mes);
+  resumoSemanal(
+    @Query() query: ResumoSemanalQueryDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.resumoSemanal(query.mes, usuario.organizacaoId);
   }
 
   @Get(':id')
-  buscar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.buscarPorId(id);
+  buscar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.buscarPorId(id, usuario.organizacaoId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   criar(@Body() dados: CreateLancamentoDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
-    return this.service.criar(dados, usuario.id);
+    return this.service.criar(dados, usuario.id, usuario.organizacaoId);
   }
 
   @Put(':id')
-  atualizar(@Param('id', ParseIntPipe) id: number, @Body() dados: UpdateLancamentoDto) {
-    return this.service.atualizar(id, dados);
+  atualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dados: UpdateLancamentoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.atualizar(id, dados, usuario.organizacaoId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deletar(@Param('id', ParseIntPipe) id: number) {
-    await this.service.deletar(id);
+  async deletar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    await this.service.deletar(id, usuario.organizacaoId);
   }
 }
