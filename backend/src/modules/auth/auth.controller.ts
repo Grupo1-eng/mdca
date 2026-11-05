@@ -13,11 +13,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import { LoginThrottlerGuard } from './guards/login-throttler.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { Publico } from './decorators/publico.decorator';
 import {
   UsuarioAtual,
@@ -39,20 +37,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(@Body() dados: LoginDto) {
     return this.authService.login(dados);
-  }
-
-  @ApiOperation({ summary: 'Cadastra um usuário (perfil padrão: administrativo)' })
-  @ApiResponse({ status: 201, description: 'Usuário criado; já devolve o token.' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos.' })
-  @ApiResponse({ status: 409, description: 'E-mail já cadastrado.' })
-  @ApiResponse({ status: 429, description: 'Muitas tentativas. Aguarde um minuto.' })
-  @Publico()
-  @UseGuards(LoginThrottlerGuard)
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  register(@Body() dados: RegisterDto) {
-    return this.authService.register(dados);
   }
 
   // Mesmo formato do `usuario` devolvido no login.

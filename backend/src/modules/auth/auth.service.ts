@@ -1,25 +1,13 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
-import { PERFIS, PERFIS_FINANCEIRO, Perfil } from './perfis.constants';
+import { PERFIS_FINANCEIRO, Perfil } from './perfis.constants';
 import { RegistroAuditoriaService } from '../shared/auditorias/registro-auditoria.service';
-import { diferencas } from '../shared/auditorias/diferencas';
 
-// Mesmo custo usado em UsuariosService, para os hashes serem consistentes.
-const BCRYPT_ROUNDS = 10;
-
-// Perfil atribuído a quem se cadastra pelo endpoint público.
-// Perfis de maior privilégio só podem ser concedidos pela coordenação
-// via PUT /api/usuarios/:id.
-const PERFIL_PADRAO_REGISTRO = PERFIS.ADMINISTRATIVO;
+// Não há cadastro público: usuários são criados pela coordenação em
+// /api/usuarios (ver backend/README.md).
 
 @Injectable()
 export class AuthService {
@@ -73,57 +61,7 @@ export class AuthService {
     });
   }
 
-  async register(dados: RegisterDto) {
-    const existente = await this.prisma.usuario.findUnique({
-      where: { email: dados.email },
-      select: { id: true },
-    });
-
-    if (existente) {
-      throw new ConflictException('Já existe um usuário com este e-mail.');
-    }
-
-    const senhaHash = await bcrypt.hash(dados.senha, BCRYPT_ROUNDS);
-
-    try {
-      // O perfil padrão dá acesso ao financeiro: o cadastro público é auditado,
-      // tendo o próprio usuário como autor.
-      const usuario = await this.prisma.$transaction(async (tx) => {
-        const criado = await tx.usuario.create({
-          data: {
-            nome: dados.nome,
-            email: dados.email,
-            senhaHash,
-            perfil: PERFIL_PADRAO_REGISTRO,
-            organizacaoId: dados.organizacaoId,
-          },
-        });
-        await this.auditoria.registrar(tx, {
-          acao: 'criar',
-          recursoTipo: 'usuario',
-          recursoId: criado.id,
-          resumo: `Usuário #${criado.id} (${criado.nome}) cadastrou-se pelo registro público`,
-          alteracoes: diferencas(null, criado),
-          autor: criado,
-        });
-        return criado;
-      });
-
-      return this.gerarSessao(usuario);
-    } catch (erro) {
-      // Corrida: dois cadastros simultâneos com o mesmo e-mail passam pelo
-      // findUnique acima, e o índice único do banco barra o segundo.
-      if (
-        erro instanceof Prisma.PrismaClientKnownRequestError &&
-        erro.code === 'P2002'
-      ) {
-        throw new ConflictException('Já existe um usuário com este e-mail.');
-      }
-      throw erro;
-    }
-  }
-
-  // Formato único de resposta para login e register.
+  // Formato da resposta do login.
   private async gerarSessao(usuario: {
     id: number;
     nome: string;

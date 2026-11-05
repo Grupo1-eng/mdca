@@ -23,6 +23,51 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Revisão do repositório: falhas encontradas
+
+**Tipo:** manutenção · **Grupo:** ambos · **PR:** #27 e #28
+
+**O que mudou:** revisão de segurança, regras de negócio e processo sobre o `main` com os PRs #22 a #26. Resultado:
+
+| # | Falha | Gravidade | Situação |
+|---|---|---|---|
+| 1 | `POST /api/auth/register` era público e criava conta `administrativo` (acesso ao financeiro e à lista de educandos) na organização informada no corpo. Qualquer pessoa na internet entrava no sistema. | Crítica | Corrigida no #27: endpoint removido |
+| 2 | Qualquer usuário logado, até educador, criava, editava e excluía organizações. | Baixa | Corrigida no #27: só a coordenação altera |
+| 3 | Qualquer perfil logado (educador, técnicos) criava, editava e **excluía projetos**. | Média | Corrigida no #27: só perfis com acesso ao financeiro alteram |
+| 4 | Projetos, organizações, categorias, contatos, fontes de recurso e orçamentos não filtram por organização. | — | Não se aplica: o sistema é usado só pelo MDCA |
+| 5 | Dependências do backend com vulnerabilidades altas (`body-parser`, `multer`, `@nestjs/core` ≤ 11.1.17, `deepmerge-ts`). O frontend não tem. | Alta | **Pendente:** a correção exige subir versão maior do NestJS |
+| 6 | Situação incompatível com o tipo (saída "Recebida", entrada "Paga"): o saldo da conta contava, mas os gráficos e a execução orçamentária não. | Média | Corrigida no #28 |
+| 7 | Conta financeira inativa aceitava lançamento novo (RNF10, RF16). | Média | Corrigida no #28 |
+| 8 | Valor zero era aceito no lançamento (RF33 exige maior que zero). | Baixa | Corrigida no #28 |
+| 9 | Lançamentos, contas e projetos são excluídos fisicamente; o RF36 e o RF69 pedem cancelamento ou inativação. A auditoria guarda o estado excluído. | Média | **Pendente** |
+| 10 | Não há CI: os testes só rodam na máquina de quem lembra de rodar. | Média | **Pendente** |
+| 11 | `npm run lint` falha (não há configuração de ESLint), e os arquivos não seguem o Prettier. | Baixa | **Pendente** |
+| 12 | CORS aberto para qualquer origem (`main.ts`). Risco baixo, porque o token não vai em cookie. | Baixa | **Pendente** |
+
+Pontos conferidos sem problema: nenhum segredo versionado; `JWT_SECRET` obrigatório; senhas com bcrypt; limite de tentativas no login; usuário inativado perde o acesso na requisição seguinte; gestão filtrando por organização.
+
+**Por quê:** pedido de revisão geral do repositório por bugs, fraquezas e partes quebradas.
+
+**Pendências:** itens 5, 9, 10, 11 e 12.
+
+---
+
+## 2026-11-05 — Cadastro público removido e perfis em projetos e organização
+
+**Tipo:** correção (segurança) · **Grupo:** ambos · **PR:** #27 (branch `feature/financeiro-seguranca-perfis`)
+
+**O que mudou:**
+- `POST /api/auth/register` foi removido, junto com o `RegisterDto` e os testes dele. Usuários continuam sendo criados pela coordenação em `/api/usuarios`, como o `backend/README.md` já dizia ("não há cadastro público"). O endpoint tinha entrado em 06/10 (commit `530da08`) contrariando essa regra.
+- `/api/projetos`: todos os logados consultam; criar, editar e excluir exige um perfil com acesso ao financeiro (`PERFIS_FINANCEIRO`).
+- `/api/organizacoes`: todos os logados consultam; criar, editar e excluir só a coordenação.
+- Teste em `backend/src/modules/shared/permissoes-cadastros.integration.spec.ts`.
+
+**Por quê:** itens 1, 2 e 3 da revisão acima.
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-05 — Tela Financeiro filtrada por projeto
 
 **Tipo:** evolução · **Grupo:** financeiro · **PR:** #26 (branch `feature/financeiro-filtro-projeto`)

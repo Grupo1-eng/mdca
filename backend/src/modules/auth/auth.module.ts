@@ -15,7 +15,7 @@ import { obterJwtSecret } from './jwt-config';
 @Module({
   imports: [
     PassportModule,
-    // Só vale onde o LoginThrottlerGuard é aplicado (login e register).
+    // Só vale onde o LoginThrottlerGuard é aplicado (login).
     // Limite padrão: 5 requisições por minuto para cada par IP + e-mail.
     // ttl em milissegundos.
     ThrottlerModule.forRootAsync({
