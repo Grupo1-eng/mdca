@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Gráfico semanal do mês selecionado na tela Financeiro
+
+**Tipo:** evolução · **Grupo:** financeiro · **PR:** #23 (branch `feature/financeiro-grafico-semanal-mes`)
+
+**O que mudou:** a aba "Fluxo de Caixa" da tela Financeiro passa a mostrar as barras de entradas e saídas **por semana do mês selecionado**, com os números do endpoint `GET /api/lancamentos/resumo-semanal` (PR #19), que até então nenhuma tela chamava. O mês abre de acordo com o período do filtro e pode ser trocado por um seletor e pelas setas. Cada semana aparece no eixo com o intervalo de dias ("01/11 – 07/11") e numa tabela com entradas, saídas, saldo e o total do mês. O gráfico busca de novo quando um lançamento é registrado. Componente em `frontend/SistemaFinanceiro/src/components/GraficoSemanal.tsx`, apoio em `src/lib/resumoSemanal.ts`.
+
+**Por quê:** US10 / RF30. A aba agrupava pelo período do filtro, e não pelo mês selecionado, e não identificava cada semana. O agrupamento por semana/mês/ano continua no gráfico de realizado vs. previsto do painel, e os testes dele passaram para `serieFluxoCaixaPeriodo`.
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-05 — Saldo das contas acompanha os lançamentos e painel por conta
 
 **Tipo:** correção + evolução · **Grupo:** financeiro · **PR:** #22 (branch `feature/financeiro-saldo-contas-painel`)
