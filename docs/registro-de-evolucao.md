@@ -23,6 +23,23 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Relatórios com período, filtros e exportação em planilha
+
+**Tipo:** evolução · **Grupo:** financeiro · **PR:** #24 (branch `feature/financeiro-relatorios-periodo-exportacao`)
+
+**O que mudou:**
+- **Extrato Financeiro:** filtros de **período** (o mesmo do painel e da tela Financeiro), **projeto** e **categoria** (a categoria principal inclui as subcategorias), além do tipo e da busca que já existiam. Uma tabela de **totais por categoria** fica abaixo do extrato.
+- **Fluxo de Caixa:** deixa de ser fixo nos últimos 6 meses e segue o período escolhido, com realizado vs. previsto por semana, mês ou ano e uma tabela com os valores e o total.
+- **Exportação `.xlsx`** no Extrato, no Fluxo de Caixa e na Execução Orçamentária. Os botões existiam mas não faziam nada. A planilha abre com título, filtros aplicados, data/hora e quem emitiu, e traz os valores como número com formato de dinheiro.
+- Nova dependência `write-excel-file` (só escreve .xlsx, licença MIT), carregada apenas ao exportar. Montagem das linhas em `src/lib/planilha.ts`, filtros e totais em `src/lib/relatorios.ts`.
+- Removido o `serieFluxoCaixa` (fixo em 6 meses), substituído pelo `serieFluxoCaixaPeriodo`.
+
+**Por quê:** RF07 (relatórios por projeto, período e categoria), RF29 (fluxo realizado vs. previsto no período selecionado) e RF56 (relatório de fluxo de caixa exportável em planilha). Também atende parte do RF55, RF58 e RF59.
+
+**Pendências:** exportação em PDF (RF60) e o balancete por fonte de recursos (RF57), que depende de vincular lançamentos a uma fonte no banco.
+
+---
+
 ## 2026-11-05 — Gráfico semanal do mês selecionado na tela Financeiro
 
 **Tipo:** evolução · **Grupo:** financeiro · **PR:** #23 (branch `feature/financeiro-grafico-semanal-mes`)
