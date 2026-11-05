@@ -5,6 +5,7 @@
 // Lançamentos guardam `valor` sempre positivo; a direção vem de `tipo`.
 import type {
   Categoria, CategoriaExecucao, Conta, ExecucaoProjeto, Lancamento, Orcamento, Projeto,
+  TipoLancamento,
 } from "@/types/financeiro";
 import { dataLocal } from "./format";
 
@@ -89,6 +90,17 @@ export function filtrarPorIntervalo(lancamentos: Lancamento[], intervalo: Interv
   return lancamentos.filter((l) => dentroDoIntervalo(l, intervalo));
 }
 
+/** Filtro de tipo da listagem: "todos" não restringe nada. */
+export type FiltroTipo = "todos" | TipoLancamento;
+
+/**
+ * Lançamentos do tipo pedido (entrada ou saída). "todos" devolve a lista como
+ * veio. Combina com `filtrarPorIntervalo`: primeiro o período, depois o tipo.
+ */
+export function filtrarPorTipo(lancamentos: Lancamento[], tipo: FiltroTipo): Lancamento[] {
+  return tipo === "todos" ? lancamentos : lancamentos.filter((l) => l.tipo === tipo);
+}
+
 function soma(lancamentos: Lancamento[]): number {
   return lancamentos.reduce((a, b) => a + b.valor, 0);
 }
@@ -102,8 +114,8 @@ export interface ResumoPeriodo {
 export function resumoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): ResumoPeriodo {
   const doPeriodo = filtrarPorIntervalo(lancamentos, intervalo);
   return {
-    entradas: soma(doPeriodo.filter((l) => l.tipo === "entrada")),
-    saidas: soma(doPeriodo.filter((l) => l.tipo === "saida")),
+    entradas: soma(filtrarPorTipo(doPeriodo, "entrada")),
+    saidas: soma(filtrarPorTipo(doPeriodo, "saida")),
     qtdLancamentos: doPeriodo.length,
   };
 }

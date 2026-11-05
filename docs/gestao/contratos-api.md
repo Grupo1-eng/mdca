@@ -397,7 +397,7 @@ Lista os encaminhamentos de um educando.
 
 **Perfis:** Técnicos.
 
-A resposta inclui os acompanhamentos relacionados ao encaminhamento.
+A resposta inclui os acompanhamentos relacionados ao encaminhamento, ordenados do mais recente para o mais antigo.
 
 ---
 
@@ -407,6 +407,8 @@ Consulta um encaminhamento específico e seus acompanhamentos.
 
 **Perfis:** Técnicos.
 
+Retorna `404` se o encaminhamento não existir.
+
 ---
 
 ## POST `/api/encaminhamentos`
@@ -415,24 +417,7 @@ Registra um novo encaminhamento.
 
 **Perfis:** Técnicos.
 
-### Corpo atualmente suportado
-
-```json
-{
-  "educandoId": 15,
-  "evolucaoId": 27,
-  "dataEncaminhamento": "2026-09-22T15:00:00.000Z",
-  "situacaoAtual": "pendente"
-}
-```
-
-### Ajuste obrigatório da Sprint
-
-O requisito da Sprint determina que seja possível registrar **o conteúdo/descrição do encaminhamento realizado**.
-
-O backend atual ainda não possui esse campo no DTO/modelo do encaminhamento.
-
-O contrato final deverá passar a aceitar algo equivalente a:
+### Corpo
 
 ```json
 {
@@ -444,7 +429,19 @@ O contrato final deverá passar a aceitar algo equivalente a:
 }
 ```
 
-Esse ajuste deve ser feito no banco/modelo, DTO e service antes da conclusão da US02.
+| Campo | Tipo | Obrigatório | Observação |
+| --- | --- | --- | --- |
+| `educandoId` | inteiro | sim | |
+| `evolucaoId` | inteiro | não | Evolução que originou o encaminhamento. |
+| `descricao` | texto | não | Conteúdo do encaminhamento realizado. Máximo de 2000 caracteres. |
+| `dataEncaminhamento` | data ISO 8601 | não | Padrão: data/hora atual. |
+| `situacaoAtual` | texto | não | Padrão: `"em andamento"`. |
+
+`descricao` é opcional para manter válidos os encaminhamentos registrados antes deste campo existir; nesses registros ela vem como `null`.
+
+### Resposta esperada
+
+O encaminhamento criado, incluindo `id` e `descricao`. As rotas `GET` também devolvem o campo `descricao`.
 
 Não existe `PUT` ou `DELETE` para o encaminhamento original, pois ele deve ser preservado.
 

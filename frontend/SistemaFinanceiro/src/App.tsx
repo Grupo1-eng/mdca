@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import NavBar, { type LogEntry, type Module } from "@/components/NavBar";
 import Dashboard from "@/components/Dashboard";
 import Financeiro from "@/components/Financeiro";
@@ -7,9 +8,19 @@ import Relatorios from "@/components/Relatorios";
 import Cadastros from "@/components/Cadastros";
 import Usuarios from "@/components/Usuarios";
 import { LoginScreen } from "@/components/AuthScreens";
+import GestaoModule from "@/components/GestaoModule";
 import { LoadingState } from "@/components/StatusMessage";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { PeriodoProvider } from "@/context/PeriodoContext";
+import {
+  moduloDaNavegacao,
+  moduloPermitido,
+  rotaDoModulo,
+  rotaPosLogin,
+  type ModuloDestino,
+} from "@/lib/moduloDestino";
+import { GestaoAgendaProvider } from "@/modules/gestao/agenda/AgendaContext";
+import { GestaoEducandosProvider } from "@/modules/gestao/educandos/EducandosContext";
 import type { AuthUser } from "@/types/financeiro";
 
 function AreaLogada({ user }: { user: AuthUser }) {
@@ -40,19 +51,90 @@ function AreaLogada({ user }: { user: AuthUser }) {
   </PeriodoProvider>;
 }
 
-function AppShell() {
+function RotaInicial() {
+  const { user, restaurando } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const modulo = moduloDaNavegacao(location.state);
+
+  if (restaurando) return <LoadingState label="Verificando sessão…" />;
+  if (user) return <Navigate to={rotaPosLogin(location.state, user.perfil)} replace />;
+
+  const selecionarModulo = (proximo: ModuloDestino) => {
+    navigate("/", { replace: true, state: { modulo: proximo } });
+  };
+
+  return <LoginScreen modulo={modulo} onModuloChange={selecionarModulo} />;
+}
+
+// Exige sessão e, com `modulo`, que o perfil tenha acesso a ele: quem não tem
+// vai para o outro módulo (ex.: coordenador da Gestão em /financeiro).
+function RotaProtegida({ children, modulo }: { children: ReactNode; modulo?: ModuloDestino }) {
   const { user, restaurando } = useAuth();
 
   if (restaurando) return <LoadingState label="Verificando sessão…" />;
-  if (!user) return <LoginScreen />;
+  if (!user) return <Navigate to="/" replace />;
+  if (modulo) {
+    const permitido = moduloPermitido(modulo, user.perfil);
+    if (permitido !== modulo) return <Navigate to={rotaDoModulo(permitido)} replace />;
+  }
+  return children;
+}
+
+function FinanceiroRoute() {
+  const { user } = useAuth();
+  if (!user) return null;
   // key: trocar de usuário recomeça a área logada (módulo aberto e log de atividades).
   return <AreaLogada key={user.id} user={user} />;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<RotaInicial />} />
+      <Route
+        path="/financeiro"
+        element={
+          <RotaProtegida modulo="financeiro">
+            <FinanceiroRoute />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/gestao/*"
+        element={
+          <RotaProtegida modulo="gestao">
+            <GestaoModule />
+          </RotaProtegida>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export function chaveEstadoGestao(usuarioId: number | undefined): string {
+  return usuarioId === undefined ? "sem-usuario" : `usuario-${usuarioId}`;
+}
+
+function EstadoGestaoDaSessao({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  // Os estados mock da Gestão acompanham a sessão, não a rota atualmente aberta.
+  // A chave impede que dados temporários passem de um usuário para outro.
+  return (
+    <GestaoEducandosProvider key={chaveEstadoGestao(user?.id)}>
+      <GestaoAgendaProvider>{children}</GestaoAgendaProvider>
+    </GestaoEducandosProvider>
+  );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <EstadoGestaoDaSessao>
+        <AppRoutes />
+      </EstadoGestaoDaSessao>
     </AuthProvider>
   );
 }

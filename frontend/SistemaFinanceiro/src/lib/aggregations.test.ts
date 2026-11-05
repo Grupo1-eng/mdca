@@ -6,6 +6,7 @@ import {
   dataDoLancamento,
   execucaoOrcamentaria,
   filtrarPorIntervalo,
+  filtrarPorTipo,
   getIntervaloPeriodo,
   intervaloValido,
   msAteProximoDia,
@@ -156,6 +157,46 @@ describe("filtrarPorIntervalo", () => {
       lanc({ tipo: "saida", valor: 80, dataCompetencia: "2026-08-12T00:00:00.000Z" }),
     ], getIntervaloPeriodo("personalizado", hoje, "2026-08-01", "2026-08-31"));
     expect(r).toEqual({ entradas: 200, saidas: 80, qtdLancamentos: 2 });
+  });
+});
+
+describe("filtrarPorTipo", () => {
+  const lista = [
+    lanc({ id: 1, tipo: "entrada", valor: 300 }),
+    lanc({ id: 2, tipo: "saida", valor: 120 }),
+    lanc({ id: 3, tipo: "entrada", valor: 50 }),
+    lanc({ id: 4, tipo: "saida", valor: 30 }),
+  ];
+
+  it("devolve só as entradas", () => {
+    expect(filtrarPorTipo(lista, "entrada").map((l) => l.id)).toEqual([1, 3]);
+  });
+
+  it("devolve só as saídas", () => {
+    expect(filtrarPorTipo(lista, "saida").map((l) => l.id)).toEqual([2, 4]);
+  });
+
+  it("\"todos\" mantém a lista inteira", () => {
+    expect(filtrarPorTipo(lista, "todos")).toBe(lista);
+  });
+
+  it("lista vazia continua vazia", () => {
+    expect(filtrarPorTipo([], "entrada")).toEqual([]);
+  });
+
+  it("não altera a lista original", () => {
+    filtrarPorTipo(lista, "saida");
+    expect(lista).toHaveLength(4);
+  });
+
+  it("combina com o período: só do mês e só do tipo pedido", () => {
+    const mista = [
+      lanc({ id: 1, tipo: "entrada", dataCompetencia: "2026-09-10T00:00:00.000Z" }),
+      lanc({ id: 2, tipo: "saida", dataCompetencia: "2026-09-12T00:00:00.000Z" }),
+      lanc({ id: 3, tipo: "saida", dataCompetencia: "2026-10-05T00:00:00.000Z" }),
+    ];
+    const resultado = filtrarPorTipo(filtrarPorIntervalo(mista, setembro), "saida");
+    expect(resultado.map((l) => l.id)).toEqual([2]);
   });
 });
 

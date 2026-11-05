@@ -9,11 +9,11 @@ import { Type } from 'class-transformer';
 export class CreateResponsavelFamiliarDto {
   @Type(() => Number)
   @IsInt()
-  educandoId: number;
+  educandoId!: number;
 
   @IsString()
   @IsNotEmpty()
-  nome: string;
+  nome!: string;
 
   @IsOptional()
   @IsString()
@@ -29,7 +29,7 @@ export class CreateResponsavelFamiliarDto {
 
   @IsString()
   @IsNotEmpty()
-  vinculo: string;
+  vinculo!: string;
 
   @IsOptional()
   @IsString()
