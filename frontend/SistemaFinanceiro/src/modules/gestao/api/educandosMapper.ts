@@ -1,5 +1,6 @@
 // Conversão entre o formato das telas (types.ts, IDs em texto) e o do backend
 // (IDs numéricos, datas ISO, situação em minúsculas). Funções puras.
+import { cpfIncompleto, formatarCpf, normalizarDocumento } from "../educandos/model"
 import type { Educando, Responsavel } from "../educandos/types"
 import type {
   EducandoApi,
@@ -19,6 +20,12 @@ export const VINCULO_INICIATIVA_PENDENTE = true
 
 // Campos do formulário que ainda não são gravados no servidor.
 export const CAMPOS_EDUCANDO_PENDENTES = ["iniciativaId", "dataIngresso"] as const
+
+// CPF vai ao servidor só com os números; vazio vira null.
+function cpfParaApi(valor: string, mensagem: string): string | null {
+  if (cpfIncompleto(valor)) throw new Error(mensagem)
+  return normalizarDocumento(valor) || null
+}
 
 export function ehIdPersistido(id: string): boolean {
   return /^\d+$/.test(id)
@@ -59,7 +66,7 @@ export function deResponsavelApi(api: ResponsavelApi): Responsavel {
     id: String(api.id),
     nome: api.nome,
     vinculo: api.vinculo,
-    cpf: texto(api.cpf),
+    cpf: formatarCpf(texto(api.cpf)),
     rg: texto(api.rg),
     telefone: texto(api.telefone),
     profissao: texto(api.profissao),
@@ -74,7 +81,7 @@ export function deEducandoApi(api: EducandoApi): Educando {
     id: String(api.id),
     nome: api.nome,
     nascimento: api.dataNascimento ? api.dataNascimento.slice(0, 10) : "",
-    cpf: texto(api.cpf),
+    cpf: formatarCpf(texto(api.cpf)),
     nis: texto(api.nis),
     rg: texto(api.rg),
     corAutodeclarada: texto(api.corAutodeclarada),
@@ -108,7 +115,7 @@ export function paraEducandoPayload(educando: Educando): EducandoPayload {
 
   const payload: EducandoPayload = {
     nome,
-    cpf: vazioParaNull(educando.cpf),
+    cpf: cpfParaApi(educando.cpf, "O CPF do educando deve ter 11 dígitos."),
     rg: vazioParaNull(educando.rg),
     nis: vazioParaNull(educando.nis),
     corAutodeclarada: vazioParaNull(educando.corAutodeclarada),
@@ -170,7 +177,10 @@ export function responsaveisParaSalvar(
         dados: {
           nome: responsavel.nome.trim(),
           vinculo: responsavel.vinculo.trim(),
-          cpf: vazioParaNull(responsavel.cpf),
+          cpf: cpfParaApi(
+            responsavel.cpf,
+            "O CPF de cada responsável deve ter 11 dígitos.",
+          ),
           rg: vazioParaNull(responsavel.rg),
           telefone: vazioParaNull(responsavel.telefone),
           profissao: vazioParaNull(responsavel.profissao),

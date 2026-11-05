@@ -3,6 +3,7 @@ import { ErrorState, LoadingState } from "@/components/StatusMessage"
 import { Link } from "react-router-dom"
 import { useEducandosGestao, usePermissoesEducandos } from "./EducandosContext"
 import { filtrarEducandos } from "./model"
+import { VINCULO_INICIATIVA_PENDENTE } from "../api/educandosMapper"
 import { Badge, Card, PageHeader, inputClass } from "./components/EducandoUi"
 
 export default function EducandosPage() {
@@ -53,6 +54,7 @@ export default function EducandosPage() {
             onChange={(event) => setBusca(event.target.value)}
           />
         </div>
+{!VINCULO_INICIATIVA_PENDENTE && (
         <select
           className={`${inputClass} w-full md:w-72`}
           value={iniciativa}
@@ -66,6 +68,7 @@ export default function EducandosPage() {
             </option>
           ))}
         </select>
+        )}
         <select
           className={`${inputClass} w-full md:w-44`}
           value={situacao}
@@ -102,8 +105,12 @@ export default function EducandosPage() {
             <thead className="bg-[var(--muted)]">
               <tr className="border-b border-[var(--border)] text-left text-xs text-[var(--muted-foreground)]">
                 <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Iniciativa vinculada</th>
-                <th className="px-4 py-3 font-medium">Ingresso</th>
+                {!VINCULO_INICIATIVA_PENDENTE && (
+                  <>
+                    <th className="px-4 py-3 font-medium">Iniciativa vinculada</th>
+                    <th className="px-4 py-3 font-medium">Ingresso</th>
+                  </>
+                )}
                 <th className="px-4 py-3 font-medium">Situação</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
@@ -115,14 +122,18 @@ export default function EducandosPage() {
                   className="border-b border-[var(--border)] last:border-0"
                 >
                   <td className="px-4 py-3 font-medium">{educando.nome}</td>
-                  <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                    {iniciativaNome(educando.iniciativaId)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {educando.dataIngresso
-                      ? educando.dataIngresso.split("-").reverse().join("/")
-                      : "—"}
-                  </td>
+                  {!VINCULO_INICIATIVA_PENDENTE && (
+                    <>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                        {iniciativaNome(educando.iniciativaId)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {educando.dataIngresso
+                          ? educando.dataIngresso.split("-").reverse().join("/")
+                          : "—"}
+                      </td>
+                    </>
+                  )}
                   <td className="px-4 py-3">
                     <Badge
                       variant={

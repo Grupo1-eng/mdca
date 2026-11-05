@@ -12,6 +12,7 @@ import {
   duplicidadeDe,
   educandoVazio,
   responsavelVazio,
+  formatarCpf,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
 import {
@@ -217,7 +218,7 @@ export default function EducandoForm({
         <TextInput
           label="CPF"
           value={form.cpf}
-          onChange={(value) => set("cpf", value)}
+          onChange={(value) => set("cpf", formatarCpf(value))}
           placeholder="000.000.000-00"
           error={duplicidade?.campo === "cpf" ? erroDuplicidade : undefined}
           disabled={leitura}
@@ -353,7 +354,11 @@ export default function EducandoForm({
                 label={label}
                 value={responsavel[campo]}
                 onChange={(value) =>
-                  atualizarResponsavel(responsavel.id, campo, value)
+                  atualizarResponsavel(
+                    responsavel.id,
+                    campo,
+                    campo === "cpf" ? formatarCpf(value) : value,
+                  )
                 }
                 disabled={leitura}
                 full={campo === "escolaridade"}

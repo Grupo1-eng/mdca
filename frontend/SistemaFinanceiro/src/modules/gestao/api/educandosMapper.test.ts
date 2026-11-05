@@ -138,6 +138,13 @@ describe("paraEducandoPayload", () => {
     expect(payload).not.toHaveProperty("dataIngresso")
   })
 
+  it("envia o CPF só com números e recusa CPF incompleto", () => {
+    const base = { ...educandoVazio(), nome: "Ana" }
+    expect(paraEducandoPayload({ ...base, cpf: "123.456.789-10" }).cpf).toBe("12345678910")
+    expect(paraEducandoPayload(base).cpf).toBeNull()
+    expect(() => paraEducandoPayload({ ...base, cpf: "123.456" })).toThrow(/11 dígitos/)
+  })
+
   it("exige nome", () => {
     expect(() => paraEducandoPayload(educandoVazio())).toThrow(/nome/)
   })

@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -16,6 +17,7 @@ export class CreateEducandoDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{11}$/, { message: 'cpf deve ter 11 dígitos numéricos' })
   cpf?: string;
 
   @IsOptional()

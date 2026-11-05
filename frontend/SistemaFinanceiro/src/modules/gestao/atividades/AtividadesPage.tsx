@@ -10,6 +10,7 @@ import {
   Field,
   PageHeader,
   SaveStatus,
+  SensitiveNote,
   inputClass,
   textareaClass,
 } from "../educandos/components/EducandoUi"
@@ -77,6 +78,14 @@ export default function AtividadesPage() {
           ) : undefined
         }
       />
+
+      <div className="mb-4">
+        <SensitiveNote>
+          Demonstração: as atividades ainda não são salvas no servidor e voltam
+          ao exemplo ao recarregar a página. A integração com o banco é a
+          próxima etapa.
+        </SensitiveNote>
+      </div>
 
       {registrarAtividade && aberto && (
         <Card className="mb-5 p-5">
