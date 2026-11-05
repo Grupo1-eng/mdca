@@ -118,9 +118,23 @@ function SistemaSelector({ value, onChange }: { value: Sistema; onChange: (s: Si
   );
 }
 
-export function LoginScreen() {
+// `modulo` e `onModuloChange` são opcionais: o app unificado usa a escolha para
+// decidir a rota depois do login (/financeiro ou /gestao). Sem eles, a escolha
+// fica só nesta tela, como antes.
+export function LoginScreen({
+  modulo,
+  onModuloChange,
+}: {
+  modulo?: Sistema;
+  onModuloChange?: (s: Sistema) => void;
+} = {}) {
   const { login, loading, error } = useAuth();
-  const [sistema, setSistema] = useState<Sistema>("financeiro");
+  const [sistemaLocal, setSistemaLocal] = useState<Sistema>("financeiro");
+  const sistema = modulo ?? sistemaLocal;
+  const setSistema = (s: Sistema) => {
+    setSistemaLocal(s);
+    onModuloChange?.(s);
+  };
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);

@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEducandoDto } from './dto/create-educando.dto';
 import { UpdateEducandoDto } from './dto/update-educando.dto';
@@ -11,10 +14,21 @@ import { UpdateEducandoDto } from './dto/update-educando.dto';
 export class EducandosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listarTodos(apenasAtivos = true, nome?: string) {
+  async listarTodos(
+    organizacaoId: number,
+    apenasAtivos = true,
+    nome?: string,
+  ) {
     return this.prisma.educando.findMany({
       where: {
-        ...(apenasAtivos ? { situacaoAtual: 'ativo' } : {}),
+        organizacaoId,
+
+        ...(apenasAtivos
+          ? {
+              situacaoAtual: 'ativo',
+            }
+          : {}),
+
         ...(nome
           ? {
               nome: {
@@ -24,31 +38,26 @@ export class EducandosService {
             }
           : {}),
       },
-      select: {
-        id: true,
-        nome: true,
-        dataNascimento: true,
-        escola: true,
-        turno: true,
-        situacaoAtual: true,
-        tecnicoResponsavel: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
-      },
+
       orderBy: {
         nome: 'asc',
       },
     });
   }
 
-  async buscarPorId(id: number) {
-    const educando = await this.prisma.educando.findUnique({
-      where: { id },
+  async buscarPorId(
+    id: number,
+    organizacaoId: number,
+  ) {
+    const educando = await this.prisma.educando.findFirst({
+      where: {
+        id,
+        organizacaoId,
+      },
+
       include: {
         responsaveis: true,
+
         tecnicoResponsavel: {
           select: {
             id: true,
@@ -59,13 +68,14 @@ export class EducandosService {
     });
 
     if (!educando) {
-      throw new NotFoundException('Educando não encontrado');
+      throw new NotFoundException('Educando não encontrado.');
     }
 
     return educando;
   }
 
   private async verificarDuplicidade(
+    organizacaoId: number,
     cpf?: string,
     nis?: string,
     ignorarId?: number,
@@ -76,10 +86,13 @@ export class EducandosService {
 
     const existente = await this.prisma.educando.findFirst({
       where: {
+        organizacaoId,
+
         OR: [
           ...(cpf ? [{ cpf }] : []),
           ...(nis ? [{ nis }] : []),
         ],
+
         ...(ignorarId
           ? {
               NOT: {
@@ -93,48 +106,125 @@ export class EducandosService {
     if (existente) {
       throw new ConflictException(
         `Já existe um educando cadastrado com este CPF ou NIS ` +
-          `(id: ${existente.id}, nome: ${existente.nome}).`,
+          `(id: ${existente.id}, nome: ${existente.nome}). ` +
+          'Confirme se não é um cadastro duplicado antes de prosseguir.',
       );
     }
   }
 
-  async criar(dados: CreateEducandoDto) {
-    await this.verificarDuplicidade(dados.cpf, dados.nis);
-
-    return this.prisma.educando.create({
-      data: dados,
-    });
-  }
-
-  async atualizar(id: number, dados: UpdateEducandoDto) {
-    await this.buscarPorId(id);
-
-    if (dados.cpf || dados.nis) {
-      await this.verificarDuplicidade(dados.cpf, dados.nis, id);
+  private async validarTecnicoResponsavel(
+    tecnicoResponsavelId: number | undefined,
+    organizacaoId: number,
+  ) {
+    if (tecnicoResponsavelId === undefined) {
+      return;
     }
 
-    return this.prisma.educando.update({
-      where: { id },
-      data: dados,
+    const tecnico = await this.prisma.usuario.findFirst({
+      where: {
+        id: tecnicoResponsavelId,
+        organizacaoId,
+        ativo: true,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+    if (!tecnico) {
+      throw new BadRequestException(
+        'O técnico responsável informado não existe, está inativo ou pertence a outra organização.',
+      );
+    }
+  }
+
+  async criar(
+    dados: CreateEducandoDto,
+    organizacaoId: number,
+  ) {
+    await this.verificarDuplicidade(
+      organizacaoId,
+      dados.cpf,
+      dados.nis,
+    );
+
+    await this.validarTecnicoResponsavel(
+      dados.tecnicoResponsavelId,
+      organizacaoId,
+    );
+
+    const data: Prisma.EducandoUncheckedCreateInput = {
+      ...dados,
+      organizacaoId,
+    };
+
+    return this.prisma.educando.create({
+      data,
     });
   }
 
-  async inativar(id: number) {
-    await this.buscarPorId(id);
+  async atualizar(
+    id: number,
+    dados: UpdateEducandoDto,
+    organizacaoId: number,
+  ) {
+    await this.buscarPorId(id, organizacaoId);
+
+    if (dados.cpf || dados.nis) {
+      await this.verificarDuplicidade(
+        organizacaoId,
+        dados.cpf,
+        dados.nis,
+        id,
+      );
+    }
+
+    if (dados.tecnicoResponsavelId !== undefined) {
+      await this.validarTecnicoResponsavel(
+        dados.tecnicoResponsavelId,
+        organizacaoId,
+      );
+    }
+
+    const data: Prisma.EducandoUncheckedUpdateInput = {
+      ...dados,
+    };
 
     return this.prisma.educando.update({
-      where: { id },
+      where: {
+        id,
+      },
+      data,
+    });
+  }
+
+  async inativar(
+    id: number,
+    organizacaoId: number,
+  ) {
+    await this.buscarPorId(id, organizacaoId);
+
+    return this.prisma.educando.update({
+      where: {
+        id,
+      },
       data: {
         situacaoAtual: 'inativo',
       },
     });
   }
 
-  async reativar(id: number) {
-    await this.buscarPorId(id);
+  async reativar(
+    id: number,
+    organizacaoId: number,
+  ) {
+    await this.buscarPorId(id, organizacaoId);
 
     return this.prisma.educando.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         situacaoAtual: 'ativo',
       },

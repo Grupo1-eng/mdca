@@ -12,8 +12,8 @@ import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
 import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
 import {
-  dataDoLancamento, filtrarPorIntervalo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieFluxoPeriodo,
+  dataDoLancamento, filtrarPorIntervalo, filtrarPorTipo, intervaloValido, resumoPeriodo, saldoTotalContas,
+  serieFluxoPeriodo, type FiltroTipo,
 } from '@/lib/aggregations';
 import { usePeriodo } from '@/context/PeriodoContext';
 import { useAuth } from '@/context/AuthContext';
@@ -24,6 +24,14 @@ import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
 type FinanceTab = "lancamentos" | "entradas" | "saidas" | "fluxo";
+
+// Tipo de lançamento que cada aba da listagem exibe (a aba de fluxo não usa a tabela).
+const tipoDaAba: Record<FinanceTab, FiltroTipo> = {
+  lancamentos: "todos",
+  entradas: "entrada",
+  saidas: "saida",
+  fluxo: "todos",
+};
 
 // O backend ainda não tem endpoints de anexo; a coluna de comprovantes volta
 // quando eles existirem (ver src/api/anexos.ts).
@@ -355,28 +363,39 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
     return () => { cancelado = true; };
   }, [drawerId]);
 
-  const tabs: { key: FinanceTab; label: string }[] = [
-    { key: "lancamentos", label: "Lançamentos" },
-    { key: "entradas", label: "Entradas" },
-    { key: "saidas", label: "Saídas" },
-    { key: "fluxo", label: "Fluxo de Caixa" },
-  ];
-
   // Tabela, cartões e rodapé partem da mesma lista do período, para os
   // números sempre baterem.
   const periodoValido = intervaloValido(intervalo);
   const periodoLabel = formatIntervalo(periodo, intervalo);
   const doPeriodo = useMemo(() => filtrarPorIntervalo(lancamentos, intervalo), [lancamentos, intervalo]);
 
-  const filtered =
-    tab === "entradas"
-      ? doPeriodo.filter((l) => l.tipo === "entrada")
-      : tab === "saidas"
-      ? doPeriodo.filter((l) => l.tipo === "saida")
-      : doPeriodo;
+  // Período primeiro, tipo depois: a aba nunca mostra lançamentos fora do período.
+  const filtered = filtrarPorTipo(doPeriodo, tipoDaAba[tab]);
 
-  const totalEntradas = filtered.filter((l) => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
-  const totalSaidas = filtered.filter((l) => l.tipo === "saida").reduce((a, b) => a + b.valor, 0);
+  const totalEntradas = filtrarPorTipo(filtered, "entrada").reduce((a, b) => a + b.valor, 0);
+  const totalSaidas = filtrarPorTipo(filtered, "saida").reduce((a, b) => a + b.valor, 0);
+
+  // Quantos lançamentos cada aba tem no período, para achar o que procura sem clicar.
+  const contagem = useMemo(() => ({
+    lancamentos: doPeriodo.length,
+    entradas: filtrarPorTipo(doPeriodo, "entrada").length,
+    saidas: filtrarPorTipo(doPeriodo, "saida").length,
+  }), [doPeriodo]);
+
+  const tabs: { key: FinanceTab; label: string; count?: number }[] = [
+    { key: "lancamentos", label: "Lançamentos", count: contagem.lancamentos },
+    { key: "entradas", label: "Entradas", count: contagem.entradas },
+    { key: "saidas", label: "Saídas", count: contagem.saidas },
+    { key: "fluxo", label: "Fluxo de Caixa" },
+  ];
+
+  const mensagemVazia = !periodoValido
+    ? "Período inválido: a data inicial deve ser anterior ou igual à final."
+    : doPeriodo.length === 0
+    ? "Nenhum lançamento no período selecionado."
+    : tab === "entradas"
+    ? "Nenhuma entrada no período selecionado."
+    : "Nenhuma saída no período selecionado.";
 
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
@@ -474,10 +493,12 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
             </div>
 
             <div className="bg-white rounded-lg border border-[var(--border)]">
-              <div className="border-b border-[var(--border)] px-5 flex gap-1">
+              <div role="tablist" className="border-b border-[var(--border)] px-5 flex gap-1">
                 {tabs.map((t) => (
                   <button
                     key={t.key}
+                    role="tab"
+                    aria-selected={tab === t.key}
                     onClick={() => setTab(t.key)}
                     className={`py-3 px-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
                       tab === t.key
@@ -486,6 +507,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                     }`}
                   >
                     {t.label}
+                    {t.count !== undefined && (
+                      <span className="ml-1.5 text-xs font-mono text-[var(--muted-foreground)]">{t.count}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -531,9 +555,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                       {filtered.length === 0 && (
                         <tr>
                           <td colSpan={6 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
-                            {periodoValido
-                              ? "Nenhum lançamento no período selecionado."
-                              : "Período inválido: a data inicial deve ser anterior ou igual à final."}
+                            {mensagemVazia}
                           </td>
                         </tr>
                       )}
@@ -577,9 +599,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                       <tr className="bg-[var(--muted)]">
                         <td colSpan={4} className="px-5 py-3 text-xs font-mono text-[var(--muted-foreground)]">Totais do período</td>
                         <td className="px-5 py-3">
-                          <div className="text-xs font-mono">
-                            <span className="text-[#0e7e6e]">+{fmt(totalEntradas)}</span>
-                            {tab === "lancamentos" && <span className="text-red-600 ml-2">-{fmt(totalSaidas)}</span>}
+                          <div className="text-xs font-mono flex gap-2">
+                            {tab !== "saidas" && <span className="text-[#0e7e6e]">+{fmt(totalEntradas)}</span>}
+                            {tab !== "entradas" && <span className="text-red-600">-{fmt(totalSaidas)}</span>}
                           </div>
                         </td>
                         <td colSpan={1 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} />

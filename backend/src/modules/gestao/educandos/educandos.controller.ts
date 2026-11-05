@@ -13,16 +13,33 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+
 import { EducandosService } from './educandos.service';
 import { CreateEducandoDto } from './dto/create-educando.dto';
 import { UpdateEducandoDto } from './dto/update-educando.dto';
+
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PerfisGuard } from '../../auth/guards/perfis.guard';
 import { Perfis } from '../../auth/decorators/perfis.decorator';
+
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../../auth/decorators/usuario-atual.decorator';
+
 import {
   PERFIS,
   PERFIS_TECNICOS,
+  Perfil,
 } from '../../auth/perfis.constants';
+
+// Perfis da Gestão que podem listar educandos (dados de crianças e
+// adolescentes). Perfis exclusivos do Financeiro ficam de fora.
+const PERFIS_LISTAGEM_EDUCANDOS: Perfil[] = [
+  ...PERFIS_TECNICOS,
+  PERFIS.EDUCADOR,
+  PERFIS.ADMINISTRATIVO,
+];
 
 @Controller('api/educandos')
 @UseGuards(JwtAuthGuard, PerfisGuard)
@@ -30,15 +47,20 @@ export class EducandosController {
   constructor(private readonly service: EducandosService) {}
 
   @Get()
+  @Perfis(...PERFIS_LISTAGEM_EDUCANDOS)
   listarTodos(
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+
     @Query(
       'apenasAtivos',
       new ParseBoolPipe({ optional: true }),
     )
     apenasAtivos?: boolean,
+
     @Query('nome') nome?: string,
   ) {
     return this.service.listarTodos(
+      usuario.organizacaoId,
       apenasAtivos ?? true,
       nome,
     );
@@ -46,15 +68,27 @@ export class EducandosController {
 
   @Get(':id')
   @Perfis(...PERFIS_TECNICOS)
-  buscar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.buscarPorId(id);
+  buscar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.buscarPorId(
+      id,
+      usuario.organizacaoId,
+    );
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Perfis(...PERFIS_TECNICOS)
-  criar(@Body() dados: CreateEducandoDto) {
-    return this.service.criar(dados);
+  criar(
+    @Body() dados: CreateEducandoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.criar(
+      dados,
+      usuario.organizacaoId,
+    );
   }
 
   @Put(':id')
@@ -62,19 +96,36 @@ export class EducandosController {
   atualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dados: UpdateEducandoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
-    return this.service.atualizar(id, dados);
+    return this.service.atualizar(
+      id,
+      dados,
+      usuario.organizacaoId,
+    );
   }
 
   @Patch(':id/inativar')
   @Perfis(PERFIS.COORDENACAO)
-  inativar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.inativar(id);
+  inativar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.inativar(
+      id,
+      usuario.organizacaoId,
+    );
   }
 
   @Patch(':id/reativar')
   @Perfis(PERFIS.COORDENACAO)
-  reativar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.reativar(id);
+  reativar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.reativar(
+      id,
+      usuario.organizacaoId,
+    );
   }
 }
