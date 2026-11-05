@@ -21,7 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import { podeVerAuditoria } from '@/lib/auditoria';
 import BotaoHistorico from './BotaoHistorico';
 import CampoData from './CampoData';
-import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
+import { corSituacao, rotuloSituacao, situacoesDoTipo, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
 type FinanceTab = "lancamentos" | "entradas" | "saidas" | "fluxo";
@@ -225,8 +225,6 @@ const tiposLancamento: { value: TipoLancamento; label: string }[] = [
   { value: "entrada", label: "Entrada" },
   { value: "saida", label: "Saída" },
 ];
-const situacoesLancamento: SituacaoLancamento[] = ["pendente", "pago", "recebido"];
-
 function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: {
   projetos: { id: number; nome: string }[];
   contas: { id: number; nome: string }[];
@@ -276,7 +274,12 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
         <FieldMd label="Tipo" required>
           <div className="grid grid-cols-2 gap-2">
             {tiposLancamento.map(t => (
-              <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, tipo: t.value }))}
+              <button key={t.value} type="button" onClick={() => setForm(f => ({
+                ...f,
+                tipo: t.value,
+                // Ao trocar o tipo, a situação que não vale para ele volta a "Previsto".
+                situacao: situacoesDoTipo(t.value).includes(f.situacao) ? f.situacao : "pendente",
+              }))}
                 className={`h-10 rounded-md border text-sm font-medium transition-all cursor-pointer ${
                   form.tipo === t.value
                     ? t.value === "entrada" ? "border-[#0e7e6e] bg-[#0e7e6e]/10 text-[#0e7e6e]" : "border-red-400 bg-red-50 text-red-600"
@@ -289,7 +292,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
         </FieldMd>
         <FieldMd label="Situação" required>
           <select required value={form.situacao} onChange={set("situacao")} className={selectCls} style={chevronBg}>
-            {situacoesLancamento.map(s => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+            {situacoesDoTipo(form.tipo).map(s => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
           </select>
         </FieldMd>
         <div className="col-span-2">
@@ -303,7 +306,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
         <FieldMd label="Valor (R$)" required>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-            <input type="number" required min="0" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
+            <input type="number" required min="0.01" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
           </div>
         </FieldMd>
         <FieldMd label="Conta" required>
@@ -462,7 +465,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
       {modalNovo && (
         <ModalNovoLancamento
           projetos={projetos}
-          contas={contas}
+          // Conta inativa não recebe lançamento novo (RNF10).
+          contas={contas.filter(c => c.ativa)}
           categorias={categorias}
           onClose={() => setModalNovo(false)}
           onSave={handleSaveLancamento}

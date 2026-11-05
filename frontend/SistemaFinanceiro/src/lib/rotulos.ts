@@ -13,6 +13,15 @@ export const corSituacao: Record<SituacaoLancamento, string> = {
   recebido: "bg-emerald-100 text-emerald-800",
 };
 
+/**
+ * Situações que fazem sentido para cada tipo: a entrada se realiza ao ser
+ * recebida, a saída ao ser paga. O backend recusa as outras combinações
+ * (backend/src/modules/financeiro/lancamentos/regras-lancamento.ts).
+ */
+export function situacoesDoTipo(tipo: TipoLancamento): SituacaoLancamento[] {
+  return tipo === "entrada" ? ["pendente", "recebido"] : ["pendente", "pago"];
+}
+
 /** Valor com sinal para exibição: saídas aparecem negativas. */
 export function valorComSinal(valor: number, tipo: TipoLancamento): number {
   return tipo === "saida" ? -valor : valor;

@@ -92,7 +92,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   }
 
   it('criação de lançamento registra autor, organização, origem e valores criados', async () => {
-    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3, ativa: true });
     prisma.lancamento.create.mockResolvedValue(lancamento);
 
     const res = await enviar('post', '/api/lancamentos', {
@@ -218,7 +218,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('se a auditoria falhar, a operação falha junto', async () => {
-    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3, ativa: true });
     prisma.lancamento.create.mockResolvedValue(lancamento);
     prisma.auditoria.create.mockRejectedValue(new Error('banco fora'));
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Lancamento, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { RegistroAuditoriaService } from '../../shared/auditorias/registro-auditoria.service';
@@ -6,6 +6,7 @@ import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
 import { limitesDoMes, resumoSemanalDoMes } from './resumo-semanal';
 import { ajustarSaldo, efeitoNoSaldo } from './saldo-conta';
+import { SITUACOES_POR_TIPO, situacaoCompativel } from './regras-lancamento';
 
 // Lançamento não tem organizacao_id: pertence à organização da sua conta.
 // Toda consulta filtra por `conta.organizacaoId` do token, e conta/projeto
@@ -71,8 +72,9 @@ export class LancamentosService {
   }
 
   async criar(dados: CreateLancamentoDto, usuarioId: number, organizacaoId: number) {
+    validarSituacao(dados.tipo, dados.situacao ?? 'pendente');
     return this.prisma.$transaction(async (tx) => {
-      await this.validarVinculos(dados, organizacaoId, tx);
+      await this.validarVinculos(dados, organizacaoId, tx, true);
       const lancamento = await tx.lancamento.create({ data: { ...dados, usuarioId } });
       await ajustarSaldo(tx, lancamento.contaId, efeitoNoSaldo(lancamento));
       await this.auditoria.criacao(tx, 'lancamento', lancamento);
@@ -83,7 +85,13 @@ export class LancamentosService {
   async atualizar(id: number, dados: UpdateLancamentoDto, organizacaoId: number) {
     return this.prisma.$transaction(async (tx) => {
       const antes = await this.buscarPorId(id, organizacaoId, tx);
-      await this.validarVinculos(dados, organizacaoId, tx);
+      // Compara com o que já está gravado: mudar só o tipo ou só a situação
+      // também precisa resultar numa combinação válida.
+      validarSituacao(dados.tipo ?? antes.tipo, dados.situacao ?? antes.situacao);
+      // Conta inativa mantém os lançamentos que já tinha (RNF10): só recusa
+      // quando o lançamento é movido para ela.
+      const trocouDeConta = dados.contaId !== undefined && dados.contaId !== antes.contaId;
+      await this.validarVinculos(dados, organizacaoId, tx, trocouDeConta);
       const depois = await tx.lancamento.update({ where: { id }, data: dados });
       await this.reajustarSaldo(tx, antes, depois);
       await this.auditoria.atualizacao(tx, 'lancamento', antes, depois);
@@ -117,10 +125,12 @@ export class LancamentosService {
     await ajustarSaldo(tx, depois.contaId, efeitoNoSaldo(depois));
   }
 
+  /** `exigirContaAtiva`: conta inativa não recebe lançamento novo (RNF10, RF16). */
   private async validarVinculos(
     dados: { contaId?: number; projetoId?: number },
     organizacaoId: number,
     db: Prisma.TransactionClient,
+    exigirContaAtiva: boolean,
   ) {
     if (dados.contaId !== undefined) {
       const conta = await db.contaFinanceira.findFirst({
@@ -128,6 +138,9 @@ export class LancamentosService {
       });
       if (!conta) {
         throw new NotFoundException('Conta financeira não encontrada');
+      }
+      if (exigirContaAtiva && !conta.ativa) {
+        throw new BadRequestException('Conta financeira inativa não aceita novos lançamentos.');
       }
     }
     if (dados.projetoId !== undefined && dados.projetoId !== null) {
@@ -138,5 +151,12 @@ export class LancamentosService {
         throw new NotFoundException('Projeto não encontrado');
       }
     }
+  }
+}
+
+function validarSituacao(tipo: string, situacao: string) {
+  if (!situacaoCompativel(tipo, situacao)) {
+    const validas = (SITUACOES_POR_TIPO[tipo] ?? []).join(' ou ');
+    throw new BadRequestException(`Situação "${situacao}" não vale para ${tipo}: use ${validas}.`);
   }
 }

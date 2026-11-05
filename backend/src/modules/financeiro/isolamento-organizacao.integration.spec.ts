@@ -17,8 +17,8 @@ describe('Isolamento por organização no financeiro (integração)', () => {
   const ORG_VIZINHA = 99;
 
   const contas = [
-    { id: 1, organizacaoId: ORG_USUARIO, nome: 'Caixa da organização 3' },
-    { id: 2, organizacaoId: ORG_VIZINHA, nome: 'Caixa da organização 99' },
+    { id: 1, organizacaoId: ORG_USUARIO, nome: 'Caixa da organização 3', ativa: true },
+    { id: 2, organizacaoId: ORG_VIZINHA, nome: 'Caixa da organização 99', ativa: true },
   ];
   const projetos = [
     { id: 10, organizacaoId: ORG_USUARIO },
@@ -26,8 +26,8 @@ describe('Isolamento por organização no financeiro (integração)', () => {
   ];
   const novembro = new Date('2026-11-03T00:00:00.000Z');
   const lancamentos = [
-    { id: 100, contaId: 1, tipo: 'entrada', valor: '50.00', dataCompetencia: novembro, dataPagamento: null, criadoEm: novembro },
-    { id: 200, contaId: 2, tipo: 'entrada', valor: '9999.00', dataCompetencia: novembro, dataPagamento: null, criadoEm: novembro },
+    { id: 100, contaId: 1, tipo: 'entrada', situacao: 'pendente', valor: '50.00', dataCompetencia: novembro, dataPagamento: null, criadoEm: novembro },
+    { id: 200, contaId: 2, tipo: 'entrada', situacao: 'pendente', valor: '9999.00', dataCompetencia: novembro, dataPagamento: null, criadoEm: novembro },
   ];
 
   type Where = { id?: number; organizacaoId?: number; conta?: { organizacaoId?: number } };

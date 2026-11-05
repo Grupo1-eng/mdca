@@ -1,4 +1,4 @@
-import { IsDate, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsIn, IsInt, IsOptional, IsString, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Dinheiro } from '../../../../common/transformers/dinheiro';
 
@@ -27,6 +27,8 @@ export class CreateLancamentoDto {
   contatoId?: number;
 
   @Dinheiro()
+  // RF33: maior que zero. Basta ter um dígito diferente de zero ("0.01", "10").
+  @Matches(/[1-9]/, { message: 'valor deve ser maior que zero' })
   valor: string;
 
   @IsIn(TIPOS_LANCAMENTO)
