@@ -28,6 +28,23 @@ export interface Lancamento {
   criadoEm: string;
 }
 
+// GET /api/lancamentos/resumo-semanal?mes=AAAA-MM (US10). Semanas contadas a
+// partir do dia 1º, de 7 em 7 dias; a última pode ser mais curta.
+export interface SemanaResumo {
+  semana: number;
+  inicio: string; // AAAA-MM-DD
+  fim: string; // AAAA-MM-DD
+  entradas: number;
+  saidas: number;
+  saldo: number;
+}
+
+export interface ResumoSemanal {
+  mes: string; // AAAA-MM
+  semanas: SemanaResumo[];
+  totais: { entradas: number; saidas: number; saldo: number };
+}
+
 // usuarioId é definido pelo backend a partir do token.
 export interface NovoLancamento {
   contaId: number;

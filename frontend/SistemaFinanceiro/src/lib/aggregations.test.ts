@@ -15,7 +15,6 @@ import {
   resumoPeriodo,
   serieFluxoCaixa,
   serieFluxoCaixaPeriodo,
-  serieFluxoPeriodo,
 } from "./aggregations";
 
 function lanc(parcial: Partial<Lancamento>): Lancamento {
@@ -202,35 +201,36 @@ describe("filtrarPorTipo", () => {
   });
 });
 
-describe("serieFluxoPeriodo", () => {
+// Agrupamento compartilhado pelos gráficos de fluxo por período.
+describe("serieFluxoCaixaPeriodo: agrupamento", () => {
   const hoje = new Date(2026, 8, 15);
   const periodo = (de: string, ate: string) => getIntervaloPeriodo("personalizado", hoje, de, ate);
 
   it("agrupa por semana em períodos curtos, com semanas vazias zeradas", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ tipo: "entrada", valor: 100, dataCompetencia: "2026-08-01T00:00:00.000Z" }),
       lanc({ tipo: "saida", valor: 40, dataCompetencia: "2026-08-07T00:00:00.000Z" }),
       lanc({ tipo: "entrada", valor: 50, dataCompetencia: "2026-08-20T00:00:00.000Z" }),
     ], periodo("2026-08-01", "2026-08-31"));
     expect(agrupamento).toBe("semana");
     expect(pontos.map((p) => p.label)).toEqual(["01/08", "08/08", "15/08", "22/08", "29/08"]);
-    expect(pontos[0]).toMatchObject({ entradas: 100, saidas: 40 });
-    expect(pontos[1]).toMatchObject({ entradas: 0, saidas: 0 });
-    expect(pontos[2]).toMatchObject({ entradas: 50, saidas: 0 });
+    expect(pontos[0]).toMatchObject({ previsto: 100, saidasPrevisto: 40 });
+    expect(pontos[1]).toMatchObject({ previsto: 0, saidasPrevisto: 0 });
+    expect(pontos[2]).toMatchObject({ previsto: 50, saidasPrevisto: 0 });
   });
 
   it("agrupa por mês em períodos de até 2 anos", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ tipo: "entrada", valor: 100, dataCompetencia: "2026-01-31T00:00:00.000Z" }),
       lanc({ tipo: "saida", valor: 30, dataCompetencia: "2026-03-01T00:00:00.000Z" }),
     ], periodo("2026-01-01", "2026-03-31"));
     expect(agrupamento).toBe("mes");
     expect(pontos.map((p) => p.label)).toEqual(["jan/26", "fev/26", "mar/26"]);
-    expect(pontos.map((p) => [p.entradas, p.saidas])).toEqual([[100, 0], [0, 0], [0, 30]]);
+    expect(pontos.map((p) => [p.previsto, p.saidasPrevisto])).toEqual([[100, 0], [0, 0], [0, 30]]);
   });
 
   it("agrupa por ano acima de 2 anos", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ valor: 10, dataCompetencia: "2022-05-10T00:00:00.000Z" }),
       lanc({ valor: 20, dataCompetencia: "2026-02-10T00:00:00.000Z" }),
     ], getIntervaloPeriodo("todos", hoje));
@@ -240,16 +240,16 @@ describe("serieFluxoPeriodo", () => {
 
   it("ignora lançamentos fora do período e devolve vazio quando não há nenhum", () => {
     const fora = [lanc({ dataCompetencia: "2026-07-20T00:00:00.000Z" })];
-    expect(serieFluxoPeriodo(fora, periodo("2026-08-01", "2026-08-31")).pontos).toEqual([]);
+    expect(serieFluxoCaixaPeriodo(fora, periodo("2026-08-01", "2026-08-31")).pontos).toEqual([]);
   });
 
   it("com o início em aberto, começa no lançamento mais antigo", () => {
-    const { pontos } = serieFluxoPeriodo([
+    const { pontos } = serieFluxoCaixaPeriodo([
       lanc({ valor: 10, dataCompetencia: "2026-08-10T00:00:00.000Z" }),
       lanc({ valor: 20, dataCompetencia: "2026-08-12T00:00:00.000Z" }),
     ], periodo("", "2026-08-16"));
     expect(pontos.map((p) => p.label)).toEqual(["10/08"]);
-    expect(pontos[0].entradas).toBe(30);
+    expect(pontos[0].previsto).toBe(30);
   });
 });
 
@@ -271,16 +271,13 @@ describe("serieFluxoCaixaPeriodo", () => {
     expect(pontos[2]).toMatchObject({ realizado: 0, previsto: 0, saidasRealizado: 50, saidasPrevisto: 75 });
   });
 
-  it("agrupa como o gráfico do Financeiro e ignora o que está fora do período", () => {
+  it("ignora o que está fora do período", () => {
     const lancamentos = [
       lanc({ valor: 100, dataCompetencia: "2026-08-03T00:00:00.000Z" }),
       lanc({ valor: 999, dataCompetencia: "2026-06-01T00:00:00.000Z" }),
     ];
-    const agosto = periodo("2026-08-01", "2026-08-31");
-    const caixa = serieFluxoCaixaPeriodo(lancamentos, agosto);
-    const fluxo = serieFluxoPeriodo(lancamentos, agosto);
-    expect(caixa.agrupamento).toBe(fluxo.agrupamento);
-    expect(caixa.pontos.map((p) => p.label)).toEqual(fluxo.pontos.map((p) => p.label));
+    const caixa = serieFluxoCaixaPeriodo(lancamentos, periodo("2026-08-01", "2026-08-31"));
+    expect(caixa.agrupamento).toBe("semana");
     expect(caixa.pontos.reduce((a, p) => a + p.previsto, 0)).toBe(100);
   });
 });
