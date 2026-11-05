@@ -37,7 +37,7 @@ function AreaLogada({ user }: { user: AuthUser }) {
     }]);
   };
 
-  // PeriodoProvider: o filtro de período é o mesmo no Início e no Financeiro.
+  // PeriodoProvider: o filtro de período é o mesmo no Início, no Financeiro e nos Relatórios.
   return <PeriodoProvider>
     <div className="min-h-screen bg-[var(--background)]">
       <NavBar active={module} setModule={setModule} logs={logs} onClearLogs={() => setLogs([])} />

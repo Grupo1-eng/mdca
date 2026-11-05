@@ -182,39 +182,6 @@ export function contasParaPainel(contas: Conta[]): Conta[] {
   );
 }
 
-export interface PontoFluxo {
-  mes: string;
-  realizado: number;
-  previsto: number;
-  saidasRealizado: number;
-  saidasPrevisto: number;
-}
-
-/** Série mensal de entradas/saídas realizadas vs. previstas — usada nos gráficos de fluxo de caixa. */
-export function serieFluxoCaixa(lancamentos: Lancamento[], meses = 6, hoje: Date = new Date()): PontoFluxo[] {
-  const formatter = new Intl.DateTimeFormat("pt-BR", { month: "short" });
-  const pontos: PontoFluxo[] = [];
-
-  for (let i = meses - 1; i >= 0; i--) {
-    const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-    const doMes = lancamentos.filter((l) => {
-      const d = dataLocal(dataDoLancamento(l));
-      return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
-    });
-    const entradas = doMes.filter((l) => l.tipo === "entrada");
-    const saidas = doMes.filter((l) => l.tipo === "saida");
-    pontos.push({
-      mes: formatter.format(ref).replace(".", ""),
-      realizado: soma(entradas.filter((l) => l.situacao === "recebido")),
-      previsto: soma(entradas),
-      saidasRealizado: soma(saidas.filter((l) => l.situacao === "pago")),
-      saidasPrevisto: soma(saidas),
-    });
-  }
-
-  return pontos;
-}
-
 export type AgrupamentoFluxo = "semana" | "mes" | "ano";
 
 // Dia como número inteiro, imune ao horário de verão (que mudaria a conta em horas).
@@ -278,14 +245,18 @@ function agruparNoPeriodo<T extends object>(
   return { agrupamento, pontos };
 }
 
-export interface PontoFluxoCaixaPeriodo extends Omit<PontoFluxo, "mes"> {
+export interface PontoFluxoCaixaPeriodo {
   label: string;
+  realizado: number; // entradas recebidas
+  previsto: number; // todas as entradas
+  saidasRealizado: number; // saídas pagas
+  saidasPrevisto: number; // todas as saídas
 }
 
 /**
- * Realizado vs. previsto do período — gráfico de fluxo do Dashboard. Mesmos
- * valores da `serieFluxoCaixa`, agrupados por semana, mês ou ano conforme o
- * tamanho do período.
+ * Realizado vs. previsto do período — gráfico do painel e relatório de fluxo
+ * de caixa. Realizado é o que foi recebido/pago; previsto, todos os
+ * lançamentos. Agrupa por semana, mês ou ano conforme o tamanho do período.
  */
 export function serieFluxoCaixaPeriodo(
   lancamentos: Lancamento[],

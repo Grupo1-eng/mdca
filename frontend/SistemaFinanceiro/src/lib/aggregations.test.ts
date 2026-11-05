@@ -13,7 +13,6 @@ import {
   intervaloValido,
   msAteProximoDia,
   resumoPeriodo,
-  serieFluxoCaixa,
   serieFluxoCaixaPeriodo,
 } from "./aggregations";
 
@@ -307,18 +306,6 @@ describe("contasPendentes", () => {
     expect(vencidas[0].tipo).toBe("pagar");
     expect(vencendo).toHaveLength(1);
     expect(vencendo[0].tipo).toBe("receber");
-  });
-});
-
-describe("serieFluxoCaixa", () => {
-  it("separa realizado (recebido/pago) do previsto (todos)", () => {
-    const hoje = new Date(2026, 8, 20);
-    const serie = serieFluxoCaixa([
-      lanc({ tipo: "entrada", valor: 100, situacao: "recebido" }),
-      lanc({ tipo: "entrada", valor: 50, situacao: "pendente" }),
-      lanc({ tipo: "saida", valor: 40, situacao: "pago" }),
-    ], 1, hoje);
-    expect(serie[0]).toMatchObject({ realizado: 100, previsto: 150, saidasRealizado: 40, saidasPrevisto: 40 });
   });
 });
 
