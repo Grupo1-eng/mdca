@@ -17,16 +17,25 @@ export const PERFIS_TECNICOS: Perfil[] = [
   PERFIS.TECNICO_PSICOLOGIA,
 ];
 
-// Únicos perfis com acesso ao módulo financeiro (dados sensíveis da organização).
-export const PERFIS_FINANCEIRO: Perfil[] = [
+// Perfis que só existem no financeiro (a coordenação e o administrativo
+// atuam nos dois módulos).
+export const PERFIS_EXCLUSIVOS_FINANCEIRO: Perfil[] = [
   PERFIS.COORDENADOR_FINANCEIRO,
   PERFIS.GESTOR_FINANCEIRO,
   PERFIS.ANALISTA_FINANCEIRO,
+];
+
+// Únicos perfis com acesso ao módulo financeiro (dados sensíveis da organização).
+// A coordenação é admin dos dois módulos: é ela quem cria os usuários.
+export const PERFIS_FINANCEIRO: Perfil[] = [
+  PERFIS.COORDENACAO,
+  ...PERFIS_EXCLUSIVOS_FINANCEIRO,
   PERFIS.ADMINISTRATIVO,
 ];
 
 // Quem consulta, exporta e vê o histórico do log de auditoria do financeiro.
 export const PERFIS_AUDITORIA_FINANCEIRO: Perfil[] = [
+  PERFIS.COORDENACAO,
   PERFIS.COORDENADOR_FINANCEIRO,
   PERFIS.GESTOR_FINANCEIRO,
 ];

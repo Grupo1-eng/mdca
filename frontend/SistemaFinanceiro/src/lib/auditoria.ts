@@ -2,7 +2,7 @@ import { rotuloPerfil, rotuloSituacao } from "./rotulos";
 import type { AlteracaoAuditoria, Perfil, SituacaoLancamento, ValorAuditoria } from "@/types/financeiro";
 
 // Mesma regra do backend (PERFIS_AUDITORIA_FINANCEIRO): só eles leem o log.
-const PERFIS_AUDITORIA: Perfil[] = ["coordenador_financeiro", "gestor_financeiro"];
+const PERFIS_AUDITORIA: Perfil[] = ["coordenador", "coordenador_financeiro", "gestor_financeiro"];
 
 export function podeVerAuditoria(perfil: Perfil | undefined): boolean {
   return perfil !== undefined && PERFIS_AUDITORIA.includes(perfil);

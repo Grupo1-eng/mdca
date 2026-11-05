@@ -62,14 +62,17 @@ estando logado.
 
 | Perfil                   | Acessa o financeiro? |
 |--------------------------|----------------------|
+| `coordenador`            | Sim (admin dos dois módulos) |
 | `coordenador_financeiro` | Sim                  |
 | `gestor_financeiro`      | Sim                  |
 | `analista_financeiro`    | Sim                  |
 | `administrativo`         | Sim                  |
 | Qualquer outro perfil    | Não                  |
 
-Os outros perfis são: `coordenador`, `tecnico_servico_social`,
-`tecnico_psicologia` e `educador`.
+Os outros perfis são: `tecnico_servico_social`, `tecnico_psicologia` e
+`educador`. A coordenação (`coordenador`) passou a acessar o financeiro em
+05/11/2026: ela é admin dos dois módulos e é quem cria os usuários (ver
+`docs/decisoes.md`).
 
 ### Rotas protegidas
 
@@ -97,13 +100,15 @@ Continuam abertas a qualquer usuário logado as rotas `/api/projetos` e
 ### Como dar acesso a um usuário
 
 Ao cadastrar ou editar um usuário em `/api/usuarios`, informe no campo `perfil`
-um dos perfis com acesso (os 3 financeiros ou `administrativo`). Como no
+um dos perfis com acesso (`coordenador`, os 3 financeiros ou `administrativo`). Como no
 restante do sistema, só a coordenação cadastra usuários.
 
 ### Onde está no código
 
-- Lista dos perfis financeiros: `PERFIS_FINANCEIRO` em
-  `src/modules/auth/perfis.constants.ts`.
+- Lista de quem acessa o financeiro: `PERFIS_FINANCEIRO` em
+  `src/modules/auth/perfis.constants.ts`. `PERFIS_EXCLUSIVOS_FINANCEIRO` são
+  os 3 perfis que só existem no financeiro; o `PerfisGuard` usa essa lista para
+  decidir se um acesso negado entra no log do financeiro.
 - Regra aplicada no topo de cada controller do financeiro, com
   `@UseGuards(JwtAuthGuard, PerfisGuard)` e `@Perfis(...PERFIS_FINANCEIRO)`.
 

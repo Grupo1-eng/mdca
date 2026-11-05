@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { descreverAlteracao, formatarDataHora, formatarValor, nomeCampo, podeVerAuditoria } from "./auditoria";
 
 describe("podeVerAuditoria", () => {
-  it("só coordenação e gestão financeira", () => {
+  it("só coordenação (geral e financeira) e gestão financeira", () => {
     expect(podeVerAuditoria("coordenador_financeiro")).toBe(true);
     expect(podeVerAuditoria("gestor_financeiro")).toBe(true);
     expect(podeVerAuditoria("analista_financeiro")).toBe(false);
     expect(podeVerAuditoria("administrativo")).toBe(false);
-    expect(podeVerAuditoria("coordenador")).toBe(false);
+    expect(podeVerAuditoria("coordenador")).toBe(true);
+    expect(podeVerAuditoria("educador")).toBe(false);
     expect(podeVerAuditoria(undefined)).toBe(false);
   });
 });

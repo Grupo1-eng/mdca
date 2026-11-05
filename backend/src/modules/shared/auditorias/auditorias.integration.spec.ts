@@ -74,7 +74,7 @@ describe('Rotas de auditoria (integração)', () => {
     logado('gestor_financeiro');
   });
 
-  it.each(['analista_financeiro', 'administrativo', 'coordenador', 'educador'])(
+  it.each(['analista_financeiro', 'administrativo', 'educador'])(
     '%s recebe 403 em todas as rotas',
     async (perfil) => {
       logado(perfil);
@@ -86,7 +86,7 @@ describe('Rotas de auditoria (integração)', () => {
     },
   );
 
-  it.each(['coordenador_financeiro', 'gestor_financeiro'])('%s consulta o log', async (perfil) => {
+  it.each(['coordenador', 'coordenador_financeiro', 'gestor_financeiro'])('%s consulta o log', async (perfil) => {
     logado(perfil);
     prisma.auditoria.findMany.mockResolvedValue([]);
 

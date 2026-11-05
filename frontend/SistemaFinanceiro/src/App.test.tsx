@@ -67,8 +67,13 @@ describe("tempo de vida dos estados temporários da Gestão", () => {
   })
 
   it("leva cada perfil só ao módulo que ele acessa", () => {
-    sessao.perfil = "coordenador"
+    sessao.perfil = "educador"
     expect(renderizar("/financeiro")).not.toContain("Financeiro ativo")
+    expect(renderizar("/gestao")).toContain("Gestão ativa")
+
+    // Coordenação é admin dos dois módulos.
+    sessao.perfil = "coordenador"
+    expect(renderizar("/financeiro")).toContain("Financeiro ativo")
     expect(renderizar("/gestao")).toContain("Gestão ativa")
 
     sessao.perfil = "gestor_financeiro"
