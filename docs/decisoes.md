@@ -33,3 +33,11 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 **Decisão:** o perfil `coordenador` é o administrador dos dois módulos. Ele acessa tudo o que os perfis financeiros acessam, inclusive o log de auditoria do financeiro (`PERFIS_FINANCEIRO` e `PERFIS_AUDITORIA_FINANCEIRO`), além da gestão. As regras de acesso do frontend (`src/lib/moduloDestino.ts` e `src/lib/auditoria.ts`) espelham as do backend e mudam junto com elas.
 
 **Consequência:** logins da coordenação e alterações em usuários coordenadores passam a entrar no log do financeiro, porque mudam quem acessa o financeiro. Para saber se uma rota é "do financeiro", não basta olhar se todos os perfis exigidos acessam o financeiro: é preciso que ao menos um seja exclusivo dele (`PERFIS_EXCLUSIVOS_FINANCEIRO`).
+
+## 2026-11-05 — Situação do lançamento depende do tipo
+
+**Contexto:** o formulário e a API aceitavam saída "recebido" e entrada "pago". O saldo da conta (que conta qualquer situação diferente de pendente) e os gráficos e a execução orçamentária (que olham recebido para entrada e pago para saída) mostravam números diferentes para o mesmo lançamento. Ver o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:** entrada só tem as situações `pendente` e `recebido`; saída só `pendente` e `pago`. A regra fica em `backend/src/modules/financeiro/lancamentos/regras-lancamento.ts`, e o frontend espelha em `situacoesDoTipo` (`src/lib/rotulos.ts`).
+
+**Consequência:** criar ou editar com combinação inválida responde 400. Uma situação nova (ex.: `cancelado`, do RF35) precisa entrar nas duas listas e ser tratada no saldo (`saldo-conta.ts`) e nos gráficos.

@@ -23,6 +23,23 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Regras do lançamento: situação, conta inativa e valor
+
+**Tipo:** correção · **Grupo:** financeiro · **PR:** #28 (branch `feature/financeiro-regras-lancamento`)
+
+**O que mudou:**
+- **Situação compatível com o tipo:** entrada só pode ser "pendente" ou "recebido"; saída, "pendente" ou "pago". O backend responde 400 nas outras combinações, tanto ao criar quanto ao editar (comparando com o que já está gravado). O formulário só oferece as situações do tipo escolhido e volta para "Previsto" ao trocar o tipo. Regra em `backend/src/modules/financeiro/lancamentos/regras-lancamento.ts`.
+- **Conta inativa:** não aceita lançamento novo nem receber um lançamento movido de outra conta (400). Os lançamentos que ela já tinha continuam editáveis. O formulário só lista contas ativas.
+- **Valor maior que zero:** `"0"` e `"0.00"` respondem 400; o campo do formulário tem mínimo de R$ 0,01.
+- Testes em `backend/src/modules/financeiro/regras-lancamento.integration.spec.ts` e `regras-lancamento.spec.ts`. Mocks de testes antigos ganharam `ativa` e `situacao`, que o banco sempre devolve.
+- Antes de ativar as validações, conferi o banco compartilhado: nenhum lançamento tinha situação incompatível, valor zero ou conta inativa.
+
+**Por quê:** itens 6, 7 e 8 da revisão abaixo (RF33, RNF10, RF16).
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-05 — Revisão do repositório: falhas encontradas
 
 **Tipo:** manutenção · **Grupo:** ambos · **PR:** #27 e #28

@@ -59,7 +59,7 @@ describe('Campos definidos pelo token (integração)', () => {
   }
 
   it('lançamento é gravado com o usuário do token', async () => {
-    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3, ativa: true });
     prisma.lancamento.create.mockResolvedValue({ id: 1, contaId: 1, tipo: 'saida', situacao: 'pendente', valor: '10.00' });
 
     const res = await post('/api/lancamentos', {

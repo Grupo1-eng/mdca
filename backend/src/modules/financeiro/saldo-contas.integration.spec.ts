@@ -73,6 +73,7 @@ describe('Saldo das contas acompanha os lançamentos (integração)', () => {
     prisma.contaFinanceira.findFirst.mockResolvedValue({
       id: 1,
       organizacaoId: 3,
+      ativa: true,
     });
   });
 
