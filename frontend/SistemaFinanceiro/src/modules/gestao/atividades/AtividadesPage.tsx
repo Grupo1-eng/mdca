@@ -204,6 +204,9 @@ export default function AtividadesPage() {
           <option value="Ativa">Ativas</option>
           <option value="Encerrada">Encerradas</option>
         </select>
+        <p className="w-full text-xs text-[var(--muted-foreground)]">
+          Esta lista ainda é local. As iniciativas de exemplo saem quando a API de atividades existir.
+        </p>
       </Card>
 
       <Card className="overflow-hidden">

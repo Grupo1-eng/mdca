@@ -24,8 +24,9 @@ export type CargaEducandos = "ociosa" | "carregando" | "pronta" | "erro"
 interface EducandosContextValue {
   iniciativas: Iniciativa[]
   // Educandos vêm da API real (GET /api/educandos); atendimentos e
-  // encaminhamentos, de useEvolucoesEducando. Atividades, encontros e
-  // iniciativas ainda são mock, até as próximas fases da integração.
+  // encaminhamentos, de useEvolucoesEducando. Atividades e encontros
+  // continuam em memória. A lista de iniciativas da ficha e da tela de
+  // projetos vem de GET /api/projetos; este seed só alimenta o mock de atividades.
   educandos: Educando[]
   cargaEducandos: CargaEducandos
   erroEducandos: string | null
