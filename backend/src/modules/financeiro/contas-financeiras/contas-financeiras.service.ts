@@ -3,17 +3,19 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateContaFinanceiraDto } from './dto/create-conta-financeira.dto';
 import { UpdateContaFinanceiraDto } from './dto/update-conta-financeira.dto';
 
+// Toda consulta filtra pela organização do token. Conta de outra
+// organização responde 404, como se não existisse.
 @Injectable()
 export class ContasFinanceirasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listarTodas() {
-    return this.prisma.contaFinanceira.findMany();
+  async listarTodas(organizacaoId: number) {
+    return this.prisma.contaFinanceira.findMany({ where: { organizacaoId } });
   }
 
-  async buscarPorId(id: number) {
-    const conta = await this.prisma.contaFinanceira.findUnique({
-      where: { id },
+  async buscarPorId(id: number, organizacaoId: number) {
+    const conta = await this.prisma.contaFinanceira.findFirst({
+      where: { id, organizacaoId },
     });
     if (!conta) {
       throw new NotFoundException('Conta financeira não encontrada');
@@ -27,16 +29,16 @@ export class ContasFinanceirasService {
     });
   }
 
-  async atualizar(id: number, dados: UpdateContaFinanceiraDto) {
-    await this.buscarPorId(id);
+  async atualizar(id: number, dados: UpdateContaFinanceiraDto, organizacaoId: number) {
+    await this.buscarPorId(id, organizacaoId);
     return this.prisma.contaFinanceira.update({
       where: { id },
       data: dados,
     });
   }
 
-  async deletar(id: number) {
-    await this.buscarPorId(id);
+  async deletar(id: number, organizacaoId: number) {
+    await this.buscarPorId(id, organizacaoId);
     await this.prisma.contaFinanceira.delete({ where: { id } });
   }
 }
