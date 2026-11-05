@@ -13,8 +13,8 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   let token: string;
   const prisma = {
     usuario: { findUnique: jest.fn() },
-    lancamento: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-    contaFinanceira: { findUnique: jest.fn(), update: jest.fn() },
+    lancamento: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    contaFinanceira: { findFirst: jest.fn(), update: jest.fn() },
     contato: { findUnique: jest.fn(), update: jest.fn() },
     orcamento: { findUnique: jest.fn(), delete: jest.fn() },
     auditoria: { create: jest.fn() },
@@ -92,6 +92,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   }
 
   it('criação de lançamento registra autor, organização, origem e valores criados', async () => {
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
     prisma.lancamento.create.mockResolvedValue(lancamento);
 
     const res = await enviar('post', '/api/lancamentos', {
@@ -123,7 +124,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('mudança só de situação vira "mudar_situacao" com de e para', async () => {
-    prisma.lancamento.findUnique.mockResolvedValue(lancamento);
+    prisma.lancamento.findFirst.mockResolvedValue(lancamento);
     prisma.lancamento.update.mockResolvedValue({ ...lancamento, situacao: 'pago' });
 
     await enviar('put', '/api/lancamentos/42', { situacao: 'pago' });
@@ -138,7 +139,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('edição comum guarda só os campos alterados', async () => {
-    prisma.lancamento.findUnique.mockResolvedValue(lancamento);
+    prisma.lancamento.findFirst.mockResolvedValue(lancamento);
     prisma.lancamento.update.mockResolvedValue({
       ...lancamento,
       valor: new Prisma.Decimal('150.00'),
@@ -160,7 +161,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('inativar conta vira "inativar"', async () => {
-    prisma.contaFinanceira.findUnique.mockResolvedValue(conta);
+    prisma.contaFinanceira.findFirst.mockResolvedValue(conta);
     prisma.contaFinanceira.update.mockResolvedValue({ ...conta, ativa: false });
 
     await enviar('put', '/api/contas-financeiras/3', { ativa: false });
@@ -171,7 +172,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('alterar saldo atual vira "ajustar_saldo" e dados bancários ficam mascarados', async () => {
-    prisma.contaFinanceira.findUnique.mockResolvedValue(conta);
+    prisma.contaFinanceira.findFirst.mockResolvedValue(conta);
     prisma.contaFinanceira.update.mockResolvedValue({
       ...conta,
       saldoAtual: new Prisma.Decimal('450'),
@@ -217,6 +218,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('se a auditoria falhar, a operação falha junto', async () => {
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
     prisma.lancamento.create.mockResolvedValue(lancamento);
     prisma.auditoria.create.mockRejectedValue(new Error('banco fora'));
 
@@ -231,7 +233,7 @@ describe('Auditoria das operações do financeiro (integração)', () => {
   });
 
   it('registro inexistente: 404 e nada é auditado', async () => {
-    prisma.lancamento.findUnique.mockResolvedValue(null);
+    prisma.lancamento.findFirst.mockResolvedValue(null);
 
     const res = await enviar('delete', '/api/lancamentos/99');
 

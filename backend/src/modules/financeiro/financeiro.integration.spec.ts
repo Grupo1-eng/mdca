@@ -13,7 +13,7 @@ describe('Campos definidos pelo token (integração)', () => {
   const prisma = {
     usuario: { findUnique: jest.fn() },
     lancamento: { create: jest.fn() },
-    contaFinanceira: { create: jest.fn() },
+    contaFinanceira: { create: jest.fn(), findFirst: jest.fn() },
     projeto: { create: jest.fn() },
     auditoria: { create: jest.fn() },
     $transaction: jest.fn(),
@@ -59,6 +59,7 @@ describe('Campos definidos pelo token (integração)', () => {
   }
 
   it('lançamento é gravado com o usuário do token', async () => {
+    prisma.contaFinanceira.findFirst.mockResolvedValue({ id: 1, organizacaoId: 3 });
     prisma.lancamento.create.mockResolvedValue({ id: 1 });
 
     const res = await post('/api/lancamentos', {

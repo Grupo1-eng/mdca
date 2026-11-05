@@ -118,3 +118,22 @@ npm test
 O teste `financeiro-acesso.integration.spec.ts` confere que os 3 perfis
 financeiros e o `administrativo` entram, que os demais perfis recebem 403 em
 todas as rotas financeiras e que quem não tem permissão não consegue gravar lançamento.
+
+## Resumo semanal de entradas e saídas
+
+`GET /api/lancamentos/resumo-semanal?mes=AAAA-MM` (ex.: `?mes=2026-11`)
+
+Devolve as entradas, saídas e saldo de cada semana do mês, mais os totais do mês.
+Tem o mesmo acesso do módulo financeiro (401 sem token, 403 sem perfil) e devolve
+400 se o `mes` faltar ou estiver fora do formato.
+
+- Semana = bloco de 7 dias a partir do dia 1 (1-7, 8-14, 15-21, 22-28 e 29 até o fim do mês).
+- Semanas sem lançamento vêm zeradas.
+- A data do lançamento é a de competência, senão a de pagamento, senão a de criação.
+- Os valores vêm como texto com 2 casas decimais.
+
+### O que foi adicionado
+
+- Rota em `lancamentos.controller.ts` e consulta ao banco em `lancamentos.service.ts`.
+- Regra das semanas em `resumo-semanal.ts` e validação do `mes` em `dto/resumo-semanal-query.dto.ts`.
+- Testes: `resumo-semanal.spec.ts` e `resumo-semanal.integration.spec.ts`.
