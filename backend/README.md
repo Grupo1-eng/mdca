@@ -86,8 +86,10 @@ Os outros perfis são: `tecnico_servico_social`, `tecnico_psicologia` e
 Isso vale para todas as operações dessas rotas (listar, buscar, criar,
 atualizar e excluir).
 
-Continuam abertas a qualquer usuário logado as rotas `/api/projetos` e
-`/api/auditorias`, porque também são usadas pelo módulo de gestão.
+`/api/projetos` é compartilhada com a gestão: qualquer usuário logado consulta,
+mas criar, editar e excluir exige um perfil com acesso ao financeiro. Em
+`/api/organizacoes`, todos consultam e só a coordenação altera. O log de
+auditoria (`/api/auditorias`) é restrito à coordenação e à gestão financeira.
 
 ### O que o sistema responde
 

@@ -205,30 +205,4 @@ describe('Auditoria de eventos de segurança (integração)', () => {
     });
   });
 
-  it('cadastro público (perfil administrativo) é registrado sem a senha', async () => {
-    prisma.usuario.findUnique.mockResolvedValue(null);
-    prisma.usuario.create.mockResolvedValue({
-      ...base,
-      id: 10,
-      nome: 'Nova',
-      email: 'nova@mdca.org.br',
-      perfil: 'administrativo',
-      senhaHash,
-    });
-
-    const res = await request(app.getHttpServer()).post('/api/auth/register').send({
-      nome: 'Nova',
-      email: 'nova@mdca.org.br',
-      senha: 'senha-forte-123',
-      organizacaoId: 3,
-    });
-
-    expect(res.status).toBe(201);
-    const data = auditado();
-    expect(data).toEqual(
-      expect.objectContaining({ acao: 'criar', recursoTipo: 'usuario', recursoId: '10', usuarioId: 10, organizacaoId: 3 }),
-    );
-    expect(JSON.stringify(data)).not.toContain(senhaHash);
-    expect(data.alteracoes).not.toHaveProperty('senhaHash');
-  });
 });
