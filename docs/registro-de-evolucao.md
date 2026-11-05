@@ -23,6 +23,30 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Saldo das contas acompanha os lançamentos e painel por conta
+
+**Tipo:** correção + evolução · **Grupo:** financeiro · **PR:** #22 (branch `feature/financeiro-saldo-contas-painel`)
+
+**O que mudou:**
+- **Backend:** o `saldoAtual` da conta financeira passa a ser ajustado na mesma transação do lançamento. Entrada recebida soma, saída paga subtrai, pendente não mexe. Editar ajusta só a diferença, trocar de conta devolve o valor à antiga e aplica na nova, excluir desfaz o efeito. Regra em `backend/src/modules/financeiro/lancamentos/saldo-conta.ts`, testes em `saldo-conta.spec.ts` e `saldo-contas.integration.spec.ts`.
+- **Painel:** novo bloco "Saldo por conta", com o saldo de cada conta (ativas primeiro). O card de pendências tem as abas "Vencidas" e "Pagas", e as pagas do período nunca se misturam com as vencidas.
+- **Tela Financeiro:** depois de registrar um lançamento, as contas são recarregadas sem piscar a tela (`recarregar` em `useApiResource`), e o card "Saldo das contas" já mostra o valor novo.
+
+**Por quê:** o `saldoAtual` só era gravado no cadastro da conta e nunca mudava com os lançamentos, então o painel mostrava um saldo parado. Atende US02 (RF24, RF25, RF64) e US03 (RF27). Ver a decisão em [`decisoes.md`](decisoes.md#2026-11-05--saldo-atual-das-contas-mantido-pelos-lançamentos).
+
+**Pendências:** contas que **já** tinham lançamentos pagos/recebidos antes desta mudança continuam com o saldo antigo. Para alinhar, alguém com acesso ao banco pode recalcular uma vez, **depois de conferir que não houve ajuste manual de saldo** (ações `ajustar_saldo` na auditoria):
+
+```sql
+UPDATE financeiro.conta_financeira c
+SET saldo_atual = c.saldo_inicial + COALESCE((
+  SELECT SUM(CASE WHEN l.tipo = 'entrada' THEN l.valor ELSE -l.valor END)
+  FROM financeiro.lancamento l
+  WHERE l.conta_id = c.id AND l.situacao <> 'pendente'
+), 0);
+```
+
+---
+
 ## 2026-11-04 — Isolamento por organização em lançamentos e contas financeiras
 
 **Tipo:** correção (segurança) · **Grupo:** financeiro · **PR:** #21 (branch `feature/financeiro-lancamentos-por-organizacao`)

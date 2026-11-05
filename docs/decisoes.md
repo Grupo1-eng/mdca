@@ -17,3 +17,11 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 **Decisão:** toda leitura e escrita de dados de uma organização filtra pelo `organizacaoId` do **token**, nunca por um valor vindo do corpo, da query ou da URL. Registro de outra organização responde **404**, como se não existisse, para não revelar que ele existe. Entidades sem `organizacao_id` próprio filtram pela relação que tem essa coluna (ex.: lançamento → `conta.organizacaoId`). Referências recebidas no corpo (`contaId`, `projetoId`...) são conferidas contra a organização do token antes de gravar. Todo endpoint novo deve ter um teste de integração mostrando que um usuário não acessa dados de outra organização.
 
 **Consequência:** os services recebem `organizacaoId` como parâmetro, e os controllers o tiram de `@UsuarioAtual()`. Tabelas que ainda não têm vínculo com organização (categorias, contatos, fontes de recurso, orçamentos) precisam de migration antes de entrar nessa regra.
+
+## 2026-11-05 — Saldo atual das contas mantido pelos lançamentos
+
+**Contexto:** a conta financeira guarda `saldo_atual`, mas nada o atualizava depois do cadastro: o painel mostrava um saldo que não acompanhava os pagamentos e recebimentos (US02, RF25 e RF64). A auditoria já trata uma alteração direta do saldo como ajuste manual (`ajustar_saldo`). Ver o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:** o `saldo_atual` é ajustado de forma **incremental**, na mesma transação que cria, edita ou exclui o lançamento. Só lançamentos realizados contam: entrada `recebido` soma, saída `pago` subtrai, `pendente` não mexe. O saldo não é recalculado do zero a cada leitura, para não apagar os ajustes manuais. Toda mudança nova que mexa em valor, tipo, situação ou conta de um lançamento precisa passar por `efeitoNoSaldo`/`ajustarSaldo` (`backend/src/modules/financeiro/lancamentos/saldo-conta.ts`).
+
+**Consequência:** gravar um lançamento e ajustar o saldo é atômico: se um falhar, nada é gravado (RNF24). O ajuste de saldo feito pelo lançamento não gera registro de auditoria próprio, porque a auditoria do lançamento já registra o que mudou. Escrever direto em `lancamento` pelo banco, fora do service, deixa o saldo desalinhado.
