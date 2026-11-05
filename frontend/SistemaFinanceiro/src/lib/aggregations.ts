@@ -215,18 +215,7 @@ export function serieFluxoCaixa(lancamentos: Lancamento[], meses = 6, hoje: Date
   return pontos;
 }
 
-export interface PontoFluxoPeriodo {
-  label: string;
-  entradas: number;
-  saidas: number;
-}
-
 export type AgrupamentoFluxo = "semana" | "mes" | "ano";
-
-export interface SerieFluxoPeriodo {
-  agrupamento: AgrupamentoFluxo;
-  pontos: PontoFluxoPeriodo[];
-}
 
 // Dia como número inteiro, imune ao horário de verão (que mudaria a conta em horas).
 function numeroDoDia(d: Date): number {
@@ -289,26 +278,14 @@ function agruparNoPeriodo<T extends object>(
   return { agrupamento, pontos };
 }
 
-/** Entradas vs. saídas do período — gráfico de fluxo da tela Financeiro. */
-export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): SerieFluxoPeriodo {
-  return agruparNoPeriodo(
-    lancamentos,
-    intervalo,
-    () => ({ entradas: 0, saidas: 0 }),
-    (ponto, l) => {
-      if (l.tipo === "entrada") ponto.entradas += l.valor;
-      else ponto.saidas += l.valor;
-    },
-  );
-}
-
 export interface PontoFluxoCaixaPeriodo extends Omit<PontoFluxo, "mes"> {
   label: string;
 }
 
 /**
  * Realizado vs. previsto do período — gráfico de fluxo do Dashboard. Mesmos
- * valores da `serieFluxoCaixa`, agrupados como na `serieFluxoPeriodo`.
+ * valores da `serieFluxoCaixa`, agrupados por semana, mês ou ano conforme o
+ * tamanho do período.
  */
 export function serieFluxoCaixaPeriodo(
   lancamentos: Lancamento[],

@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { normalizarConta, normalizarLancamento, normalizarOrcamento, normalizarProjeto } from "./normalizar";
+import {
+  normalizarConta, normalizarLancamento, normalizarOrcamento, normalizarProjeto, normalizarResumoSemanal,
+} from "./normalizar";
+
+describe("normalizarResumoSemanal", () => {
+  it("converte os valores de cada semana e dos totais em número", () => {
+    const resumo = normalizarResumoSemanal({
+      mes: "2026-11",
+      semanas: [
+        { semana: 1, inicio: "2026-11-01", fim: "2026-11-07", entradas: "150.75", saidas: "50.00", saldo: "100.75" },
+      ],
+      totais: { entradas: "150.75", saidas: "50.00", saldo: "100.75" },
+    });
+    expect(resumo).toEqual({
+      mes: "2026-11",
+      semanas: [{ semana: 1, inicio: "2026-11-01", fim: "2026-11-07", entradas: 150.75, saidas: 50, saldo: 100.75 }],
+      totais: { entradas: 150.75, saidas: 50, saldo: 100.75 },
+    });
+  });
+});
 
 const lancamentoApi = {
   id: 1,

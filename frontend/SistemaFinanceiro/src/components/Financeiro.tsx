@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fmt, formatData, formatDate } from '@/lib/format';
 import { type LogEntry } from './NavBar';
 import { SummaryCard } from './Dashboard';
@@ -10,11 +9,13 @@ import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
-import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
+import FiltroPeriodo, { formatIntervalo } from './FiltroPeriodo';
+import GraficoSemanal from './GraficoSemanal';
 import {
   dataDoLancamento, filtrarPorIntervalo, filtrarPorTipo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieFluxoPeriodo, type FiltroTipo,
+  type FiltroTipo,
 } from '@/lib/aggregations';
+import { mesDoPeriodo } from '@/lib/resumoSemanal';
 import { usePeriodo } from '@/context/PeriodoContext';
 import { useAuth } from '@/context/AuthContext';
 import { podeVerAuditoria } from '@/lib/auditoria';
@@ -399,7 +400,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
-  const fluxo = useMemo(() => serieFluxoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const mesInicialSemanal = useMemo(() => mesDoPeriodo(intervalo), [intervalo]);
 
   const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
 
@@ -517,30 +518,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
               </div>
 
               {tab === "fluxo" ? (
-                <div className="p-5">
-                  <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                    Entradas vs. Saídas por {rotuloAgrupamento[fluxo.agrupamento]} — {periodoLabel}
-                  </p>
-                  {fluxo.pontos.length === 0 ? (
-                    <p className="h-[260px] flex items-center justify-center text-sm text-[var(--muted-foreground)]">
-                      {periodoValido
-                        ? "Nenhum lançamento no período selecionado."
-                        : "Período inválido: a data inicial deve ser anterior ou igual à final."}
-                    </p>
-                  ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={fluxo.pontos} barGap={4}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                      <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="entradas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="saidas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  )}
-                </div>
+                // A troca de período no filtro reabre o gráfico no mês correspondente.
+                <GraficoSemanal key={mesInicialSemanal} mesInicial={mesInicialSemanal} lancamentos={lancamentos} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

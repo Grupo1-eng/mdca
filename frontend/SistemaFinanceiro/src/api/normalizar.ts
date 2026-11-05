@@ -1,7 +1,7 @@
 // O Prisma serializa colunas Decimal como texto ("150.75"). Aqui elas viram
 // number para a tela exibir e somar; o envio continua como texto (ver tipos
 // Nov* em @/types/financeiro).
-import type { Conta, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
+import type { Conta, Lancamento, Orcamento, Projeto, ResumoSemanal, SemanaResumo } from "@/types/financeiro";
 
 type Decimal = string | number;
 type ComDecimal<T, K extends keyof T> = Omit<T, K> & { [P in K]: null extends T[P] ? Decimal | null : Decimal };
@@ -28,4 +28,26 @@ export function normalizarProjeto(api: ComDecimal<Projeto, "orcamentoTotal">): P
 
 export function normalizarOrcamento(api: ComDecimal<Orcamento, "valorPrevisto">): Orcamento {
   return { ...(api as Orcamento), valorPrevisto: numero(api.valorPrevisto) };
+}
+
+type SemanaResumoApi = ComDecimal<SemanaResumo, "entradas" | "saidas" | "saldo">;
+
+export interface ResumoSemanalApi {
+  mes: string;
+  semanas: SemanaResumoApi[];
+  totais: { entradas: Decimal; saidas: Decimal; saldo: Decimal };
+}
+
+export function normalizarResumoSemanal(api: ResumoSemanalApi): ResumoSemanal {
+  return {
+    mes: api.mes,
+    semanas: api.semanas.map((s) => ({
+      ...s, entradas: numero(s.entradas), saidas: numero(s.saidas), saldo: numero(s.saldo),
+    })),
+    totais: {
+      entradas: numero(api.totais.entradas),
+      saidas: numero(api.totais.saidas),
+      saldo: numero(api.totais.saldo),
+    },
+  };
 }
