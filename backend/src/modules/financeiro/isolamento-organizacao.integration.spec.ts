@@ -58,6 +58,8 @@ describe('Isolamento por organização no financeiro (integração)', () => {
       delete: jest.fn(),
     },
     projeto: { findFirst: jest.fn() },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -80,6 +82,7 @@ describe('Isolamento por organização no financeiro (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     prisma.usuario.findUnique.mockResolvedValue({
       id: 7,
       organizacaoId: ORG_USUARIO,

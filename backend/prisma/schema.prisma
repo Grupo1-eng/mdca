@@ -39,6 +39,7 @@ model Organizacao {
   educandos         Educando[]
   projetos          Projeto[]
   contasFinanceiras ContaFinanceira[]
+  auditorias        Auditoria[]
 
   @@map("organizacao")
   @@schema("public")
@@ -91,16 +92,37 @@ model Projeto {
   @@schema("public")
 }
 
+// Log de auditoria: só recebe INSERT. Um trigger (migration
+// 20261104120000_auditoria_financeiro) recusa UPDATE e TRUNCATE e só
+// permite DELETE de registros com mais de 3 anos (prazo de retenção).
 model Auditoria {
-  id          Int      @id @default(autoincrement())
-  usuarioId   Int      @map("usuario_id")
-  recursoId   String   @map("recurso_id")
-  recursoTipo String   @map("recurso_tipo")
-  acao        String
-  dataHora    DateTime @default(now()) @map("data_hora") @db.Timestamp(6)
+  id            Int      @id @default(autoincrement())
+  // Nulos só em eventos sem usuário identificado (ex.: login com e-mail inexistente).
+  organizacaoId Int?     @map("organizacao_id")
+  usuarioId     Int?     @map("usuario_id")
+  // Perfil do autor no momento da ação: o perfil do usuário pode mudar depois.
+  perfil        String?
+  modulo        String   // financeiro (gestao no futuro)
+  acao          String   // criar | atualizar | excluir | inativar | login_falhou | acesso_negado ...
+  recursoTipo   String   @map("recurso_tipo") // lancamento | conta_financeira | orcamento ...
+  recursoId     String?  @map("recurso_id")
+  resumo        String
+  // Só os campos alterados: { "valor": { "de": "100.00", "para": "150.00" } }.
+  alteracoes    Json?
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  // Agrupa os eventos gerados por uma mesma requisição.
+  requestId     String?  @map("request_id")
+  dataHora      DateTime @default(now()) @map("data_hora") @db.Timestamptz(6)
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  // Restrict: quem tem histórico de auditoria não pode ser apagado (usuários
+  // são inativados). SetNull faria um UPDATE, que o trigger recusa.
+  organizacao Organizacao? @relation(fields: [organizacaoId], references: [id], onDelete: Restrict)
+  usuario     Usuario?     @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
+  @@index([organizacaoId, modulo, dataHora])
+  @@index([recursoTipo, recursoId])
+  @@index([usuarioId, dataHora])
   @@map("auditoria")
   @@schema("public")
 }

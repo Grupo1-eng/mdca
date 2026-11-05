@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fmt, formatDate } from '@/lib/format';
+import { fmt, formatData, formatDate } from '@/lib/format';
 import { type LogEntry } from './NavBar';
 import { SummaryCard } from './Dashboard';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -16,6 +16,10 @@ import {
   serieFluxoPeriodo, type FiltroTipo,
 } from '@/lib/aggregations';
 import { usePeriodo } from '@/context/PeriodoContext';
+import { useAuth } from '@/context/AuthContext';
+import { podeVerAuditoria } from '@/lib/auditoria';
+import BotaoHistorico from './BotaoHistorico';
+import CampoData from './CampoData';
 import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
@@ -164,7 +168,7 @@ function DrawerComprovantes({ lancamento, anexos, loading, onClose, onAddAnexos,
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--foreground)] truncate">{a.nome}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {new Date(a.dataUpload).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {formatData(new Date(a.dataUpload))}</p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <a href={a.url} download={a.nome} target="_blank" rel="noreferrer"
@@ -293,7 +297,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
           </FieldMd>
         </div>
         <FieldMd label="Data" required>
-          <input type="date" required value={form.dataCompetencia} onChange={set("dataCompetencia")} className={inputMdCls + " font-mono"} />
+          <CampoData required value={form.dataCompetencia} onChange={v => setForm(f => ({ ...f, dataCompetencia: v }))} className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Valor (R$)" required>
           <div className="relative">
@@ -334,6 +338,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   const { data: categorias, loading: loadingCategorias } = useCategorias();
 
   const [tab, setTab] = useState<FinanceTab>("lancamentos");
+  const { user } = useAuth();
+  const comHistorico = podeVerAuditoria(user?.perfil);
   const [drawerId, setDrawerId] = useState<number | null>(null);
   const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
   const [anexosLoading, setAnexosLoading] = useState(false);
@@ -538,8 +544,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[var(--border)]">
-                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", ...(ANEXOS_DISPONIVEIS ? ["Comprovantes"] : [])].map((h) => (
-                          <th key={h} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
+                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", ...(ANEXOS_DISPONIVEIS ? ["Comprovantes"] : []), ...(comHistorico ? [""] : [])].map((h, i) => (
+                          <th key={`${i}-${h}`} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
                             {h}
                           </th>
                         ))}
@@ -548,7 +554,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                     <tbody>
                       {filtered.length === 0 && (
                         <tr>
-                          <td colSpan={ANEXOS_DISPONIVEIS ? 7 : 6} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                          <td colSpan={6 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
                             {mensagemVazia}
                           </td>
                         </tr>
@@ -582,6 +588,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                                 {qtd > 0 ? `${qtd} arquivo${qtd > 1 ? "s" : ""}` : "Anexar"}
                               </button>
                             </td>}
+                            {comHistorico && <td className="px-5 py-3 text-right">
+                              <BotaoHistorico recursoTipo="lancamento" recursoId={l.id} titulo={l.descricao || `Lançamento #${l.id}`} />
+                            </td>}
                           </tr>
                         );
                       })}
@@ -595,7 +604,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                             {tab !== "entradas" && <span className="text-red-600">-{fmt(totalSaidas)}</span>}
                           </div>
                         </td>
-                        <td colSpan={ANEXOS_DISPONIVEIS ? 2 : 1} />
+                        <td colSpan={1 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} />
                       </tr>
                     </tfoot>
                   </table>

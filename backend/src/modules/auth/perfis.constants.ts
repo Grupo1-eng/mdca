@@ -25,6 +25,12 @@ export const PERFIS_FINANCEIRO: Perfil[] = [
   PERFIS.ADMINISTRATIVO,
 ];
 
+// Quem consulta, exporta e vê o histórico do log de auditoria do financeiro.
+export const PERFIS_AUDITORIA_FINANCEIRO: Perfil[] = [
+  PERFIS.COORDENADOR_FINANCEIRO,
+  PERFIS.GESTOR_FINANCEIRO,
+];
+
 export const PERFIS_TODOS: Perfil[] = [
   PERFIS.COORDENACAO,
   PERFIS.TECNICO_SERVICO_SOCIAL,

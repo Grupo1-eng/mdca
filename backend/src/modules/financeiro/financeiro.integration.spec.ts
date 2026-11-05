@@ -16,6 +16,7 @@ describe('Campos definidos pelo token (integração)', () => {
     contaFinanceira: { create: jest.fn(), findFirst: jest.fn() },
     projeto: { create: jest.fn() },
     auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -38,6 +39,8 @@ describe('Campos definidos pelo token (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    // A transação usa o próprio mock como cliente.
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     prisma.usuario.findUnique.mockResolvedValue({
       id: 7,
       organizacaoId: 3,
@@ -100,19 +103,14 @@ describe('Campos definidos pelo token (integração)', () => {
     });
   });
 
-  it('auditoria é registrada com o usuário do token', async () => {
-    prisma.auditoria.create.mockResolvedValue({ id: 1 });
-
+  it('auditoria não pode ser criada pelo cliente', async () => {
     const res = await post('/api/auditorias', {
       recursoId: '1',
       recursoTipo: 'lancamento',
       acao: 'criar',
-      usuarioId: 999,
     });
 
-    expect(res.status).toBe(201);
-    expect(prisma.auditoria.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ usuarioId: 7 }),
-    });
+    expect(res.status).toBe(404);
+    expect(prisma.auditoria.create).not.toHaveBeenCalled();
   });
 });

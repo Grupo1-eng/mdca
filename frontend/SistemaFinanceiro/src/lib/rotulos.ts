@@ -24,6 +24,9 @@ export const rotuloPerfil: Record<Perfil, string> = {
   tecnico_psicologia: "Técnico(a) — Psicologia",
   educador: "Educador(a)",
   administrativo: "Administrativo",
+  coordenador_financeiro: "Coordenação financeira",
+  gestor_financeiro: "Gestão financeira",
+  analista_financeiro: "Análise financeira",
 };
 
 export const PERFIS: Perfil[] = Object.keys(rotuloPerfil) as Perfil[];

@@ -13,6 +13,8 @@ describe('POST /api/auth/login (integração)', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
     },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -32,6 +34,7 @@ describe('POST /api/auth/login (integração)', () => {
   beforeEach(async () => {
     process.env.JWT_SECRET = 'segredo-de-teste';
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     usuario = {
       id: 7,
       organizacaoId: 1,

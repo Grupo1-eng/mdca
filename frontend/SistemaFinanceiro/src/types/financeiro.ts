@@ -167,7 +167,10 @@ export type Perfil =
   | "tecnico_servico_social"
   | "tecnico_psicologia"
   | "educador"
-  | "administrativo";
+  | "administrativo"
+  | "coordenador_financeiro"
+  | "gestor_financeiro"
+  | "analista_financeiro";
 
 export interface Usuario {
   id: number;
@@ -225,4 +228,42 @@ export interface ExecucaoProjeto {
   orcado: number;
   realizado: number;
   categorias: CategoriaExecucao[];
+}
+
+// ── Auditoria ───────────────────────────────────────────────────────────────
+export type ValorAuditoria = string | number | boolean | null;
+
+/** Campo alterado: valores antes/depois, ou só a indicação de que mudou (dado sensível). */
+export type AlteracaoAuditoria = { de?: ValorAuditoria; para?: ValorAuditoria } | { alterado: true };
+
+export interface RegistroAuditoria {
+  id: number;
+  organizacaoId: number | null;
+  usuarioId: number | null;
+  perfil: string | null;
+  modulo: string;
+  acao: string;
+  recursoTipo: string;
+  recursoId: string | null;
+  resumo: string;
+  alteracoes: Record<string, AlteracaoAuditoria> | null;
+  ip: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  dataHora: string;
+  usuario: { id: number; nome: string } | null;
+}
+
+export interface PaginaAuditoria {
+  itens: RegistroAuditoria[];
+  /** id para buscar a próxima página; null quando não há mais registros. */
+  proximoCursor: number | null;
+}
+
+export interface FiltroAuditoria {
+  acao?: string;
+  recursoTipo?: string;
+  /** AAAA-MM-DD, horário de Brasília. */
+  de?: string;
+  ate?: string;
 }

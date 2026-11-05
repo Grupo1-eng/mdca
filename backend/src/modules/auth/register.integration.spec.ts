@@ -15,6 +15,8 @@ describe('POST /api/auth/register (integração)', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -44,6 +46,7 @@ describe('POST /api/auth/register (integração)', () => {
   beforeEach(async () => {
     process.env.JWT_SECRET = 'segredo-de-teste';
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue(prisma)

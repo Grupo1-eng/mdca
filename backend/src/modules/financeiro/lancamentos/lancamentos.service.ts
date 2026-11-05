@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RegistroAuditoriaService } from '../../shared/auditorias/registro-auditoria.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
 import { limitesDoMes, resumoSemanalDoMes } from './resumo-semanal';
@@ -8,9 +10,14 @@ import { limitesDoMes, resumoSemanalDoMes } from './resumo-semanal';
 // Toda consulta filtra por `conta.organizacaoId` do token, e conta/projeto
 // informados no corpo precisam ser da mesma organização. Registro de outra
 // organização responde 404, como se não existisse.
+// Toda alteração grava a auditoria na mesma transação: se o log falhar,
+// a alteração é desfeita.
 @Injectable()
 export class LancamentosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditoria: RegistroAuditoriaService,
+  ) {}
 
   async listarTodos(organizacaoId: number) {
     return this.prisma.lancamento.findMany({
@@ -43,8 +50,12 @@ export class LancamentosService {
     return resumoSemanalDoMes(mes, lancamentos);
   }
 
-  async buscarPorId(id: number, organizacaoId: number) {
-    const lancamento = await this.prisma.lancamento.findFirst({
+  async buscarPorId(
+    id: number,
+    organizacaoId: number,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
+    const lancamento = await db.lancamento.findFirst({
       where: { id, conta: { organizacaoId } },
     });
     if (!lancamento) {
@@ -54,32 +65,39 @@ export class LancamentosService {
   }
 
   async criar(dados: CreateLancamentoDto, usuarioId: number, organizacaoId: number) {
-    await this.validarVinculos(dados, organizacaoId);
-    return this.prisma.lancamento.create({
-      data: { ...dados, usuarioId },
+    return this.prisma.$transaction(async (tx) => {
+      await this.validarVinculos(dados, organizacaoId, tx);
+      const lancamento = await tx.lancamento.create({ data: { ...dados, usuarioId } });
+      await this.auditoria.criacao(tx, 'lancamento', lancamento);
+      return lancamento;
     });
   }
 
   async atualizar(id: number, dados: UpdateLancamentoDto, organizacaoId: number) {
-    await this.buscarPorId(id, organizacaoId);
-    await this.validarVinculos(dados, organizacaoId);
-    return this.prisma.lancamento.update({
-      where: { id },
-      data: dados,
+    return this.prisma.$transaction(async (tx) => {
+      const antes = await this.buscarPorId(id, organizacaoId, tx);
+      await this.validarVinculos(dados, organizacaoId, tx);
+      const depois = await tx.lancamento.update({ where: { id }, data: dados });
+      await this.auditoria.atualizacao(tx, 'lancamento', antes, depois);
+      return depois;
     });
   }
 
   async deletar(id: number, organizacaoId: number) {
-    await this.buscarPorId(id, organizacaoId);
-    await this.prisma.lancamento.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      const lancamento = await this.buscarPorId(id, organizacaoId, tx);
+      await tx.lancamento.delete({ where: { id } });
+      await this.auditoria.exclusao(tx, 'lancamento', lancamento);
+    });
   }
 
   private async validarVinculos(
     dados: { contaId?: number; projetoId?: number },
     organizacaoId: number,
+    db: Prisma.TransactionClient,
   ) {
     if (dados.contaId !== undefined) {
-      const conta = await this.prisma.contaFinanceira.findFirst({
+      const conta = await db.contaFinanceira.findFirst({
         where: { id: dados.contaId, organizacaoId },
       });
       if (!conta) {
@@ -87,7 +105,7 @@ export class LancamentosService {
       }
     }
     if (dados.projetoId !== undefined && dados.projetoId !== null) {
-      const projeto = await this.prisma.projeto.findFirst({
+      const projeto = await db.projeto.findFirst({
         where: { id: dados.projetoId, organizacaoId },
       });
       if (!projeto) {
