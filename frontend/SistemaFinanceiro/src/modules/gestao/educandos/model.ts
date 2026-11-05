@@ -242,6 +242,9 @@ export function nomePerfil(perfil: Perfil): string {
     tecnico_psicologia: "Técnico – Psicologia",
     educador: "Educador",
     administrativo: "Administrativo",
+    coordenador_financeiro: "Coordenação financeira",
+    gestor_financeiro: "Gestão financeira",
+    analista_financeiro: "Análise financeira",
   }
   return nomes[perfil]
 }

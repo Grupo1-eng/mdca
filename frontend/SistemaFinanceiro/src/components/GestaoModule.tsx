@@ -24,6 +24,9 @@ const perfilLabel: Record<Perfil, string> = {
   tecnico_psicologia: "Técnico – Psicologia",
   educador: "Educador",
   administrativo: "Administrativo",
+  coordenador_financeiro: "Coordenação financeira",
+  gestor_financeiro: "Gestão financeira",
+  analista_financeiro: "Análise financeira",
 }
 
 function iniciais(nome: string): string {
