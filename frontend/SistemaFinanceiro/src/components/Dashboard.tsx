@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fmt, formatDate } from '@/lib/format';
 import { useLancamentos } from '@/hooks/useLancamentos';
 import { useContas } from '@/hooks/useContas';
 import {
-  intervaloValido, resumoPeriodo, saldoTotalContas, contasPendentes, serieFluxoCaixaPeriodo,
+  intervaloValido, resumoPeriodo, saldoTotalContas, contasPagas, contasParaPainel, contasPendentes,
+  serieFluxoCaixaPeriodo, type ContaPendente,
 } from '@/lib/aggregations';
 import { usePeriodo } from '@/context/PeriodoContext';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -20,6 +21,26 @@ export function SummaryCard({ label, value, sub, color }: { label: string; value
   );
 }
 
+/** Linha de uma conta a pagar/receber: descrição, data e valor com sinal. */
+function ItemConta({ conta }: { conta: ContaPendente }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-[var(--foreground)] truncate">{conta.descricao}</p>
+        <p className="text-xs text-[var(--muted-foreground)]">{formatDate(conta.vencimento)}</p>
+      </div>
+      <span className={`text-xs font-mono font-medium shrink-0 ${conta.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
+        {conta.tipo === "receber" ? "+" : "-"}{fmt(conta.valor)}
+      </span>
+    </div>
+  );
+}
+
+// Quantas contas pagas o card mostra antes de resumir o restante.
+const MAX_PAGAS = 5;
+
+type AbaPendencias = "vencidas" | "pagas";
+
 export default function Dashboard() {
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos } = useLancamentos();
   const { data: contas, loading: loadingContas, error: errorContas } = useContas();
@@ -30,6 +51,9 @@ export default function Dashboard() {
 
   const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const { vencidas, vencendo } = useMemo(() => contasPendentes(lancamentos), [lancamentos]);
+  const pagas = useMemo(() => contasPagas(lancamentos, intervalo), [lancamentos, intervalo]);
+  const contasOrdenadas = useMemo(() => contasParaPainel(contas), [contas]);
+  const [abaPendencias, setAbaPendencias] = useState<AbaPendencias>("vencidas");
   const fluxo = useMemo(() => serieFluxoCaixaPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
 
@@ -117,25 +141,43 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-4">
+              {/* RF27: vencidas e pagas em abas separadas, nunca misturadas. */}
               <div className="bg-white rounded-lg border border-[var(--border)] p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                  <h2 className="text-sm font-semibold">Vencidas</h2>
-                  <span className="ml-auto text-xs font-mono bg-red-50 text-red-600 px-1.5 py-0.5 rounded">{vencidas.length}</span>
+                <div className="flex items-center gap-1 mb-3" role="tablist">
+                  {([
+                    { key: "vencidas", label: "Vencidas", qtd: vencidas.length, cor: "bg-red-500", badge: "bg-red-50 text-red-600" },
+                    { key: "pagas", label: "Pagas", qtd: pagas.length, cor: "bg-[#0e7e6e]", badge: "bg-[#0e7e6e]/10 text-[#0e7e6e]" },
+                  ] as const).map((aba) => (
+                    <button
+                      key={aba.key}
+                      role="tab"
+                      aria-selected={abaPendencias === aba.key}
+                      onClick={() => setAbaPendencias(aba.key)}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded text-sm cursor-pointer transition-colors ${
+                        abaPendencias === aba.key ? "font-semibold bg-[var(--muted)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${aba.cor}`} />
+                      {aba.label}
+                      <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${aba.badge}`}>{aba.qtd}</span>
+                    </button>
+                  ))}
                 </div>
                 <div className="space-y-2.5">
-                  {vencidas.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma pendência vencida.</p>}
-                  {vencidas.map((c, i) => (
-                    <div key={i} className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{formatDate(c.vencimento)}</p>
-                      </div>
-                      <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                        {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
-                      </span>
-                    </div>
-                  ))}
+                  {abaPendencias === "vencidas" ? (
+                    <>
+                      {vencidas.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma pendência vencida.</p>}
+                      {vencidas.map((c, i) => <ItemConta key={i} conta={c} />)}
+                    </>
+                  ) : (
+                    <>
+                      {pagas.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma conta paga ou recebida no período.</p>}
+                      {pagas.slice(0, MAX_PAGAS).map((c, i) => <ItemConta key={i} conta={c} />)}
+                      {pagas.length > MAX_PAGAS && (
+                        <p className="text-xs text-[var(--muted-foreground)]">e mais {pagas.length - MAX_PAGAS} no período</p>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -147,20 +189,36 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2.5">
                   {vencendo.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Nenhuma pendência nos próximos 7 dias.</p>}
-                  {vencendo.map((c, i) => (
-                    <div key={i} className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.descricao}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{formatDate(c.vencimento)}</p>
-                      </div>
-                      <span className={`text-xs font-mono font-medium shrink-0 ${c.tipo === "receber" ? "text-[#0e7e6e]" : "text-red-600"}`}>
-                        {c.tipo === "receber" ? "+" : "-"}{fmt(c.valor)}
-                      </span>
-                    </div>
-                  ))}
+                  {vencendo.map((c, i) => <ItemConta key={i} conta={c} />)}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* RF24 / RF64: saldo de cada conta, atualizado pelos lançamentos realizados. */}
+          <div className="bg-white rounded-lg border border-[var(--border)] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm text-[var(--foreground)]">Saldo por conta</h2>
+              <p className="text-xs text-[var(--muted-foreground)]">Considera só lançamentos pagos ou recebidos</p>
+            </div>
+            {contasOrdenadas.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)]">Nenhuma conta cadastrada.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-3">
+                {contasOrdenadas.map((c) => (
+                  <div key={c.id} className={`border border-[var(--border)] rounded-md px-4 py-3 ${c.ativa ? "" : "opacity-60"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-[var(--foreground)] truncate">{c.nome}</p>
+                      {!c.ativa && <span className="text-[10px] font-mono uppercase text-[var(--muted-foreground)]">inativa</span>}
+                    </div>
+                    <p className={`text-lg font-semibold font-mono mt-1 ${c.saldoAtual < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>
+                      {fmt(c.saldoAtual)}
+                    </p>
+                    {c.tipo && <p className="text-[10px] text-[var(--muted-foreground)] capitalize">{c.tipo}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
