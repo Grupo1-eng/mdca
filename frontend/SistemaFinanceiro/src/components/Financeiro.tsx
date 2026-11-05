@@ -334,7 +334,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
 export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos, create: createLancamento } = useLancamentos();
   const { data: projetos, loading: loadingProjetos } = useProjetos();
-  const { data: contas, loading: loadingContas, error: errorContas } = useContas();
+  const { data: contas, loading: loadingContas, error: errorContas, recarregar: recarregarContas } = useContas();
   const { data: categorias, loading: loadingCategorias } = useCategorias();
 
   const [tab, setTab] = useState<FinanceTab>("lancamentos");
@@ -432,6 +432,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
   const handleSaveLancamento = async (input: NovoLancamento) => {
     const criado = await createLancamento(input);
+    // O backend ajusta o saldo da conta quando o lançamento já nasce pago/recebido (RF25).
+    await recarregarContas();
     addLog({
       modulo: "Financeiro",
       acao: "adição",

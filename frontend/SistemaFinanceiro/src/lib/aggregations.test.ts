@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Categoria, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
+import type { Categoria, Conta, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
 import {
   arvoreCategorias,
+  contasPagas,
   contasPendentes,
+  contasParaPainel,
   dataDoLancamento,
   execucaoOrcamentaria,
   filtrarPorIntervalo,
@@ -366,5 +368,50 @@ describe("execucaoOrcamentaria", () => {
 
   it("ignora projetos sem orçamento", () => {
     expect(execucaoOrcamentaria(projetos, categorias, [], [])).toEqual([]);
+  });
+});
+// RF27: as contas vencidas aparecem separadas das já pagas/recebidas.
+describe("contasPagas", () => {
+  it("lista só os lançamentos realizados do período, do mais recente ao mais antigo", () => {
+    const pagas = contasPagas([
+      lanc({ id: 1, situacao: "pago", tipo: "saida", descricao: "Luz", dataCompetencia: "2026-09-05T00:00:00.000Z" }),
+      lanc({ id: 2, situacao: "pendente", descricao: "Água" }),
+      lanc({ id: 3, situacao: "recebido", descricao: "Doação", dataCompetencia: "2026-09-20T00:00:00.000Z" }),
+      lanc({ id: 4, situacao: "pago", tipo: "saida", descricao: "Agosto", dataCompetencia: "2026-08-20T00:00:00.000Z" }),
+    ], setembro);
+    expect(pagas.map((c) => c.descricao)).toEqual(["Doação", "Luz"]);
+    expect(pagas[1]).toEqual({ descricao: "Luz", valor: 100, vencimento: "2026-09-05T00:00:00.000Z", tipo: "pagar" });
+  });
+
+  it("nunca inclui pendentes, mesmo vencidos", () => {
+    const pagas = contasPagas([lanc({ situacao: "pendente", dataCompetencia: "2026-09-02T00:00:00.000Z" })], setembro);
+    expect(pagas).toEqual([]);
+  });
+});
+
+function conta(parcial: Partial<Conta>): Conta {
+  return {
+    id: 1, organizacaoId: 1, nome: "Caixa", tipo: null, banco: null, agencia: null, numero: null,
+    saldoInicial: 0, saldoAtual: 0, ativa: true,
+    ...parcial,
+  };
+}
+
+// RF24 / RF64: o painel mostra o saldo de cada conta, não só o total.
+describe("contasParaPainel", () => {
+  it("mostra as ativas primeiro e, dentro de cada grupo, em ordem alfabética", () => {
+    const ordem = contasParaPainel([
+      conta({ id: 1, nome: "Poupança", ativa: false }),
+      conta({ id: 2, nome: "Caixa" }),
+      conta({ id: 3, nome: "Banco do Brasil" }),
+      conta({ id: 4, nome: "Antiga", ativa: false }),
+    ]).map((c) => c.nome);
+    expect(ordem).toEqual(["Banco do Brasil", "Caixa", "Antiga", "Poupança"]);
+  });
+
+  it("não altera a lista recebida", () => {
+    const contas = [conta({ id: 1, nome: "B" }), conta({ id: 2, nome: "A" })];
+    contasParaPainel(contas);
+    expect(contas.map((c) => c.nome)).toEqual(["B", "A"]);
   });
 });

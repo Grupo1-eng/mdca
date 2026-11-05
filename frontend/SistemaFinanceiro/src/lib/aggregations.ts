@@ -131,6 +131,15 @@ export interface ContaPendente {
   tipo: "receber" | "pagar";
 }
 
+function paraContaPendente(l: Lancamento): ContaPendente {
+  return {
+    descricao: l.descricao ?? "",
+    valor: l.valor,
+    vencimento: dataDoLancamento(l),
+    tipo: l.tipo === "entrada" ? "receber" : "pagar",
+  };
+}
+
 /**
  * Lançamentos pendentes (ainda não pagos/recebidos), separados entre os que já
  * venceram e os que vencem nos próximos 7 dias.
@@ -143,23 +152,34 @@ export function contasPendentes(
   const emSeteDias = new Date(inicioHoje);
   emSeteDias.setDate(emSeteDias.getDate() + 7);
 
-  const toContaPendente = (l: Lancamento): ContaPendente => ({
-    descricao: l.descricao ?? "",
-    valor: l.valor,
-    vencimento: dataDoLancamento(l),
-    tipo: l.tipo === "entrada" ? "receber" : "pagar",
-  });
-
   const pendentes = lancamentos.filter((l) => l.situacao === "pendente");
-  const vencidas = pendentes.filter((l) => dataLocal(dataDoLancamento(l)) < inicioHoje).map(toContaPendente);
+  const vencidas = pendentes.filter((l) => dataLocal(dataDoLancamento(l)) < inicioHoje).map(paraContaPendente);
   const vencendo = pendentes
     .filter((l) => {
       const d = dataLocal(dataDoLancamento(l));
       return d >= inicioHoje && d <= emSeteDias;
     })
-    .map(toContaPendente);
+    .map(paraContaPendente);
 
   return { vencidas, vencendo };
+}
+
+/**
+ * Lançamentos já pagos/recebidos no período, do mais recente ao mais antigo.
+ * Ficam separados das vencidas (RF27): pendente nunca entra aqui.
+ */
+export function contasPagas(lancamentos: Lancamento[], intervalo: Intervalo): ContaPendente[] {
+  return filtrarPorIntervalo(lancamentos, intervalo)
+    .filter((l) => l.situacao !== "pendente")
+    .sort((a, b) => dataLocal(dataDoLancamento(b)).getTime() - dataLocal(dataDoLancamento(a)).getTime())
+    .map(paraContaPendente);
+}
+
+/** Contas na ordem do painel de saldos: ativas primeiro, cada grupo em ordem alfabética. */
+export function contasParaPainel(contas: Conta[]): Conta[] {
+  return [...contas].sort(
+    (a, b) => Number(b.ativa) - Number(a.ativa) || a.nome.localeCompare(b.nome, "pt-BR"),
+  );
 }
 
 export interface PontoFluxo {

@@ -12,6 +12,8 @@ export interface UseApiResourceResult<T, TCreate, TUpdate> {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  /** Como `refetch`, mas sem ligar o `loading`: a tela continua mostrando os dados até chegarem os novos. */
+  recarregar: () => Promise<void>;
   create: (input: TCreate) => Promise<T>;
   update: (id: number, input: TUpdate) => Promise<T>;
 }
@@ -46,6 +48,15 @@ export function useApiResource<T extends { id: number }, TCreate = Partial<T>, T
     }
   }, [api]);
 
+  const recarregar = useCallback(async () => {
+    try {
+      setData(await api.list());
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }, [api]);
+
   useEffect(() => {
     refetch();
   }, [refetch]);
@@ -68,5 +79,5 @@ export function useApiResource<T extends { id: number }, TCreate = Partial<T>, T
     [api],
   );
 
-  return { data, loading, error, refetch, create, update };
+  return { data, loading, error, refetch, recarregar, create, update };
 }
