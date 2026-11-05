@@ -37,8 +37,8 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Visão geral")
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')
-    // Coordenador da Gestão não tem acesso ao Financeiro: sem o atalho.
-    expect(html).not.toContain('href="/financeiro"')
+    // Coordenação é admin dos dois módulos: vê o atalho para o Financeiro.
+    expect(html).toContain('href="/financeiro"')
     expect(html).toContain("Sair")
   })
 

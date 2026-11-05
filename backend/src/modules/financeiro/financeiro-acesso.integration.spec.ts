@@ -5,9 +5,9 @@ import * as request from 'supertest';
 import { AppModule } from '../../app.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
-// O módulo financeiro tem dados sensíveis: só coordenador, gestor e analista
-// financeiro e o administrativo entram. Os demais perfis recebem 403
-// (autenticados, sem permissão).
+// O módulo financeiro tem dados sensíveis: só os perfis financeiros, o
+// administrativo e a coordenação (admin dos dois módulos) entram. Os demais
+// perfis recebem 403 (autenticados, sem permissão).
 describe('Acesso ao módulo financeiro por perfil (integração)', () => {
   let app: INestApplication;
   let token: string;
@@ -29,13 +29,13 @@ describe('Acesso ao módulo financeiro por perfil (integração)', () => {
     '/api/orcamentos',
   ];
   const perfisPermitidos = [
+    'coordenador',
     'coordenador_financeiro',
     'gestor_financeiro',
     'analista_financeiro',
     'administrativo',
   ];
   const perfisBloqueados = [
-    'coordenador',
     'tecnico_servico_social',
     'tecnico_psicologia',
     'educador',

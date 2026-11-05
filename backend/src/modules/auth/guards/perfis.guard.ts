@@ -6,8 +6,20 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERFIS_KEY } from '../decorators/perfis.decorator';
-import { PERFIS_FINANCEIRO, Perfil } from '../perfis.constants';
+import { PERFIS_EXCLUSIVOS_FINANCEIRO, PERFIS_FINANCEIRO, Perfil } from '../perfis.constants';
 import { RegistroAuditoriaService } from '../../shared/auditorias/registro-auditoria.service';
+
+/**
+ * Só rotas do financeiro entram no log do financeiro: todos os perfis exigidos
+ * têm acesso ao financeiro e ao menos um é exclusivo dele. Rotas só da
+ * coordenação (ex.: usuários), que também acessa o financeiro, ficam de fora.
+ */
+function rotaDoFinanceiro(perfisExigidos: Perfil[]): boolean {
+  return (
+    perfisExigidos.every((p) => PERFIS_FINANCEIRO.includes(p)) &&
+    perfisExigidos.some((p) => PERFIS_EXCLUSIVOS_FINANCEIRO.includes(p))
+  );
+}
 
 @Injectable()
 export class PerfisGuard implements CanActivate {
@@ -30,8 +42,7 @@ export class PerfisGuard implements CanActivate {
     const { usuario } = request;
 
     if (!usuario || !perfisExigidos.includes(usuario.perfil)) {
-      // Só rotas exclusivas do financeiro entram no log do financeiro.
-      if (usuario && perfisExigidos.every((p) => PERFIS_FINANCEIRO.includes(p))) {
+      if (usuario && rotaDoFinanceiro(perfisExigidos)) {
         // Padrão da rota (/api/lancamentos/:id), sem ids nem query string.
         const rota = `${request.method} ${request.baseUrl ?? ''}${request.route?.path ?? request.path}`;
         await this.auditoria.registrarAvulso({

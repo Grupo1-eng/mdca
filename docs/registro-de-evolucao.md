@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-05 — Coordenação volta a acessar o financeiro
+
+**Tipo:** correção · **Grupo:** ambos · **PR:** #25 (branch `feature/financeiro-coordenador-acesso`)
+
+**O que mudou:** o perfil `coordenador` volta a acessar o módulo financeiro, inclusive o histórico de auditoria, e continua com acesso à gestão. No login, quem escolhe "Financeiro" com esse perfil entra no financeiro, e a gestão mostra o atalho "Ir para Financeiro". No backend, `coordenador` entrou em `PERFIS_FINANCEIRO` e em `PERFIS_AUDITORIA_FINANCEIRO`. O `PerfisGuard` passou a usar a nova lista `PERFIS_EXCLUSIVOS_FINANCEIRO` para decidir se um acesso negado entra no log do financeiro, para as rotas só da coordenação (ex.: usuários) continuarem de fora.
+
+**Por quê:** escolhendo "Financeiro" no login, a coordenação caía na gestão sem nenhum aviso. Isso veio da soma de dois PRs. O **#12** (`feature/financeiro-acesso-por-perfil`) tirou o `coordenador` das rotas do financeiro, que passaram a responder 403. O **#16** (`feature/gestao-sprint3`, commit `f0aac6b`), para não mostrar uma tela cheia de 403, passou a redirecionar esse perfil para a gestão em silêncio. Efeito colateral: a tela de **Usuários**, que só existe no financeiro e só a coordenação usa, ficou inacessível, e ninguém conseguia mais criar usuários pela interface. A coordenação é admin dos dois módulos (ver [`decisoes.md`](decisoes.md#2026-11-05--coordenação-é-admin-dos-dois-módulos)).
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-05 — Relatórios com período, filtros e exportação em planilha
 
 **Tipo:** evolução · **Grupo:** financeiro · **PR:** #24 (branch `feature/financeiro-relatorios-periodo-exportacao`)

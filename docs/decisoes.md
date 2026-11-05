@@ -25,3 +25,11 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 **Decisão:** o `saldo_atual` é ajustado de forma **incremental**, na mesma transação que cria, edita ou exclui o lançamento. Só lançamentos realizados contam: entrada `recebido` soma, saída `pago` subtrai, `pendente` não mexe. O saldo não é recalculado do zero a cada leitura, para não apagar os ajustes manuais. Toda mudança nova que mexa em valor, tipo, situação ou conta de um lançamento precisa passar por `efeitoNoSaldo`/`ajustarSaldo` (`backend/src/modules/financeiro/lancamentos/saldo-conta.ts`).
 
 **Consequência:** gravar um lançamento e ajustar o saldo é atômico: se um falhar, nada é gravado (RNF24). O ajuste de saldo feito pelo lançamento não gera registro de auditoria próprio, porque a auditoria do lançamento já registra o que mudou. Escrever direto em `lancamento` pelo banco, fora do service, deixa o saldo desalinhado.
+
+## 2026-11-05 — Coordenação é admin dos dois módulos
+
+**Contexto:** o PR #12 restringiu o financeiro aos perfis financeiros e ao administrativo, e o PR #16 passou a redirecionar para a gestão quem não tinha acesso. A coordenação (`coordenador`) ficou sem o financeiro e sem a tela de Usuários, que só existe nele, mesmo sendo o perfil que cria os usuários do sistema. O RNF01 do documento de requisitos também cita a coordenação entre quem pode editar e aprovar lançamentos. Ver o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:** o perfil `coordenador` é o administrador dos dois módulos. Ele acessa tudo o que os perfis financeiros acessam, inclusive o log de auditoria do financeiro (`PERFIS_FINANCEIRO` e `PERFIS_AUDITORIA_FINANCEIRO`), além da gestão. As regras de acesso do frontend (`src/lib/moduloDestino.ts` e `src/lib/auditoria.ts`) espelham as do backend e mudam junto com elas.
+
+**Consequência:** logins da coordenação e alterações em usuários coordenadores passam a entrar no log do financeiro, porque mudam quem acessa o financeiro. Para saber se uma rota é "do financeiro", não basta olhar se todos os perfis exigidos acessam o financeiro: é preciso que ao menos um seja exclusivo dele (`PERFIS_EXCLUSIVOS_FINANCEIRO`).
