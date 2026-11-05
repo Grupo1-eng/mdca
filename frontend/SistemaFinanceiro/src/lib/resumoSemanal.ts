@@ -1,6 +1,6 @@
 // Apoio ao gráfico semanal do mês (US10 / RF30), que usa o endpoint
 // GET /api/lancamentos/resumo-semanal?mes=AAAA-MM do backend.
-import type { Intervalo } from "./aggregations";
+import type { FiltroProjeto, Intervalo } from "./aggregations";
 import type { SemanaResumo } from "@/types/financeiro";
 
 function paraMes(d: Date): string {
@@ -17,6 +17,13 @@ export function mesDoPeriodo(intervalo: Intervalo, hoje: Date = new Date()): str
   const antesDoFim = !intervalo.fim || hoje <= intervalo.fim;
   if (depoisDoInicio && antesDoFim) return paraMes(hoje);
   return paraMes(intervalo.inicio ?? (intervalo.fim as Date));
+}
+
+/** Query do endpoint: o mês e, se houver, o projeto (`nenhum` = sem projeto). */
+export function queryResumoSemanal(mes: string, projeto: FiltroProjeto): string {
+  const params = new URLSearchParams({ mes });
+  if (projeto !== "todos") params.set("projetoId", String(projeto));
+  return `?${params.toString()}`;
 }
 
 /** Mês `n` meses depois (negativo: antes) de `mes`, no formato AAAA-MM. */

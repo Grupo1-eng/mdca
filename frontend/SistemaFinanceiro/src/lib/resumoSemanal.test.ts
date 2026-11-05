@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { mesDoPeriodo, nomeDoMes, rotuloSemana, somarMeses } from "./resumoSemanal";
+import { mesDoPeriodo, nomeDoMes, queryResumoSemanal, rotuloSemana, somarMeses } from "./resumoSemanal";
+
+describe("queryResumoSemanal", () => {
+  it("só o mês quando o filtro é todos os projetos", () => {
+    expect(queryResumoSemanal("2026-11", "todos")).toBe("?mes=2026-11");
+  });
+
+  it("acrescenta o projeto escolhido ou 'nenhum'", () => {
+    expect(queryResumoSemanal("2026-11", 12)).toBe("?mes=2026-11&projetoId=12");
+    expect(queryResumoSemanal("2026-11", "nenhum")).toBe("?mes=2026-11&projetoId=nenhum");
+  });
+});
 
 const hoje = new Date(2026, 10, 5); // 05/11/2026
 

@@ -26,13 +26,18 @@ export class LancamentosService {
     });
   }
 
-  async resumoSemanal(mes: string, organizacaoId: number) {
+  /**
+   * `projetoId`: sem valor traz todos os lançamentos; `null`, só os sem projeto.
+   * Projeto de outra organização não vaza nada: o filtro por organização vem da conta.
+   */
+  async resumoSemanal(mes: string, organizacaoId: number, projetoId?: number | null) {
     const { inicio, fimExclusivo } = limitesDoMes(mes);
     const intervalo = { gte: inicio, lt: fimExclusivo };
 
     const lancamentos = await this.prisma.lancamento.findMany({
       where: {
         conta: { organizacaoId },
+        ...(projetoId !== undefined && { projetoId }),
         OR: [
           { dataCompetencia: intervalo },
           { dataCompetencia: null, dataPagamento: intervalo },

@@ -101,6 +101,36 @@ export function filtrarPorTipo(lancamentos: Lancamento[], tipo: FiltroTipo): Lan
   return tipo === "todos" ? lancamentos : lancamentos.filter((l) => l.tipo === tipo);
 }
 
+/** Filtro de projeto da tela Financeiro: um projeto, os sem projeto ("nenhum") ou todos. */
+export type FiltroProjeto = "todos" | "nenhum" | number;
+
+export function filtrarPorProjeto(lancamentos: Lancamento[], filtro: FiltroProjeto): Lancamento[] {
+  if (filtro === "todos") return lancamentos;
+  const projetoId = filtro === "nenhum" ? null : filtro;
+  return lancamentos.filter((l) => l.projetoId === projetoId);
+}
+
+export interface ExecucaoDoProjeto {
+  orcamento: number | null;
+  executado: number;
+  /** Executado em relação ao orçamento, arredondado; null sem orçamento definido. */
+  percentual: number | null;
+  estourado: boolean;
+}
+
+/**
+ * Orçado x executado do projeto (RF05/RF12). Executado são as saídas pagas do
+ * projeto em qualquer data, como na execução orçamentária dos relatórios.
+ */
+export function execucaoDoProjeto(projeto: Projeto, lancamentos: Lancamento[]): ExecucaoDoProjeto {
+  const executado = soma(
+    lancamentos.filter((l) => l.projetoId === projeto.id && l.tipo === "saida" && l.situacao === "pago"),
+  );
+  const orcamento = projeto.orcamentoTotal;
+  if (orcamento === null || orcamento <= 0) return { orcamento, executado, percentual: null, estourado: false };
+  return { orcamento, executado, percentual: Math.round((executado / orcamento) * 100), estourado: executado >= orcamento };
+}
+
 function soma(lancamentos: Lancamento[]): number {
   return lancamentos.reduce((a, b) => a + b.valor, 0);
 }
