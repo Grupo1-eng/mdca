@@ -8,7 +8,6 @@ import { Badge, Card, PageHeader, inputClass } from "./components/EducandoUi"
 export default function EducandosPage() {
   const {
     educandos,
-    iniciativas,
     iniciativaNome,
     cargaEducandos,
     erroEducandos,
@@ -16,9 +15,8 @@ export default function EducandosPage() {
   } = useEducandosGestao()
   const permissoes = usePermissoesEducandos()
   const [busca, setBusca] = useState("")
-  const [iniciativa, setIniciativa] = useState("todas")
   const [situacao, setSituacao] = useState("todas")
-  const lista = filtrarEducandos(educandos, busca, iniciativa, situacao)
+  const lista = filtrarEducandos(educandos, busca, "todas", situacao)
 
   useEffect(() => {
     carregarEducandos()
@@ -55,17 +53,16 @@ export default function EducandosPage() {
         </div>
         <select
           className={`${inputClass} w-full md:w-72`}
-          value={iniciativa}
-          onChange={(event) => setIniciativa(event.target.value)}
+          value="todas"
+          disabled
           aria-label="Filtrar por iniciativa"
+          title="O vínculo do educando com a iniciativa ainda não é gravado."
         >
           <option value="todas">Todas as iniciativas</option>
-          {iniciativas.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.nome}
-            </option>
-          ))}
         </select>
+        <p className="w-full text-xs text-[var(--muted-foreground)]">
+          O filtro por iniciativa fica disponível quando o vínculo educando–projeto existir.
+        </p>
         <select
           className={`${inputClass} w-full md:w-44`}
           value={situacao}
