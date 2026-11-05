@@ -34,6 +34,8 @@ export interface Educando {
   telefone: string
   iniciativaId: string
   dataIngresso: string
+  // Id do vínculo principal no servidor (educando do banco com iniciativa).
+  vinculoId?: string
   situacaoVinculo: SituacaoVinculo
   escola: string
   serie: string

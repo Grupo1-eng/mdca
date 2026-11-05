@@ -7,7 +7,11 @@ export default function FrequenciaPanel({
 }: {
   educandoId: string
 }) {
-  const { encontros, atividades, iniciativaNome } = useEducandosGestao()
+  const {
+    encontros,
+    atividades,
+    iniciativaDemonstracaoNome: iniciativaNome,
+  } = useEducandosGestao()
   // Educando do banco: o registro de frequência ainda não tem rota no
   // backend, então não há o que mostrar (os encontros de exemplo não são dele).
   if (ehIdPersistido(educandoId)) {

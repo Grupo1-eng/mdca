@@ -5,6 +5,7 @@ import {
   cadastrosSemDocumento,
   compromissosAgendados,
   educandosAtivos,
+  educandosPorIniciativa,
   hojeLocal,
   proximosCompromissos,
 } from "./indicadores"
@@ -49,5 +50,18 @@ describe("indicadores do Dashboard", () => {
       "hoje-tarde",
       "amanha",
     ])
+  })
+
+  it("conta educandos ativos por iniciativa", () => {
+    const iniciativas = [
+      { id: "1", codigo: "1", nome: "SCFV", tipo: "Serviço" as const, situacao: "Ativo" as const },
+      { id: "2", codigo: "2", nome: "Música", tipo: "Projeto" as const, situacao: "Ativo" as const },
+    ]
+    const lista = [
+      educando({ iniciativaId: "1" }),
+      educando({ iniciativaId: "1", situacaoVinculo: "Inativo" }),
+      educando({ iniciativaId: "2" }),
+    ]
+    expect(educandosPorIniciativa(lista, iniciativas).map((l) => l.ativos)).toEqual([1, 1])
   })
 })

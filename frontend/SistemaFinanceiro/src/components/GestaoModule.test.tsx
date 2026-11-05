@@ -51,8 +51,8 @@ describe("rotas migradas da Gestão", () => {
     const html = renderizarRota("/gestao/educandos")
     expect(html).toContain("Crianças e adolescentes vinculados")
     expect(html).toContain("Carregando educandos")
-    // Filtro de iniciativa só volta quando o vínculo tiver rota no backend.
-    expect(html).not.toContain("Filtrar por iniciativa")
+    // Iniciativas vêm de /api/iniciativas: o filtro e a coluna voltaram.
+    expect(html).toContain("Filtrar por iniciativa")
     expect(html).toContain("Novo educando")
     expect(html).toContain('href="/gestao/educandos/novo"')
   })

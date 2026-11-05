@@ -262,10 +262,16 @@ export default function EducandoForm({
             <option value="">Selecione a iniciativa</option>
             {iniciativas.map((iniciativa) => (
               <option key={iniciativa.id} value={iniciativa.id}>
-                {iniciativa.codigo} · {iniciativa.nome} ({iniciativa.tipo})
+                {iniciativa.nome} ({iniciativa.tipo})
               </option>
             ))}
           </select>
+          {!vinculoPendente && iniciativas.length === 0 && (
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Nenhuma iniciativa cadastrada. Os projetos, serviços e programas
+              são cadastrados na tela Projetos do Financeiro.
+            </p>
+          )}
           {vinculoPendente && (
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
               {AVISO_VINCULO}

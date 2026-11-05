@@ -1,7 +1,7 @@
 // Indicadores do Dashboard da Gestão calculados com os dados que já vêm da
 // API (educandos e agenda). Funções puras.
 import type { Compromisso } from "../agenda/types"
-import type { Educando } from "../educandos/types"
+import type { Educando, Iniciativa } from "../educandos/types"
 
 const dois = (n: number) => String(n).padStart(2, "0")
 
@@ -44,4 +44,18 @@ export function proximosCompromissos(
   return agendadosAPartirDe(compromissos, hoje)
     .sort((a, b) => (a.data + a.horario).localeCompare(b.data + b.horario))
     .slice(0, limite)
+}
+
+// Educandos ativos por iniciativa (vínculo principal), na ordem das iniciativas.
+export function educandosPorIniciativa(
+  educandos: Educando[],
+  iniciativas: Iniciativa[],
+): Array<{ iniciativa: Iniciativa; ativos: number }> {
+  return iniciativas.map((iniciativa) => ({
+    iniciativa,
+    ativos: educandos.filter(
+      (item) =>
+        item.situacaoVinculo === "Ativo" && item.iniciativaId === iniciativa.id,
+    ).length,
+  }))
 }

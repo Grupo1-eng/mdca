@@ -2,6 +2,7 @@
 // (IDs numéricos, datas ISO, situação em minúsculas). Funções puras.
 import { cpfIncompleto, formatarCpf, normalizarDocumento } from "../educandos/model"
 import type { Educando, Responsavel } from "../educandos/types"
+import { dataLocalParaIso, isoParaDataLocal } from "./evolucoesMapper"
 import type {
   EducandoApi,
   EducandoPayload,
@@ -14,12 +15,9 @@ import type {
 // Se precisar desligar esses campos de novo, basta voltar para true.
 export const CAMPOS_AGUARDANDO_MIGRACAO = false
 
-// Vínculo com a iniciativa (iniciativa e data de ingresso): depende do
-// endpoint de EducandoProjeto, que ainda não existe no backend.
-export const VINCULO_INICIATIVA_PENDENTE = true
-
-// Campos do formulário que ainda não são gravados no servidor.
-export const CAMPOS_EDUCANDO_PENDENTES = ["iniciativaId", "dataIngresso"] as const
+// Vínculo com a iniciativa (iniciativa e data de ingresso): gravado em
+// /api/educando-projetos. Voltar para true desliga os campos na tela.
+export const VINCULO_INICIATIVA_PENDENTE = false
 
 // CPF vai ao servidor só com os números; vazio vira null.
 function cpfParaApi(valor: string, mensagem: string): string | null {
@@ -77,6 +75,7 @@ export function deResponsavelApi(api: ResponsavelApi): Responsavel {
 }
 
 export function deEducandoApi(api: EducandoApi): Educando {
+  const principal = api.educandoProjetos?.[0]
   return {
     id: String(api.id),
     nome: api.nome,
@@ -88,8 +87,10 @@ export function deEducandoApi(api: EducandoApi): Educando {
     genero: texto(api.genero),
     endereco: texto(api.endereco),
     telefone: texto(api.telefone),
-    iniciativaId: "",
-    dataIngresso: "",
+    // O vínculo principal é o ativo mais recente (o backend já ordena).
+    iniciativaId: principal ? String(principal.projetoId) : "",
+    dataIngresso: principal ? isoParaDataLocal(principal.dataIngresso) : "",
+    vinculoId: principal ? String(principal.id) : undefined,
     situacaoVinculo: api.situacaoAtual === "inativo" ? "Inativo" : "Ativo",
     escola: texto(api.escola),
     serie: texto(api.serie),
@@ -190,4 +191,37 @@ export function responsaveisParaSalvar(
         },
       }
     })
+}
+
+export type AcaoVinculo =
+  | { tipo: "criar"; projetoId: number; dataIngresso?: string }
+  | { tipo: "atualizar"; id: number; dataIngresso: string }
+  | { tipo: "encerrar"; id: number }
+
+// O que fazer com o vínculo principal ao salvar o educando, comparando o
+// que estava gravado com o que está no formulário. Trocar de iniciativa
+// encerra o vínculo antigo e cria outro (o histórico fica preservado).
+export function planejarVinculo(
+  anterior: Pick<Educando, "vinculoId" | "iniciativaId" | "dataIngresso"> | undefined,
+  form: Pick<Educando, "iniciativaId" | "dataIngresso">,
+): AcaoVinculo[] {
+  const vinculoId = anterior?.vinculoId ? Number(anterior.vinculoId) : undefined
+  const novaIniciativa = form.iniciativaId
+  const data = form.dataIngresso ? dataLocalParaIso(form.dataIngresso) : undefined
+  const acoes: AcaoVinculo[] = []
+
+  if (vinculoId !== undefined && anterior?.iniciativaId !== novaIniciativa) {
+    acoes.push({ tipo: "encerrar", id: vinculoId })
+  }
+  if (novaIniciativa && (vinculoId === undefined || anterior?.iniciativaId !== novaIniciativa)) {
+    acoes.push({ tipo: "criar", projetoId: Number(novaIniciativa), dataIngresso: data })
+  } else if (
+    vinculoId !== undefined &&
+    novaIniciativa &&
+    data &&
+    anterior?.dataIngresso !== form.dataIngresso
+  ) {
+    acoes.push({ tipo: "atualizar", id: vinculoId, dataIngresso: data })
+  }
+  return acoes
 }

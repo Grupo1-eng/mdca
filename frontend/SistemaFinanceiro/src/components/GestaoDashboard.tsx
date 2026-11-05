@@ -6,6 +6,7 @@ import {
   cadastrosSemDocumento,
   compromissosAgendados,
   educandosAtivos,
+  educandosPorIniciativa,
   hojeLocal,
   proximosCompromissos,
 } from "@/modules/gestao/dashboard/indicadores"
@@ -134,6 +135,44 @@ function PendenciasCadastrais() {
   )
 }
 
+function EducandosPorIniciativa() {
+  const { educandos, iniciativas, cargaEducandos } = useEducandosGestao()
+  const linhas = educandosPorIniciativa(educandos, iniciativas)
+
+  return (
+    <section className="bg-white rounded-lg border border-[var(--border)] p-5">
+      <h2 className="font-semibold text-sm mb-4">
+        Educandos por projeto, serviço ou programa
+      </h2>
+      <ul className="space-y-3">
+        {cargaEducandos === "pronta" &&
+          linhas.map(({ iniciativa, ativos }) => (
+            <li
+              key={iniciativa.id}
+              className="flex flex-wrap items-center justify-between gap-2 text-sm"
+            >
+              <span>
+                {iniciativa.nome}{" "}
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  ({iniciativa.tipo})
+                </span>
+              </span>
+              <Badge>{ativos} ativos</Badge>
+            </li>
+          ))}
+        {cargaEducandos === "pronta" && linhas.length === 0 && (
+          <li className="text-sm text-[var(--muted-foreground)]">
+            Nenhuma iniciativa cadastrada.
+          </li>
+        )}
+        {cargaEducandos !== "pronta" && (
+          <li className="text-sm text-[var(--muted-foreground)]">Carregando…</li>
+        )}
+      </ul>
+    </section>
+  )
+}
+
 function PainelDoPerfil() {
   const { user } = useAuth()
 
@@ -141,10 +180,7 @@ function PainelDoPerfil() {
     return (
       <div className="grid gap-4 lg:grid-cols-2">
         <PendenciasCadastrais />
-        <EmBreve
-          titulo="Educandos por projeto, serviço ou programa"
-          texto={`${PROXIMA_ETAPA}: vínculo dos educandos às iniciativas.`}
-        />
+        <EducandosPorIniciativa />
       </div>
     )
   }
@@ -169,9 +205,10 @@ function PainelDoPerfil() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <PendenciasCadastrais />
+      <EducandosPorIniciativa />
       <EmBreve
-        titulo="Desempenho por projeto, serviço ou programa"
-        texto={`${PROXIMA_ETAPA}: educandos, encontros, frequência média e atendimentos por iniciativa.`}
+        titulo="Encontros e frequência por iniciativa"
+        texto={`${PROXIMA_ETAPA}: encontros realizados, frequência média e atendimentos por iniciativa.`}
       />
     </div>
   )

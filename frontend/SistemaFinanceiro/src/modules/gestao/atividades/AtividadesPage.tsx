@@ -32,7 +32,14 @@ const actionButton =
 
 export default function AtividadesPage() {
   const { user } = useAuth()
-  const { atividades, encontros, iniciativas, iniciativaNome, salvarAtividade } =
+  // Demonstração: atividades e iniciativas de exemplo até a próxima etapa.
+  const {
+    atividades,
+    encontros,
+    iniciativasDemonstracao: iniciativas,
+    iniciativaDemonstracaoNome: iniciativaNome,
+    salvarAtividade,
+  } =
     useEducandosGestao()
   const { registrarAtividade } = permissoesAtividades(user?.perfil)
   const { estado, salvar, mensagem } = useSalvarGestao()
