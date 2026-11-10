@@ -37,6 +37,7 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Visão geral")
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')
+    expect(html).toContain('href="/gestao/projetos"')
     // Coordenação é admin dos dois módulos: vê o atalho para o Financeiro.
     expect(html).toContain('href="/financeiro"')
     expect(html).toContain("Sair")
@@ -75,6 +76,14 @@ describe("rotas migradas da Gestão", () => {
     // Coordenação pode registrar atividades.
     expect(html).toContain("Nova atividade")
     expect(html).toContain("Editar")
+  })
+
+  it("abre a lista de iniciativas em carregamento", () => {
+    const html = renderizarRota("/gestao/projetos")
+    expect(html).toContain("Projetos, serviços e programas")
+    expect(html).toContain("Carregando iniciativas")
+    expect(html).toContain("Nova iniciativa")
+    expect(html).toContain('href="/gestao/projetos"')
   })
 
   it("renderiza a Agenda em /gestao/agenda", () => {
