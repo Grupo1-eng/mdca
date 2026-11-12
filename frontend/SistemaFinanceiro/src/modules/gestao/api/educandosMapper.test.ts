@@ -9,7 +9,9 @@ import {
   rendaParaApi,
   rendaParaTela,
   responsaveisParaSalvar,
+  planejarVinculo,
 } from "./educandosMapper"
+import { dataLocalParaIso } from "./evolucoesMapper"
 
 const apiBase: EducandoApi = {
   id: 7,
@@ -138,6 +140,13 @@ describe("paraEducandoPayload", () => {
     expect(payload).not.toHaveProperty("dataIngresso")
   })
 
+  it("envia o CPF só com números e recusa CPF incompleto", () => {
+    const base = { ...educandoVazio(), nome: "Ana" }
+    expect(paraEducandoPayload({ ...base, cpf: "123.456.789-10" }).cpf).toBe("12345678910")
+    expect(paraEducandoPayload(base).cpf).toBeNull()
+    expect(() => paraEducandoPayload({ ...base, cpf: "123.456" })).toThrow(/11 dígitos/)
+  })
+
   it("exige nome", () => {
     expect(() => paraEducandoPayload(educandoVazio())).toThrow(/nome/)
   })
@@ -163,5 +172,41 @@ describe("responsaveisParaSalvar", () => {
     expect(() =>
       responsaveisParaSalvar([{ ...responsavelVazio(), nome: "Tia" }]),
     ).toThrow(/nome e vínculo/)
+  })
+})
+
+describe("vínculo com a iniciativa", () => {
+  it("lê o vínculo principal (primeiro ativo) do servidor", () => {
+    const educando = deEducandoApi({
+      ...apiBase,
+      situacaoAtual: "ativo",
+      educandoProjetos: [
+        { id: 70, educandoId: 1, projetoId: 5, situacao: "ativo", dataIngresso: dataLocalParaIso("2026-03-10") },
+        { id: 60, educandoId: 1, projetoId: 2, situacao: "ativo", dataIngresso: dataLocalParaIso("2025-01-01") },
+      ],
+    })
+    expect(educando).toMatchObject({ iniciativaId: "5", dataIngresso: "2026-03-10", vinculoId: "70" })
+  })
+
+  it("sem vínculo, campos vazios", () => {
+    expect(deEducandoApi({ ...apiBase, situacaoAtual: "ativo" })).toMatchObject({ iniciativaId: "", dataIngresso: "" })
+  })
+
+  const gravado = { vinculoId: "70", iniciativaId: "5", dataIngresso: "2026-03-10" }
+
+  it("planeja criar, trocar, mudar data, encerrar ou não fazer nada", () => {
+    expect(planejarVinculo(undefined, { iniciativaId: "", dataIngresso: "" })).toEqual([])
+    expect(planejarVinculo(undefined, { iniciativaId: "5", dataIngresso: "" })).toEqual([
+      { tipo: "criar", projetoId: 5, dataIngresso: undefined },
+    ])
+    expect(planejarVinculo(gravado, { iniciativaId: "5", dataIngresso: "2026-03-10" })).toEqual([])
+    expect(planejarVinculo(gravado, { iniciativaId: "5", dataIngresso: "2026-04-01" })).toEqual([
+      { tipo: "atualizar", id: 70, dataIngresso: dataLocalParaIso("2026-04-01") },
+    ])
+    expect(planejarVinculo(gravado, { iniciativaId: "8", dataIngresso: "2026-03-10" }).map((a) => a.tipo)).toEqual([
+      "encerrar",
+      "criar",
+    ])
+    expect(planejarVinculo(gravado, { iniciativaId: "", dataIngresso: "" })).toEqual([{ tipo: "encerrar", id: 70 }])
   })
 })

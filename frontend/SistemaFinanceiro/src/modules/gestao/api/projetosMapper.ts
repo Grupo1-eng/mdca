@@ -1,5 +1,5 @@
 // Conversão entre a tela (rótulos em português, datas AAAA-MM-DD, dinheiro
-// com vírgula) e o contrato de /api/projetos (tipo em maiúsculas, dinheiro
+// com vírgula) e o contrato de /api/iniciativas (tipo em maiúsculas, dinheiro
 // com ponto). Funções puras.
 import { paraInputData } from "@/lib/format"
 import type { ProjetoApi, ProjetoPayload, TipoProjetoApi } from "./projetos"
@@ -15,7 +15,6 @@ const ROTULO_TIPO: Record<TipoProjetoApi, string> = {
 
 export interface IniciativaTela {
   id: string
-  organizacaoId: number
   nome: string
   descricao: string
   tipo: TipoProjetoApi
@@ -67,7 +66,6 @@ export function orcamentoParaApi(valor: string): string | null {
 export function deProjetoApi(api: ProjetoApi): IniciativaTela {
   return {
     id: String(api.id),
-    organizacaoId: api.organizacaoId,
     nome: api.nome,
     descricao: api.descricao ?? "",
     tipo: tipoParaApi(api.tipo),
@@ -94,12 +92,4 @@ export function paraProjetoPayload(iniciativa: IniciativaTela): ProjetoPayload {
     dataInicio: iniciativa.dataInicio || null,
     dataFim: iniciativa.dataFim || null,
   }
-}
-
-export function daOrganizacao(
-  iniciativas: IniciativaTela[],
-  organizacaoId: number | null,
-): IniciativaTela[] {
-  if (organizacaoId === null) return iniciativas
-  return iniciativas.filter((item) => item.organizacaoId === organizacaoId)
 }

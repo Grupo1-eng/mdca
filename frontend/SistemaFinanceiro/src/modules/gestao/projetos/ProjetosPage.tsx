@@ -19,7 +19,10 @@ import {
   inputClass,
   textareaClass,
 } from "../educandos/components/EducandoUi"
-import { useSalvarGestao } from "../educandos/EducandosContext"
+import {
+  useEducandosGestao,
+  useSalvarGestao,
+} from "../educandos/EducandosContext"
 import { filtrarIniciativas, iniciativaVazia } from "./model"
 
 const primaryButton =
@@ -38,6 +41,7 @@ export default function ProjetosPage() {
   const { user } = useAuth()
   const podeEditar = user?.perfil === "coordenador"
   const { estado, mensagem, salvar } = useSalvarGestao()
+  const { atualizarIniciativas } = useEducandosGestao()
   const [lista, setLista] = useState<IniciativaTela[]>([])
   const [carga, setCarga] = useState<"carregando" | "pronta" | "erro">("carregando")
   const [erro, setErro] = useState<string | null>(null)
@@ -45,15 +49,13 @@ export default function ProjetosPage() {
   const [tipo, setTipo] = useState<"todos" | TipoProjetoApi>("todos")
   const [status, setStatus] = useState("todos")
   const [form, setForm] = useState<IniciativaTela | null>(null)
-  const [separaOrganizacao, setSeparaOrganizacao] = useState(true)
 
   const recarregar = () => {
     setCarga("carregando")
     setErro(null)
     carregarIniciativas()
-      .then((resultado) => {
-        setLista(resultado.iniciativas)
-        setSeparaOrganizacao(resultado.separaOrganizacao)
+      .then((iniciativas) => {
+        setLista(iniciativas)
         setCarga("pronta")
       })
       .catch((falha: unknown) => {
@@ -79,7 +81,10 @@ export default function ProjetosPage() {
       const payload = paraProjetoPayload(form)
       if (form.id) await atualizarProjeto(Number(form.id), payload)
       else await criarProjeto(payload)
-      setLista((await carregarIniciativas()).iniciativas)
+      setLista(await carregarIniciativas())
+      // A ficha do educando usa a lista do contexto: recarrega para a nova
+      // iniciativa aparecer sem precisar atualizar a página.
+      atualizarIniciativas()
       setForm(null)
     })
   }
@@ -88,7 +93,7 @@ export default function ProjetosPage() {
     <div>
       <PageHeader
         titulo="Projetos, serviços e programas"
-        descricao="Iniciativas da organização. O cadastro é o mesmo usado pelo Financeiro."
+        descricao="Iniciativas da organização. O cadastro é feito aqui, pela coordenação, e as iniciativas também aparecem no Financeiro."
         acoes={
           <div className="flex flex-wrap items-center gap-3">
             <SaveStatus estado={estado} />
@@ -110,14 +115,6 @@ export default function ProjetosPage() {
 
       {carga === "carregando" && <LoadingState label="Carregando iniciativas" />}
       {carga === "erro" && erro && <ErrorState message={erro} />}
-      {carga === "pronta" && !separaOrganizacao && (
-        <div className="mb-4">
-          <SensitiveNote>
-            A sessão não informou a organização, então esta lista pode incluir
-            iniciativas de outras organizações.
-          </SensitiveNote>
-        </div>
-      )}
 
       {carga === "pronta" && (
         <>

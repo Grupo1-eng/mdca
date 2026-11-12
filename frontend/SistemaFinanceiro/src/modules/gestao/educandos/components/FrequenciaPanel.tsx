@@ -1,12 +1,27 @@
+import { ehIdPersistido } from "../../api/educandosMapper"
 import { useEducandosGestao } from "../EducandosContext"
-import { Badge, Card } from "./EducandoUi"
+import { Badge, Card, SensitiveNote } from "./EducandoUi"
 
 export default function FrequenciaPanel({
   educandoId,
 }: {
   educandoId: string
 }) {
-  const { encontros, atividades, iniciativaNome } = useEducandosGestao()
+  const {
+    encontros,
+    atividades,
+    iniciativaDemonstracaoNome: iniciativaNome,
+  } = useEducandosGestao()
+  // Educando do banco: o registro de frequência ainda não tem rota no
+  // backend, então não há o que mostrar (os encontros de exemplo não são dele).
+  if (ehIdPersistido(educandoId)) {
+    return (
+      <SensitiveNote>
+        O histórico de frequência deste educando aparecerá aqui quando o
+        registro de presença nos encontros for integrado (próxima etapa).
+      </SensitiveNote>
+    )
+  }
   const registros = [...encontros]
     .filter((encontro) =>
       encontro.presencas.some((presenca) => presenca.educandoId === educandoId),

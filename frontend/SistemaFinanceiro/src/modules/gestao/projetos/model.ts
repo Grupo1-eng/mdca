@@ -25,7 +25,6 @@ export function filtrarIniciativas(
 export function iniciativaVazia(): IniciativaTela {
   return {
     id: "",
-    organizacaoId: 0,
     nome: "",
     descricao: "",
     tipo: "PROJETO",

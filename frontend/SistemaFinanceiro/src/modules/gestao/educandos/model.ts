@@ -145,6 +145,21 @@ export function normalizarDocumento(valor: string): string {
   return valor.replace(/\D/g, "")
 }
 
+// Máscara de CPF: só números, no máximo 11, no formato 000.000.000-00.
+export function formatarCpf(valor: string): string {
+  const d = normalizarDocumento(valor).slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
+// CPF vazio é permitido; preenchido, precisa ter os 11 dígitos.
+export function cpfIncompleto(valor: string): boolean {
+  const d = normalizarDocumento(valor)
+  return d.length > 0 && d.length !== 11
+}
+
 export interface DuplicidadeDocumento {
   campo: "cpf" | "nis"
   educando: Educando

@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import * as api from "../api/educandos"
 import { deEducandoApi, ehIdPersistido } from "../api/educandosMapper"
+import { listarIniciativas } from "../api/iniciativas"
 import { salvarEducandoRemoto } from "../api/educandosFluxo"
 import { atividadesSeed, encontrosSeed, iniciativasSeed } from "./data/mock"
 import { salvarAtividadeEmMemoria } from "../atividades/model"
@@ -22,21 +23,27 @@ export type SaveState = "idle" | "saving" | "saved" | "error"
 export type CargaEducandos = "ociosa" | "carregando" | "pronta" | "erro"
 
 interface EducandosContextValue {
+  // Iniciativas reais (GET /api/iniciativas), carregadas junto com os
+  // educandos.
   iniciativas: Iniciativa[]
   // Educandos vêm da API real (GET /api/educandos); atendimentos e
-  // encaminhamentos, de useEvolucoesEducando. Atividades e encontros
-  // continuam em memória. A lista de iniciativas da ficha e da tela de
-  // projetos vem de GET /api/projetos; este seed só alimenta o mock de atividades.
+  // encaminhamentos, de useEvolucoesEducando. Atividades e encontros ainda
+  // são mock (com iniciativas de exemplo), até a próxima etapa.
   educandos: Educando[]
   cargaEducandos: CargaEducandos
   erroEducandos: string | null
   // Idempotente: só busca na primeira chamada (ou depois de um erro).
   carregarEducandos: () => void
+  // Busca de novo as iniciativas (depois de cadastrar ou editar uma).
+  atualizarIniciativas: () => void
   // Busca a ficha completa (com responsáveis) e atualiza a lista.
   carregarEducando: (id: string) => Promise<void>
   atividades: Atividade[]
   encontros: Encontro[]
   iniciativaNome: (id: string) => string
+  // Só para as atividades e encontros de demonstração.
+  iniciativasDemonstracao: Iniciativa[]
+  iniciativaDemonstracaoNome: (id: string) => string
   // Devolve o registro salvo, com o id definitivo do servidor.
   salvarEducando: (educando: Educando) => Promise<Educando>
   alternarSituacaoEducando: (id: string) => Promise<void>
@@ -55,7 +62,32 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
   const [atividades, setAtividades] = useState(atividadesSeed)
   const atividadesAtuais = useRef(atividadesSeed)
 
+  const [iniciativas, setIniciativas] = useState<Iniciativa[]>([])
+  const iniciativasCarregadas = useRef(false)
+
+  // Idempotente; em caso de erro, tenta de novo na próxima carga.
+  const carregarIniciativas = useCallback(() => {
+    if (iniciativasCarregadas.current) return
+    iniciativasCarregadas.current = true
+    listarIniciativas()
+      .then(setIniciativas)
+      .catch(() => {
+        iniciativasCarregadas.current = false
+      })
+  }, [])
+
+  const atualizarIniciativas = useCallback(() => {
+    iniciativasCarregadas.current = false
+    carregarIniciativas()
+  }, [carregarIniciativas])
+
   const iniciativaNome = useCallback(
+    (id: string) =>
+      iniciativas.find((iniciativa) => iniciativa.id === id)?.nome ?? "—",
+    [iniciativas],
+  )
+
+  const iniciativaDemonstracaoNome = useCallback(
     (id: string) =>
       iniciativasSeed.find((iniciativa) => iniciativa.id === id)?.nome ?? "—",
     [],
@@ -87,6 +119,7 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
   )
 
   const carregarEducandos = useCallback(() => {
+    carregarIniciativas()
     if (cargaAtual.current === "carregando" || cargaAtual.current === "pronta")
       return
     cargaAtual.current = "carregando"
@@ -108,14 +141,15 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
             : "Não foi possível carregar os educandos.",
         )
       })
-  }, [aplicarEducandos])
+  }, [aplicarEducandos, carregarIniciativas])
 
   const carregarEducando = useCallback(
     async (id: string) => {
+      carregarIniciativas()
       if (!ehIdPersistido(id)) return
       mesclarEducando(deEducandoApi(await api.buscarEducando(Number(id))))
     },
-    [mesclarEducando],
+    [mesclarEducando, carregarIniciativas],
   )
 
   const salvarEducando = useCallback(
@@ -150,24 +184,30 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<EducandosContextValue>(
     () => ({
-      iniciativas: iniciativasSeed,
+      iniciativas,
       educandos,
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      atualizarIniciativas,
       carregarEducando,
       atividades,
       encontros: encontrosSeed,
       iniciativaNome,
+      iniciativasDemonstracao: iniciativasSeed,
+      iniciativaDemonstracaoNome,
       salvarEducando,
       alternarSituacaoEducando,
       salvarAtividade,
     }),
     [
+      iniciativas,
+      iniciativaDemonstracaoNome,
       educandos,
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      atualizarIniciativas,
       carregarEducando,
       atividades,
       salvarAtividade,

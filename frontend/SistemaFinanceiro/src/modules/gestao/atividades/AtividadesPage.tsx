@@ -10,6 +10,7 @@ import {
   Field,
   PageHeader,
   SaveStatus,
+  SensitiveNote,
   inputClass,
   textareaClass,
 } from "../educandos/components/EducandoUi"
@@ -31,7 +32,14 @@ const actionButton =
 
 export default function AtividadesPage() {
   const { user } = useAuth()
-  const { atividades, encontros, iniciativas, iniciativaNome, salvarAtividade } =
+  // Demonstração: atividades e iniciativas de exemplo até a próxima etapa.
+  const {
+    atividades,
+    encontros,
+    iniciativasDemonstracao: iniciativas,
+    iniciativaDemonstracaoNome: iniciativaNome,
+    salvarAtividade,
+  } =
     useEducandosGestao()
   const { registrarAtividade } = permissoesAtividades(user?.perfil)
   const { estado, salvar, mensagem } = useSalvarGestao()
@@ -77,6 +85,14 @@ export default function AtividadesPage() {
           ) : undefined
         }
       />
+
+      <div className="mb-4">
+        <SensitiveNote>
+          Demonstração: as atividades ainda não são salvas no servidor e voltam
+          ao exemplo ao recarregar a página. A integração com o banco é a
+          próxima etapa.
+        </SensitiveNote>
+      </div>
 
       {registrarAtividade && aberto && (
         <Card className="mb-5 p-5">

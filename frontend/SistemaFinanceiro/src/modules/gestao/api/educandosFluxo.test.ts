@@ -38,6 +38,9 @@ function apiFalsa(): ChamadasEducandos {
     atualizarEducando: vi.fn(async (id, dados) => educandoApi(id, dados.nome)),
     criarResponsavel: vi.fn(async (dados) => ({ id: 90, ...dados })),
     atualizarResponsavel: vi.fn(async (id, dados) => ({ id, ...dados })),
+    criarVinculo: vi.fn(async (dados) => ({ id: 70, situacao: "ativo", dataIngresso: "2026-01-01T15:00:00.000Z", ...dados })),
+    atualizarVinculo: vi.fn(async (id) => ({ id, educandoId: 1, projetoId: 1, situacao: "ativo", dataIngresso: "2026-01-01T15:00:00.000Z" })),
+    encerrarVinculo: vi.fn(async (id) => ({ id, educandoId: 1, projetoId: 1, situacao: "encerrado", dataIngresso: "2026-01-01T15:00:00.000Z" })),
     buscarEducando: vi.fn(async (id) =>
       educandoApi(id, "Lido do servidor", [
         {
@@ -117,5 +120,26 @@ describe("salvarEducandoRemoto", () => {
 
     await expect(salvarEducandoRemoto(novo, [], api)).rejects.toThrow(/nome e vínculo/)
     expect(api.criarEducando).not.toHaveBeenCalled()
+  })
+
+  it("cria o vínculo com a iniciativa escolhida no cadastro", async () => {
+    const api = apiFalsa()
+    await salvarEducandoRemoto(
+      { ...educandoVazio(), nome: "Lia", iniciativaId: "5", dataIngresso: "2026-03-10" },
+      [],
+      api,
+    )
+    expect(api.criarVinculo).toHaveBeenCalledWith(
+      expect.objectContaining({ educandoId: 41, projetoId: 5 }),
+    )
+    expect(api.encerrarVinculo).not.toHaveBeenCalled()
+  })
+
+  it("trocar de iniciativa encerra o vínculo antigo e cria outro", async () => {
+    const api = apiFalsa()
+    const gravado = { ...educandoVazio(), id: "12", nome: "Caio", iniciativaId: "5", dataIngresso: "2026-03-10", vinculoId: "70" }
+    await salvarEducandoRemoto({ ...gravado, iniciativaId: "8" }, [gravado], api)
+    expect(api.encerrarVinculo).toHaveBeenCalledWith(70)
+    expect(api.criarVinculo).toHaveBeenCalledWith(expect.objectContaining({ educandoId: 12, projetoId: 8 }))
   })
 })

@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from "react"
+import { type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import {
   useEducandosGestao,
@@ -12,6 +12,7 @@ import {
   duplicidadeDe,
   educandoVazio,
   responsavelVazio,
+  formatarCpf,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
 import {
@@ -19,8 +20,6 @@ import {
   VINCULO_INICIATIVA_PENDENTE,
   ehIdPersistido,
 } from "../../api/educandosMapper"
-import { carregarIniciativas } from "../../api/projetosFluxo"
-import { tipoParaTela, type IniciativaTela } from "../../api/projetosMapper"
 import { useRascunho } from "../useRascunho"
 import {
   Card,
@@ -122,10 +121,9 @@ export default function EducandoForm({
   leitura?: boolean
 }) {
   const navigate = useNavigate()
-  const { educandos, salvarEducando } = useEducandosGestao()
+  const { iniciativas, educandos, salvarEducando } = useEducandosGestao()
   const permissoes = usePermissoesEducandos()
   const { estado, mensagem, salvar } = useSalvarGestao()
-  const [iniciativasReais, setIniciativasReais] = useState<IniciativaTela[]>([])
   const [form, setForm, limparRascunho] = useRascunho<Educando>(
     `rascunho:gestao:educando:${educando?.id ?? "novo"}`,
     educando ?? educandoVazio(),
@@ -133,20 +131,6 @@ export default function EducandoForm({
 
   const set = <K extends keyof Educando>(campo: K, valor: Educando[K]) =>
     setForm((atual) => ({ ...atual, [campo]: valor }))
-
-  useEffect(() => {
-    let ativo = true
-    carregarIniciativas()
-      .then((resultado) => {
-        if (ativo) setIniciativasReais(resultado.iniciativas)
-      })
-      .catch(() => {
-        if (ativo) setIniciativasReais([])
-      })
-    return () => {
-      ativo = false
-    }
-  }, [])
 
   const atualizarResponsavel = (
     id: string,
@@ -234,7 +218,7 @@ export default function EducandoForm({
         <TextInput
           label="CPF"
           value={form.cpf}
-          onChange={(value) => set("cpf", value)}
+          onChange={(value) => set("cpf", formatarCpf(value))}
           placeholder="000.000.000-00"
           error={duplicidade?.campo === "cpf" ? erroDuplicidade : undefined}
           disabled={leitura}
@@ -276,12 +260,22 @@ export default function EducandoForm({
             disabled={leitura || vinculoPendente}
           >
             <option value="">Selecione a iniciativa</option>
-            {iniciativasReais.map((iniciativa) => (
+            {iniciativas.map((iniciativa) => (
               <option key={iniciativa.id} value={iniciativa.id}>
-                {iniciativa.nome} ({tipoParaTela(iniciativa.tipo)})
+                {iniciativa.nome} ({iniciativa.tipo})
               </option>
             ))}
           </select>
+          {!vinculoPendente && iniciativas.length === 0 && (
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Nenhuma iniciativa cadastrada. A coordenação cadastra projetos,
+              serviços e programas em{" "}
+              <Link to="/gestao/projetos" className="underline">
+                Projetos, Serviços e Programas
+              </Link>
+              .
+            </p>
+          )}
           {vinculoPendente && (
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
               {AVISO_VINCULO}
@@ -370,7 +364,11 @@ export default function EducandoForm({
                 label={label}
                 value={responsavel[campo]}
                 onChange={(value) =>
-                  atualizarResponsavel(responsavel.id, campo, value)
+                  atualizarResponsavel(
+                    responsavel.id,
+                    campo,
+                    campo === "cpf" ? formatarCpf(value) : value,
+                  )
                 }
                 disabled={leitura}
                 full={campo === "escolaridade"}
