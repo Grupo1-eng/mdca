@@ -34,6 +34,8 @@ interface EducandosContextValue {
   erroEducandos: string | null
   // Idempotente: só busca na primeira chamada (ou depois de um erro).
   carregarEducandos: () => void
+  // Busca de novo as iniciativas (depois de cadastrar ou editar uma).
+  atualizarIniciativas: () => void
   // Busca a ficha completa (com responsáveis) e atualiza a lista.
   carregarEducando: (id: string) => Promise<void>
   atividades: Atividade[]
@@ -73,6 +75,11 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
         iniciativasCarregadas.current = false
       })
   }, [])
+
+  const atualizarIniciativas = useCallback(() => {
+    iniciativasCarregadas.current = false
+    carregarIniciativas()
+  }, [carregarIniciativas])
 
   const iniciativaNome = useCallback(
     (id: string) =>
@@ -182,6 +189,7 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      atualizarIniciativas,
       carregarEducando,
       atividades,
       encontros: encontrosSeed,
@@ -199,6 +207,7 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      atualizarIniciativas,
       carregarEducando,
       atividades,
       salvarAtividade,

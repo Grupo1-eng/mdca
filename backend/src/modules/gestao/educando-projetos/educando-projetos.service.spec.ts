@@ -89,11 +89,48 @@ describe('EducandoProjetosService', () => {
 });
 
 describe('IniciativasService', () => {
+  function montar() {
+    const prisma: any = prismaFalso();
+    prisma.projeto.create = jest.fn();
+    prisma.projeto.update = jest.fn();
+    prisma.$transaction = jest.fn((fn: (tx: unknown) => unknown) => fn(prisma));
+    const auditoria = { criacao: jest.fn(), atualizacao: jest.fn() };
+    return { prisma, auditoria, service: new IniciativasService(prisma, auditoria as any) };
+  }
+
   it('lista só as iniciativas da organização', async () => {
-    const prisma = prismaFalso();
+    const { prisma, service } = montar();
     prisma.projeto.findMany.mockResolvedValue([]);
-    await new IniciativasService(prisma as any).listar(3);
+    await service.listar(3);
     expect(prisma.projeto.findMany.mock.calls[0][0].where).toEqual({ organizacaoId: 3 });
+  });
+
+  it('cria na organização do usuário e registra a auditoria do projeto', async () => {
+    const { prisma, auditoria, service } = montar();
+    const criado = { id: 5, nome: 'Semear', organizacaoId: 3 };
+    prisma.projeto.create.mockResolvedValue(criado);
+    const dados = { nome: 'Semear', tipo: 'PROJETO' as const, status: 'Planejamento' };
+    await expect(service.criar(dados, 3)).resolves.toBe(criado);
+    expect(prisma.projeto.create.mock.calls[0][0].data).toEqual({ ...dados, organizacaoId: 3 });
+    expect(auditoria.criacao).toHaveBeenCalledWith(prisma, 'projeto', criado);
+  });
+
+  it('edita só iniciativa da própria organização', async () => {
+    const { prisma, auditoria, service } = montar();
+    const antes = { id: 5, nome: 'Semear', organizacaoId: 3 };
+    const depois = { ...antes, nome: 'Semear 2' };
+    prisma.projeto.findFirst.mockResolvedValue(antes);
+    prisma.projeto.update.mockResolvedValue(depois);
+    await expect(service.atualizar(5, { nome: 'Semear 2' }, 3)).resolves.toBe(depois);
+    expect(prisma.projeto.findFirst.mock.calls[0][0].where).toEqual({ id: 5, organizacaoId: 3 });
+    expect(auditoria.atualizacao).toHaveBeenCalledWith(prisma, 'projeto', antes, depois);
+  });
+
+  it('iniciativa de outra organização responde 404 e não altera nada', async () => {
+    const { prisma, service } = montar();
+    prisma.projeto.findFirst.mockResolvedValue(null);
+    await expect(service.atualizar(5, { nome: 'X' }, 9)).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.projeto.update).not.toHaveBeenCalled();
   });
 });
 
@@ -110,6 +147,11 @@ describe('Perfis das rotas de iniciativas e vínculos', () => {
       for (const p of financeiros) expect(perfis).not.toContain(p);
       expect(perfis).toContain(PERFIS.EDUCADOR);
     }
+  });
+
+  it('só a coordenação cadastra e edita iniciativas', () => {
+    expect(perfisDe(IniciativasController.prototype.criar)).toEqual([PERFIS.COORDENACAO]);
+    expect(perfisDe(IniciativasController.prototype.atualizar)).toEqual([PERFIS.COORDENACAO]);
   });
 
   it('só técnicos e coordenação gravam vínculos', () => {

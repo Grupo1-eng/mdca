@@ -268,8 +268,12 @@ export default function EducandoForm({
           </select>
           {!vinculoPendente && iniciativas.length === 0 && (
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              Nenhuma iniciativa cadastrada. Os projetos, serviços e programas
-              são cadastrados na tela Projetos do Financeiro.
+              Nenhuma iniciativa cadastrada. A coordenação cadastra projetos,
+              serviços e programas em{" "}
+              <Link to="/gestao/projetos" className="underline">
+                Projetos, Serviços e Programas
+              </Link>
+              .
             </p>
           )}
           {vinculoPendente && (

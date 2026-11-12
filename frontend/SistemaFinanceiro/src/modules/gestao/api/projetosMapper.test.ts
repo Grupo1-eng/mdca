@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { organizacaoIdDoToken } from "./projetos"
 import {
-  daOrganizacao,
   deProjetoApi,
   orcamentoParaApi,
   paraProjetoPayload,
@@ -9,14 +7,6 @@ import {
   tipoParaTela,
 } from "./projetosMapper"
 import { filtrarIniciativas } from "../projetos/model"
-
-function tokenCom(payload: object): string {
-  const json = btoa(JSON.stringify(payload))
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-  return `cabecalho.${json}.assinatura`
-}
 
 describe("tipo", () => {
   it("traduz SERVICO para Serviço e de volta", () => {
@@ -33,7 +23,6 @@ describe("deProjetoApi", () => {
   it("não inventa código e lê a data pela parte AAAA-MM-DD", () => {
     const tela = deProjetoApi({
       id: 12,
-      organizacaoId: 3,
       nome: "Serviço de convivência",
       descricao: null,
       tipo: "SERVICO",
@@ -44,7 +33,6 @@ describe("deProjetoApi", () => {
     })
     expect(tela).toMatchObject({
       id: "12",
-      organizacaoId: 3,
       nome: "Serviço de convivência",
       descricao: "",
       tipo: "SERVICO",
@@ -61,7 +49,6 @@ describe("paraProjetoPayload", () => {
   it("envia o tipo em maiúsculas e o orçamento com ponto", () => {
     const payload = paraProjetoPayload({
       id: "12",
-      organizacaoId: 3,
       nome: "  Semear  ",
       descricao: "  ",
       tipo: "PROJETO",
@@ -79,14 +66,12 @@ describe("paraProjetoPayload", () => {
       dataInicio: "2026-03-01",
       dataFim: null,
     })
-    expect(payload).not.toHaveProperty("organizacaoId")
     expect(payload).not.toHaveProperty("codigo")
   })
 
   it("exige nome e recusa orçamento inválido", () => {
     const base = {
       id: "",
-      organizacaoId: 0,
       nome: "Semear",
       descricao: "",
       tipo: "PROJETO" as const,
@@ -100,11 +85,10 @@ describe("paraProjetoPayload", () => {
   })
 })
 
-describe("organização e filtros", () => {
+describe("filtros", () => {
   const lista = [
     deProjetoApi({
       id: 1,
-      organizacaoId: 3,
       nome: "Semear",
       descricao: "Contraturno",
       tipo: "PROJETO",
@@ -115,8 +99,7 @@ describe("organização e filtros", () => {
     }),
     deProjetoApi({
       id: 2,
-      organizacaoId: 9,
-      nome: "Outra organização",
+      nome: "Mais Educação",
       descricao: null,
       tipo: "PROGRAMA",
       status: "Concluído",
@@ -125,12 +108,6 @@ describe("organização e filtros", () => {
       dataFim: null,
     }),
   ]
-
-  it("lê a organização do token e esconde as demais", () => {
-    expect(organizacaoIdDoToken(tokenCom({ organizacaoId: 3 }))).toBe(3)
-    expect(organizacaoIdDoToken("sem-ponto")).toBeNull()
-    expect(daOrganizacao(lista, 3).map((item) => item.id)).toEqual(["1"])
-  })
 
   it("filtra por tipo e situação", () => {
     expect(

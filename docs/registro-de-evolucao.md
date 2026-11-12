@@ -23,6 +23,26 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-12 — Cadastro de iniciativas na Gestão, vínculo do educando e ajustes das telas
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** #30 (branch `ajustes-iniciais-sprint-4`)
+
+**O que mudou:**
+- **Cadastro de projetos, serviços e programas pela Gestão:** novas rotas `POST /api/iniciativas` e `PUT /api/iniciativas/:id`, só para a coordenação (`PERFIS_CADASTRO_INICIATIVA` em `backend/src/modules/gestao/perfis-gestao.ts`). Usam a tabela compartilhada `projeto` e os mesmos DTOs de `/api/projetos`, sem campo novo. Gravam na organização do usuário; projeto de outra organização responde 404. A auditoria é a mesma do projeto (recurso `projeto`), então o histórico continua aparecendo no Financeiro. `GET /api/iniciativas` passou a devolver `orcamentoTotal`, para a edição não apagar o orçamento.
+- A tela `/gestao/projetos` (PR #29) passou a usar essas rotas, sem o filtro de organização feito no navegador (o backend já filtra). Depois de salvar, a lista de iniciativas da ficha do educando é recarregada.
+- **Vínculo do educando com a iniciativa (RF21):** `GET /api/iniciativas` e `api/educando-projetos` (listar, criar, atualizar data de ingresso, encerrar; sem DELETE). A ficha do educando grava a iniciativa e a data de ingresso.
+- **Ajustes das telas:** dashboard com dados reais (educandos e agenda), horário de atendimento e acompanhamento corrigido (diferença de 3 horas do UTC), CPF com máscara e 11 dígitos (frontend e DTOs).
+- Merge da `main` (PRs #22 a #29). Nos 3 conflitos em educandos ficou a versão com o vínculo, que substitui o aviso provisório do PR #29.
+
+**Por quê:** combinado com o Financeiro (Pedro): só a Gestão cadastra iniciativas. RF20 e RF21.
+
+**Pendências:**
+- Financeiro: tirar o botão "+ Novo Projeto" da tela Projetos e restringir ou remover `POST/PUT/DELETE /api/projetos`. Depois disso, o orçamento só é editado pela Gestão (a tela do Financeiro não tem edição).
+- Revisar: `GET /api/iniciativas` entrega `orcamentoTotal` a todos os perfis da Gestão (educador, técnicos, administrativo), embora a tela só mostre o valor no formulário da coordenação. Mantido assim por ora.
+- Migration de integridade da Gestão (branch `feature/gestao-integridade-banco`): o índice único em `educando_projeto(educando_id, projeto_id)` conflita com recriar vínculo encerrado; a proposta é reativar o vínculo antigo.
+
+---
+
 ## 2026-11-05 — Regras do lançamento: situação, conta inativa e valor
 
 **Tipo:** correção · **Grupo:** financeiro · **PR:** #28 (branch `feature/financeiro-regras-lancamento`)
