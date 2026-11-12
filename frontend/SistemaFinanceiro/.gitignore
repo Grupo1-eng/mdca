@@ -19,3 +19,6 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# Gerado pelo pnpm 12 com um valor de exemplo inválido (ver commit e7541ee).
+pnpm-workspace.yaml

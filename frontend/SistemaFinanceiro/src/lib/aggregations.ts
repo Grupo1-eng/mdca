@@ -101,6 +101,36 @@ export function filtrarPorTipo(lancamentos: Lancamento[], tipo: FiltroTipo): Lan
   return tipo === "todos" ? lancamentos : lancamentos.filter((l) => l.tipo === tipo);
 }
 
+/** Filtro de projeto da tela Financeiro: um projeto, os sem projeto ("nenhum") ou todos. */
+export type FiltroProjeto = "todos" | "nenhum" | number;
+
+export function filtrarPorProjeto(lancamentos: Lancamento[], filtro: FiltroProjeto): Lancamento[] {
+  if (filtro === "todos") return lancamentos;
+  const projetoId = filtro === "nenhum" ? null : filtro;
+  return lancamentos.filter((l) => l.projetoId === projetoId);
+}
+
+export interface ExecucaoDoProjeto {
+  orcamento: number | null;
+  executado: number;
+  /** Executado em relação ao orçamento, arredondado; null sem orçamento definido. */
+  percentual: number | null;
+  estourado: boolean;
+}
+
+/**
+ * Orçado x executado do projeto (RF05/RF12). Executado são as saídas pagas do
+ * projeto em qualquer data, como na execução orçamentária dos relatórios.
+ */
+export function execucaoDoProjeto(projeto: Projeto, lancamentos: Lancamento[]): ExecucaoDoProjeto {
+  const executado = soma(
+    lancamentos.filter((l) => l.projetoId === projeto.id && l.tipo === "saida" && l.situacao === "pago"),
+  );
+  const orcamento = projeto.orcamentoTotal;
+  if (orcamento === null || orcamento <= 0) return { orcamento, executado, percentual: null, estourado: false };
+  return { orcamento, executado, percentual: Math.round((executado / orcamento) * 100), estourado: executado >= orcamento };
+}
+
 function soma(lancamentos: Lancamento[]): number {
   return lancamentos.reduce((a, b) => a + b.valor, 0);
 }
@@ -131,6 +161,15 @@ export interface ContaPendente {
   tipo: "receber" | "pagar";
 }
 
+function paraContaPendente(l: Lancamento): ContaPendente {
+  return {
+    descricao: l.descricao ?? "",
+    valor: l.valor,
+    vencimento: dataDoLancamento(l),
+    tipo: l.tipo === "entrada" ? "receber" : "pagar",
+  };
+}
+
 /**
  * Lançamentos pendentes (ainda não pagos/recebidos), separados entre os que já
  * venceram e os que vencem nos próximos 7 dias.
@@ -143,70 +182,37 @@ export function contasPendentes(
   const emSeteDias = new Date(inicioHoje);
   emSeteDias.setDate(emSeteDias.getDate() + 7);
 
-  const toContaPendente = (l: Lancamento): ContaPendente => ({
-    descricao: l.descricao ?? "",
-    valor: l.valor,
-    vencimento: dataDoLancamento(l),
-    tipo: l.tipo === "entrada" ? "receber" : "pagar",
-  });
-
   const pendentes = lancamentos.filter((l) => l.situacao === "pendente");
-  const vencidas = pendentes.filter((l) => dataLocal(dataDoLancamento(l)) < inicioHoje).map(toContaPendente);
+  const vencidas = pendentes.filter((l) => dataLocal(dataDoLancamento(l)) < inicioHoje).map(paraContaPendente);
   const vencendo = pendentes
     .filter((l) => {
       const d = dataLocal(dataDoLancamento(l));
       return d >= inicioHoje && d <= emSeteDias;
     })
-    .map(toContaPendente);
+    .map(paraContaPendente);
 
   return { vencidas, vencendo };
 }
 
-export interface PontoFluxo {
-  mes: string;
-  realizado: number;
-  previsto: number;
-  saidasRealizado: number;
-  saidasPrevisto: number;
+/**
+ * Lançamentos já pagos/recebidos no período, do mais recente ao mais antigo.
+ * Ficam separados das vencidas (RF27): pendente nunca entra aqui.
+ */
+export function contasPagas(lancamentos: Lancamento[], intervalo: Intervalo): ContaPendente[] {
+  return filtrarPorIntervalo(lancamentos, intervalo)
+    .filter((l) => l.situacao !== "pendente")
+    .sort((a, b) => dataLocal(dataDoLancamento(b)).getTime() - dataLocal(dataDoLancamento(a)).getTime())
+    .map(paraContaPendente);
 }
 
-/** Série mensal de entradas/saídas realizadas vs. previstas — usada nos gráficos de fluxo de caixa. */
-export function serieFluxoCaixa(lancamentos: Lancamento[], meses = 6, hoje: Date = new Date()): PontoFluxo[] {
-  const formatter = new Intl.DateTimeFormat("pt-BR", { month: "short" });
-  const pontos: PontoFluxo[] = [];
-
-  for (let i = meses - 1; i >= 0; i--) {
-    const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-    const doMes = lancamentos.filter((l) => {
-      const d = dataLocal(dataDoLancamento(l));
-      return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
-    });
-    const entradas = doMes.filter((l) => l.tipo === "entrada");
-    const saidas = doMes.filter((l) => l.tipo === "saida");
-    pontos.push({
-      mes: formatter.format(ref).replace(".", ""),
-      realizado: soma(entradas.filter((l) => l.situacao === "recebido")),
-      previsto: soma(entradas),
-      saidasRealizado: soma(saidas.filter((l) => l.situacao === "pago")),
-      saidasPrevisto: soma(saidas),
-    });
-  }
-
-  return pontos;
-}
-
-export interface PontoFluxoPeriodo {
-  label: string;
-  entradas: number;
-  saidas: number;
+/** Contas na ordem do painel de saldos: ativas primeiro, cada grupo em ordem alfabética. */
+export function contasParaPainel(contas: Conta[]): Conta[] {
+  return [...contas].sort(
+    (a, b) => Number(b.ativa) - Number(a.ativa) || a.nome.localeCompare(b.nome, "pt-BR"),
+  );
 }
 
 export type AgrupamentoFluxo = "semana" | "mes" | "ano";
-
-export interface SerieFluxoPeriodo {
-  agrupamento: AgrupamentoFluxo;
-  pontos: PontoFluxoPeriodo[];
-}
 
 // Dia como número inteiro, imune ao horário de verão (que mudaria a conta em horas).
 function numeroDoDia(d: Date): number {
@@ -269,26 +275,18 @@ function agruparNoPeriodo<T extends object>(
   return { agrupamento, pontos };
 }
 
-/** Entradas vs. saídas do período — gráfico de fluxo da tela Financeiro. */
-export function serieFluxoPeriodo(lancamentos: Lancamento[], intervalo: Intervalo): SerieFluxoPeriodo {
-  return agruparNoPeriodo(
-    lancamentos,
-    intervalo,
-    () => ({ entradas: 0, saidas: 0 }),
-    (ponto, l) => {
-      if (l.tipo === "entrada") ponto.entradas += l.valor;
-      else ponto.saidas += l.valor;
-    },
-  );
-}
-
-export interface PontoFluxoCaixaPeriodo extends Omit<PontoFluxo, "mes"> {
+export interface PontoFluxoCaixaPeriodo {
   label: string;
+  realizado: number; // entradas recebidas
+  previsto: number; // todas as entradas
+  saidasRealizado: number; // saídas pagas
+  saidasPrevisto: number; // todas as saídas
 }
 
 /**
- * Realizado vs. previsto do período — gráfico de fluxo do Dashboard. Mesmos
- * valores da `serieFluxoCaixa`, agrupados como na `serieFluxoPeriodo`.
+ * Realizado vs. previsto do período — gráfico do painel e relatório de fluxo
+ * de caixa. Realizado é o que foi recebido/pago; previsto, todos os
+ * lançamentos. Agrupa por semana, mês ou ano conforme o tamanho do período.
  */
 export function serieFluxoCaixaPeriodo(
   lancamentos: Lancamento[],

@@ -27,7 +27,9 @@ describe("destino do módulo após o login", () => {
 describe("acesso por perfil", () => {
   it("segue as regras do backend para cada módulo", () => {
     expect(podeAcessarModulo("gestao", "coordenador")).toBe(true);
-    expect(podeAcessarModulo("financeiro", "coordenador")).toBe(false);
+    // Coordenação é admin dos dois módulos.
+    expect(podeAcessarModulo("financeiro", "coordenador")).toBe(true);
+    expect(podeAcessarModulo("financeiro", "educador")).toBe(false);
     expect(podeAcessarModulo("financeiro", "gestor_financeiro")).toBe(true);
     expect(podeAcessarModulo("gestao", "gestor_financeiro")).toBe(false);
     expect(podeAcessarModulo("financeiro", "administrativo")).toBe(true);
@@ -36,10 +38,15 @@ describe("acesso por perfil", () => {
   });
 
   it("leva ao módulo permitido quando a escolha do login não é", () => {
-    expect(rotaPosLogin({ modulo: "financeiro" }, "coordenador")).toBe("/gestao");
+    expect(rotaPosLogin({ modulo: "financeiro" }, "tecnico_servico_social")).toBe("/gestao");
     expect(rotaPosLogin({ modulo: "gestao" }, "analista_financeiro")).toBe("/financeiro");
     expect(rotaPosLogin({ modulo: "financeiro" }, "administrativo")).toBe("/financeiro");
     expect(rotaPosLogin({ modulo: "gestao" }, "tecnico_psicologia")).toBe("/gestao");
+  });
+
+  it("coordenação vai para o módulo que escolheu no login", () => {
+    expect(rotaPosLogin({ modulo: "financeiro" }, "coordenador")).toBe("/financeiro");
+    expect(rotaPosLogin({ modulo: "gestao" }, "coordenador")).toBe("/gestao");
   });
 
   it("mantém a escolha quando o perfil não acessa nenhum dos dois", () => {

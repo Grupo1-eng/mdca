@@ -1,19 +1,21 @@
 import { describe, expect, it } from "vitest";
-import type { Categoria, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
+import type { Categoria, Conta, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
 import {
   arvoreCategorias,
+  contasPagas,
   contasPendentes,
+  contasParaPainel,
   dataDoLancamento,
+  execucaoDoProjeto,
   execucaoOrcamentaria,
   filtrarPorIntervalo,
+  filtrarPorProjeto,
   filtrarPorTipo,
   getIntervaloPeriodo,
   intervaloValido,
   msAteProximoDia,
   resumoPeriodo,
-  serieFluxoCaixa,
   serieFluxoCaixaPeriodo,
-  serieFluxoPeriodo,
 } from "./aggregations";
 
 function lanc(parcial: Partial<Lancamento>): Lancamento {
@@ -200,35 +202,36 @@ describe("filtrarPorTipo", () => {
   });
 });
 
-describe("serieFluxoPeriodo", () => {
+// Agrupamento compartilhado pelos gráficos de fluxo por período.
+describe("serieFluxoCaixaPeriodo: agrupamento", () => {
   const hoje = new Date(2026, 8, 15);
   const periodo = (de: string, ate: string) => getIntervaloPeriodo("personalizado", hoje, de, ate);
 
   it("agrupa por semana em períodos curtos, com semanas vazias zeradas", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ tipo: "entrada", valor: 100, dataCompetencia: "2026-08-01T00:00:00.000Z" }),
       lanc({ tipo: "saida", valor: 40, dataCompetencia: "2026-08-07T00:00:00.000Z" }),
       lanc({ tipo: "entrada", valor: 50, dataCompetencia: "2026-08-20T00:00:00.000Z" }),
     ], periodo("2026-08-01", "2026-08-31"));
     expect(agrupamento).toBe("semana");
     expect(pontos.map((p) => p.label)).toEqual(["01/08", "08/08", "15/08", "22/08", "29/08"]);
-    expect(pontos[0]).toMatchObject({ entradas: 100, saidas: 40 });
-    expect(pontos[1]).toMatchObject({ entradas: 0, saidas: 0 });
-    expect(pontos[2]).toMatchObject({ entradas: 50, saidas: 0 });
+    expect(pontos[0]).toMatchObject({ previsto: 100, saidasPrevisto: 40 });
+    expect(pontos[1]).toMatchObject({ previsto: 0, saidasPrevisto: 0 });
+    expect(pontos[2]).toMatchObject({ previsto: 50, saidasPrevisto: 0 });
   });
 
   it("agrupa por mês em períodos de até 2 anos", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ tipo: "entrada", valor: 100, dataCompetencia: "2026-01-31T00:00:00.000Z" }),
       lanc({ tipo: "saida", valor: 30, dataCompetencia: "2026-03-01T00:00:00.000Z" }),
     ], periodo("2026-01-01", "2026-03-31"));
     expect(agrupamento).toBe("mes");
     expect(pontos.map((p) => p.label)).toEqual(["jan/26", "fev/26", "mar/26"]);
-    expect(pontos.map((p) => [p.entradas, p.saidas])).toEqual([[100, 0], [0, 0], [0, 30]]);
+    expect(pontos.map((p) => [p.previsto, p.saidasPrevisto])).toEqual([[100, 0], [0, 0], [0, 30]]);
   });
 
   it("agrupa por ano acima de 2 anos", () => {
-    const { agrupamento, pontos } = serieFluxoPeriodo([
+    const { agrupamento, pontos } = serieFluxoCaixaPeriodo([
       lanc({ valor: 10, dataCompetencia: "2022-05-10T00:00:00.000Z" }),
       lanc({ valor: 20, dataCompetencia: "2026-02-10T00:00:00.000Z" }),
     ], getIntervaloPeriodo("todos", hoje));
@@ -238,16 +241,16 @@ describe("serieFluxoPeriodo", () => {
 
   it("ignora lançamentos fora do período e devolve vazio quando não há nenhum", () => {
     const fora = [lanc({ dataCompetencia: "2026-07-20T00:00:00.000Z" })];
-    expect(serieFluxoPeriodo(fora, periodo("2026-08-01", "2026-08-31")).pontos).toEqual([]);
+    expect(serieFluxoCaixaPeriodo(fora, periodo("2026-08-01", "2026-08-31")).pontos).toEqual([]);
   });
 
   it("com o início em aberto, começa no lançamento mais antigo", () => {
-    const { pontos } = serieFluxoPeriodo([
+    const { pontos } = serieFluxoCaixaPeriodo([
       lanc({ valor: 10, dataCompetencia: "2026-08-10T00:00:00.000Z" }),
       lanc({ valor: 20, dataCompetencia: "2026-08-12T00:00:00.000Z" }),
     ], periodo("", "2026-08-16"));
     expect(pontos.map((p) => p.label)).toEqual(["10/08"]);
-    expect(pontos[0].entradas).toBe(30);
+    expect(pontos[0].previsto).toBe(30);
   });
 });
 
@@ -269,16 +272,13 @@ describe("serieFluxoCaixaPeriodo", () => {
     expect(pontos[2]).toMatchObject({ realizado: 0, previsto: 0, saidasRealizado: 50, saidasPrevisto: 75 });
   });
 
-  it("agrupa como o gráfico do Financeiro e ignora o que está fora do período", () => {
+  it("ignora o que está fora do período", () => {
     const lancamentos = [
       lanc({ valor: 100, dataCompetencia: "2026-08-03T00:00:00.000Z" }),
       lanc({ valor: 999, dataCompetencia: "2026-06-01T00:00:00.000Z" }),
     ];
-    const agosto = periodo("2026-08-01", "2026-08-31");
-    const caixa = serieFluxoCaixaPeriodo(lancamentos, agosto);
-    const fluxo = serieFluxoPeriodo(lancamentos, agosto);
-    expect(caixa.agrupamento).toBe(fluxo.agrupamento);
-    expect(caixa.pontos.map((p) => p.label)).toEqual(fluxo.pontos.map((p) => p.label));
+    const caixa = serieFluxoCaixaPeriodo(lancamentos, periodo("2026-08-01", "2026-08-31"));
+    expect(caixa.agrupamento).toBe("semana");
     expect(caixa.pontos.reduce((a, p) => a + p.previsto, 0)).toBe(100);
   });
 });
@@ -308,18 +308,6 @@ describe("contasPendentes", () => {
     expect(vencidas[0].tipo).toBe("pagar");
     expect(vencendo).toHaveLength(1);
     expect(vencendo[0].tipo).toBe("receber");
-  });
-});
-
-describe("serieFluxoCaixa", () => {
-  it("separa realizado (recebido/pago) do previsto (todos)", () => {
-    const hoje = new Date(2026, 8, 20);
-    const serie = serieFluxoCaixa([
-      lanc({ tipo: "entrada", valor: 100, situacao: "recebido" }),
-      lanc({ tipo: "entrada", valor: 50, situacao: "pendente" }),
-      lanc({ tipo: "saida", valor: 40, situacao: "pago" }),
-    ], 1, hoje);
-    expect(serie[0]).toMatchObject({ realizado: 100, previsto: 150, saidasRealizado: 40, saidasPrevisto: 40 });
   });
 });
 
@@ -366,5 +354,98 @@ describe("execucaoOrcamentaria", () => {
 
   it("ignora projetos sem orçamento", () => {
     expect(execucaoOrcamentaria(projetos, categorias, [], [])).toEqual([]);
+  });
+});
+// RF27: as contas vencidas aparecem separadas das já pagas/recebidas.
+describe("contasPagas", () => {
+  it("lista só os lançamentos realizados do período, do mais recente ao mais antigo", () => {
+    const pagas = contasPagas([
+      lanc({ id: 1, situacao: "pago", tipo: "saida", descricao: "Luz", dataCompetencia: "2026-09-05T00:00:00.000Z" }),
+      lanc({ id: 2, situacao: "pendente", descricao: "Água" }),
+      lanc({ id: 3, situacao: "recebido", descricao: "Doação", dataCompetencia: "2026-09-20T00:00:00.000Z" }),
+      lanc({ id: 4, situacao: "pago", tipo: "saida", descricao: "Agosto", dataCompetencia: "2026-08-20T00:00:00.000Z" }),
+    ], setembro);
+    expect(pagas.map((c) => c.descricao)).toEqual(["Doação", "Luz"]);
+    expect(pagas[1]).toEqual({ descricao: "Luz", valor: 100, vencimento: "2026-09-05T00:00:00.000Z", tipo: "pagar" });
+  });
+
+  it("nunca inclui pendentes, mesmo vencidos", () => {
+    const pagas = contasPagas([lanc({ situacao: "pendente", dataCompetencia: "2026-09-02T00:00:00.000Z" })], setembro);
+    expect(pagas).toEqual([]);
+  });
+});
+
+function conta(parcial: Partial<Conta>): Conta {
+  return {
+    id: 1, organizacaoId: 1, nome: "Caixa", tipo: null, banco: null, agencia: null, numero: null,
+    saldoInicial: 0, saldoAtual: 0, ativa: true,
+    ...parcial,
+  };
+}
+
+// RF24 / RF64: o painel mostra o saldo de cada conta, não só o total.
+describe("contasParaPainel", () => {
+  it("mostra as ativas primeiro e, dentro de cada grupo, em ordem alfabética", () => {
+    const ordem = contasParaPainel([
+      conta({ id: 1, nome: "Poupança", ativa: false }),
+      conta({ id: 2, nome: "Caixa" }),
+      conta({ id: 3, nome: "Banco do Brasil" }),
+      conta({ id: 4, nome: "Antiga", ativa: false }),
+    ]).map((c) => c.nome);
+    expect(ordem).toEqual(["Banco do Brasil", "Caixa", "Antiga", "Poupança"]);
+  });
+
+  it("não altera a lista recebida", () => {
+    const contas = [conta({ id: 1, nome: "B" }), conta({ id: 2, nome: "A" })];
+    contasParaPainel(contas);
+    expect(contas.map((c) => c.nome)).toEqual(["B", "A"]);
+  });
+});
+
+// RF39: a tela Financeiro filtra por projeto.
+describe("filtrarPorProjeto", () => {
+  const lancamentos = [lanc({ id: 1, projetoId: 10 }), lanc({ id: 2, projetoId: null }), lanc({ id: 3, projetoId: 20 })];
+  const ids = (filtro: Parameters<typeof filtrarPorProjeto>[1]) => filtrarPorProjeto(lancamentos, filtro).map((l) => l.id);
+
+  it("todos não restringe nada", () => {
+    expect(ids("todos")).toEqual([1, 2, 3]);
+  });
+
+  it("um projeto traz só os lançamentos dele", () => {
+    expect(ids(10)).toEqual([1]);
+  });
+
+  it("nenhum traz só os lançamentos sem projeto", () => {
+    expect(ids("nenhum")).toEqual([2]);
+  });
+});
+
+// RF05 / RF12: orçado x executado do projeto escolhido.
+describe("execucaoDoProjeto", () => {
+  const projeto: Projeto = {
+    id: 10, organizacaoId: 1, nome: "Oficinas", descricao: null, status: "Ativo",
+    orcamentoTotal: 1000, dataInicio: null, dataFim: null,
+  };
+
+  it("executado é a soma das saídas pagas do projeto, em qualquer data", () => {
+    const e = execucaoDoProjeto(projeto, [
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 300, dataCompetencia: "2025-01-10T00:00:00.000Z" }),
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 100 }),
+      lanc({ projetoId: 10, tipo: "saida", situacao: "pendente", valor: 999 }),
+      lanc({ projetoId: 10, tipo: "entrada", situacao: "recebido", valor: 999 }),
+      lanc({ projetoId: 20, tipo: "saida", situacao: "pago", valor: 999 }),
+    ]);
+    expect(e).toEqual({ orcamento: 1000, executado: 400, percentual: 40, estourado: false });
+  });
+
+  it("marca estourado quando o executado chega ao orçamento", () => {
+    const e = execucaoDoProjeto(projeto, [lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 1000 })]);
+    expect(e.estourado).toBe(true);
+    expect(e.percentual).toBe(100);
+  });
+
+  it("sem orçamento definido não calcula percentual", () => {
+    const e = execucaoDoProjeto({ ...projeto, orcamentoTotal: null }, [lanc({ projetoId: 10, tipo: "saida", situacao: "pago", valor: 50 })]);
+    expect(e).toEqual({ orcamento: null, executado: 50, percentual: null, estourado: false });
   });
 });

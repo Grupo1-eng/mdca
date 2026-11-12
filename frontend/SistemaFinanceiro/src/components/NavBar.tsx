@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import mdcaLogo from '@/imports/coisaaa.png';
 import { useAuth } from "@/context/AuthContext";
+import { podeVerAuditoria } from "@/lib/auditoria";
+import { formatData } from "@/lib/format";
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/);
   return partes.slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
-export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros' | 'usuarios';
+export type Module = 'inicio' | 'financeiro' | 'projetos' | 'relatorios' | 'cadastros' | 'usuarios' | 'auditoria';
 
 type LogModulo = "Financeiro" | "Cadastros" | "Projetos" | "Relatórios" | "Usuários";
 type LogAcao = "adição" | "remoção" | "edição" | "anexo";
@@ -38,7 +40,7 @@ function fmtRelativo(d: Date) {
   if (diff < 60) return "agora mesmo";
   if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
-  return d.toLocaleDateString("pt-BR");
+  return formatData(d);
 }
 
 export default function NavBar({ active, setModule, logs, onClearLogs }: {
@@ -60,6 +62,8 @@ export default function NavBar({ active, setModule, logs, onClearLogs }: {
     { key: "cadastros", label: "Cadastros" },
     // Só a coordenação gerencia usuários (o backend também exige isso).
     ...(user?.perfil === "coordenador" ? [{ key: "usuarios" as const, label: "Usuários" }] : []),
+    // Log de auditoria: coordenação e gestão financeira (o backend também exige isso).
+    ...(podeVerAuditoria(user?.perfil) ? [{ key: "auditoria" as const, label: "Auditoria" }] : []),
   ];
 
   const abrirLog = () => {

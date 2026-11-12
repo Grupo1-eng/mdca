@@ -5,15 +5,17 @@ import * as request from 'supertest';
 import { AppModule } from '../../app.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
-// O módulo financeiro tem dados sensíveis: só coordenador, gestor e analista
-// financeiro e o administrativo entram. Os demais perfis recebem 403
-// (autenticados, sem permissão).
+// O módulo financeiro tem dados sensíveis: só os perfis financeiros, o
+// administrativo e a coordenação (admin dos dois módulos) entram. Os demais
+// perfis recebem 403 (autenticados, sem permissão).
 describe('Acesso ao módulo financeiro por perfil (integração)', () => {
   let app: INestApplication;
   let token: string;
   const prisma = {
     usuario: { findUnique: jest.fn() },
     lancamento: { findMany: jest.fn(), create: jest.fn() },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -27,13 +29,13 @@ describe('Acesso ao módulo financeiro por perfil (integração)', () => {
     '/api/orcamentos',
   ];
   const perfisPermitidos = [
+    'coordenador',
     'coordenador_financeiro',
     'gestor_financeiro',
     'analista_financeiro',
     'administrativo',
   ];
   const perfisBloqueados = [
-    'coordenador',
     'tecnico_servico_social',
     'tecnico_psicologia',
     'educador',
@@ -57,6 +59,7 @@ describe('Acesso ao módulo financeiro por perfil (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
   });
 
   function logadoComo(perfil: string) {

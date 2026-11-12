@@ -6,8 +6,10 @@ export const MODULO_PADRAO: ModuloDestino = "financeiro";
 // backend/src/modules/auth/perfis.constants.ts (PERFIS_FINANCEIRO e os perfis
 // da Gestão). Texto, porque o tipo Perfil do frontend ainda não tem os perfis
 // financeiros.
+// A coordenação é admin dos dois módulos.
 const PERFIS_POR_MODULO: Record<ModuloDestino, readonly string[]> = {
   financeiro: [
+    "coordenador",
     "coordenador_financeiro",
     "gestor_financeiro",
     "analista_financeiro",

@@ -28,6 +28,23 @@ export interface Lancamento {
   criadoEm: string;
 }
 
+// GET /api/lancamentos/resumo-semanal?mes=AAAA-MM (US10). Semanas contadas a
+// partir do dia 1º, de 7 em 7 dias; a última pode ser mais curta.
+export interface SemanaResumo {
+  semana: number;
+  inicio: string; // AAAA-MM-DD
+  fim: string; // AAAA-MM-DD
+  entradas: number;
+  saidas: number;
+  saldo: number;
+}
+
+export interface ResumoSemanal {
+  mes: string; // AAAA-MM
+  semanas: SemanaResumo[];
+  totais: { entradas: number; saidas: number; saldo: number };
+}
+
 // usuarioId é definido pelo backend a partir do token.
 export interface NovoLancamento {
   contaId: number;
@@ -167,7 +184,10 @@ export type Perfil =
   | "tecnico_servico_social"
   | "tecnico_psicologia"
   | "educador"
-  | "administrativo";
+  | "administrativo"
+  | "coordenador_financeiro"
+  | "gestor_financeiro"
+  | "analista_financeiro";
 
 export interface Usuario {
   id: number;
@@ -225,4 +245,42 @@ export interface ExecucaoProjeto {
   orcado: number;
   realizado: number;
   categorias: CategoriaExecucao[];
+}
+
+// ── Auditoria ───────────────────────────────────────────────────────────────
+export type ValorAuditoria = string | number | boolean | null;
+
+/** Campo alterado: valores antes/depois, ou só a indicação de que mudou (dado sensível). */
+export type AlteracaoAuditoria = { de?: ValorAuditoria; para?: ValorAuditoria } | { alterado: true };
+
+export interface RegistroAuditoria {
+  id: number;
+  organizacaoId: number | null;
+  usuarioId: number | null;
+  perfil: string | null;
+  modulo: string;
+  acao: string;
+  recursoTipo: string;
+  recursoId: string | null;
+  resumo: string;
+  alteracoes: Record<string, AlteracaoAuditoria> | null;
+  ip: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  dataHora: string;
+  usuario: { id: number; nome: string } | null;
+}
+
+export interface PaginaAuditoria {
+  itens: RegistroAuditoria[];
+  /** id para buscar a próxima página; null quando não há mais registros. */
+  proximoCursor: number | null;
+}
+
+export interface FiltroAuditoria {
+  acao?: string;
+  recursoTipo?: string;
+  /** AAAA-MM-DD, horário de Brasília. */
+  de?: string;
+  ate?: string;
 }

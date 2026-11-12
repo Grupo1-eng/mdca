@@ -17,6 +17,8 @@ describe('/api/usuarios (integração)', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -44,6 +46,7 @@ describe('/api/usuarios (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     // JwtStrategy carrega o usuário do token por id.
     prisma.usuario.findUnique.mockImplementation(({ where }) =>
       Promise.resolve(usuarios.find((u) => u.id === where.id) ?? null),

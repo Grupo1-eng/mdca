@@ -7,6 +7,7 @@ import AtividadesPage from "@/modules/gestao/atividades/AtividadesPage"
 import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
 import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
 import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
+import ProjetosPage from "@/modules/gestao/projetos/ProjetosPage"
 import { podeAcessarModulo } from "@/lib/moduloDestino"
 import type { Perfil } from "@/types/financeiro"
 
@@ -15,7 +16,7 @@ const menu = [
   { label: "Educandos", to: "/gestao/educandos", habilitado: true },
   { label: "Atividades e Frequência", to: "/gestao/atividades", habilitado: true },
   { label: "Agenda", to: "/gestao/agenda", habilitado: true },
-  { label: "Projetos, Serviços e Programas", habilitado: false },
+  { label: "Projetos, Serviços e Programas", to: "/gestao/projetos", habilitado: true },
 ] as const
 
 const perfilLabel: Record<Perfil, string> = {
@@ -24,6 +25,9 @@ const perfilLabel: Record<Perfil, string> = {
   tecnico_psicologia: "Técnico – Psicologia",
   educador: "Educador",
   administrativo: "Administrativo",
+  coordenador_financeiro: "Coordenação financeira",
+  gestor_financeiro: "Gestão financeira",
+  analista_financeiro: "Análise financeira",
 }
 
 function iniciais(nome: string): string {
@@ -138,6 +142,7 @@ export default function GestaoModule() {
           <Route path="educandos/:id" element={<EducandoDetalhePage />} />
           <Route path="atividades" element={<AtividadesPage />} />
           <Route path="agenda" element={<AgendaPage />} />
+          <Route path="projetos" element={<ProjetosPage />} />
           <Route path="*" element={<Navigate to="/gestao" replace />} />
         </Routes>
       </main>

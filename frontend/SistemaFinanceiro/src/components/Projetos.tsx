@@ -6,6 +6,8 @@ import { LoadingState, ErrorState } from './StatusMessage';
 import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
 import { type LogEntry } from './NavBar';
 import type { NovoProjeto, TipoProjeto } from '@/types/financeiro';
+import BotaoHistorico from './BotaoHistorico';
+import CampoData from './CampoData';
 
 const statusColors: Record<string, string> = {
   "Em andamento": "bg-emerald-100 text-emerald-800",
@@ -93,10 +95,10 @@ function ModalNovoProjeto({ onClose, onSave }: { onClose: () => void; onSave: (i
           </FieldMd>
         </div>
         <FieldMd label="Início">
-          <input type="date" value={form.dataInicio} onChange={set("dataInicio")} className={inputMdCls + " font-mono"} />
+          <CampoData value={form.dataInicio} onChange={v => setForm(f => ({ ...f, dataInicio: v }))} className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Fim previsto">
-          <input type="date" value={form.dataFim} onChange={set("dataFim")} className={inputMdCls + " font-mono"} />
+          <CampoData value={form.dataFim} onChange={v => setForm(f => ({ ...f, dataFim: v }))} className={inputMdCls + " font-mono"} />
         </FieldMd>
       </div>
     </ModalShell>
@@ -228,9 +230,12 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
                         </div>
                         {p.descricao && <p className="text-xs text-[var(--muted-foreground)]">{p.descricao}</p>}
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-3 ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
-                        {p.status}
-                      </span>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <BotaoHistorico recursoTipo="projeto" recursoId={p.id} titulo={p.nome} />
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
+                          {p.status}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)] font-mono mb-4">

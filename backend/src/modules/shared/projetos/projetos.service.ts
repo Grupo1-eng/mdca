@@ -1,18 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RegistroAuditoriaService } from '../auditorias/registro-auditoria.service';
 import { CreateProjetoDto } from './dto/create-projeto.dto';
 import { UpdateProjetoDto } from './dto/update-projeto.dto';
 
+// Toda alteração grava a auditoria na mesma transação: se o log falhar,
+// a alteração é desfeita.
 @Injectable()
 export class ProjetosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditoria: RegistroAuditoriaService,
+  ) {}
 
   async listarTodos() {
     return this.prisma.projeto.findMany();
   }
 
-  async buscarPorId(id: number) {
-    const projeto = await this.prisma.projeto.findUnique({
+  async buscarPorId(id: number, db: Prisma.TransactionClient = this.prisma) {
+    const projeto = await db.projeto.findUnique({
       where: { id },
     });
     if (!projeto) {
@@ -22,21 +29,27 @@ export class ProjetosService {
   }
 
   async criar(dados: CreateProjetoDto, organizacaoId: number) {
-    return this.prisma.projeto.create({
-      data: { ...dados, organizacaoId },
+    return this.prisma.$transaction(async (tx) => {
+      const projeto = await tx.projeto.create({ data: { ...dados, organizacaoId } });
+      await this.auditoria.criacao(tx, 'projeto', projeto);
+      return projeto;
     });
   }
 
   async atualizar(id: number, dados: UpdateProjetoDto) {
-    await this.buscarPorId(id);
-    return this.prisma.projeto.update({
-      where: { id },
-      data: dados,
+    return this.prisma.$transaction(async (tx) => {
+      const antes = await this.buscarPorId(id, tx);
+      const depois = await tx.projeto.update({ where: { id }, data: dados });
+      await this.auditoria.atualizacao(tx, 'projeto', antes, depois);
+      return depois;
     });
   }
 
   async deletar(id: number) {
-    await this.buscarPorId(id);
-    await this.prisma.projeto.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      const projeto = await this.buscarPorId(id, tx);
+      await tx.projeto.delete({ where: { id } });
+      await this.auditoria.exclusao(tx, 'projeto', projeto);
+    });
   }
 }

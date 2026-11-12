@@ -14,6 +14,8 @@ describe('Autenticação (integração)', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
     },
+    auditoria: { create: jest.fn() },
+    $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -35,6 +37,7 @@ describe('Autenticação (integração)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
   });
 
   describe('rotas sem token', () => {

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fmt, formatDate } from '@/lib/format';
+import { fmt, formatData, formatDate } from '@/lib/format';
 import { type LogEntry } from './NavBar';
 import { SummaryCard } from './Dashboard';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -10,13 +9,19 @@ import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
 import { getAnexos, createAnexo, removeAnexo as apiRemoveAnexo } from '@/api/anexos';
-import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
+import FiltroPeriodo, { formatIntervalo } from './FiltroPeriodo';
+import GraficoSemanal from './GraficoSemanal';
 import {
-  dataDoLancamento, filtrarPorIntervalo, filtrarPorTipo, intervaloValido, resumoPeriodo, saldoTotalContas,
-  serieFluxoPeriodo, type FiltroTipo,
+  dataDoLancamento, execucaoDoProjeto, filtrarPorIntervalo, filtrarPorProjeto, filtrarPorTipo, intervaloValido,
+  resumoPeriodo, saldoTotalContas, type FiltroProjeto, type FiltroTipo,
 } from '@/lib/aggregations';
+import { mesDoPeriodo } from '@/lib/resumoSemanal';
 import { usePeriodo } from '@/context/PeriodoContext';
-import { corSituacao, rotuloSituacao, valorComSinal } from '@/lib/rotulos';
+import { useAuth } from '@/context/AuthContext';
+import { podeVerAuditoria } from '@/lib/auditoria';
+import BotaoHistorico from './BotaoHistorico';
+import CampoData from './CampoData';
+import { corSituacao, rotuloSituacao, situacoesDoTipo, valorComSinal } from '@/lib/rotulos';
 import type { Anexo, Lancamento, NovoLancamento, SituacaoLancamento, TipoLancamento } from '@/types/financeiro';
 
 type FinanceTab = "lancamentos" | "entradas" | "saidas" | "fluxo";
@@ -164,7 +169,7 @@ function DrawerComprovantes({ lancamento, anexos, loading, onClose, onAddAnexos,
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--foreground)] truncate">{a.nome}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {new Date(a.dataUpload).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] font-mono mt-0.5">{fmtBytes(a.tamanho)} · {formatData(new Date(a.dataUpload))}</p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <a href={a.url} download={a.nome} target="_blank" rel="noreferrer"
@@ -220,8 +225,6 @@ const tiposLancamento: { value: TipoLancamento; label: string }[] = [
   { value: "entrada", label: "Entrada" },
   { value: "saida", label: "Saída" },
 ];
-const situacoesLancamento: SituacaoLancamento[] = ["pendente", "pago", "recebido"];
-
 function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: {
   projetos: { id: number; nome: string }[];
   contas: { id: number; nome: string }[];
@@ -271,7 +274,12 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
         <FieldMd label="Tipo" required>
           <div className="grid grid-cols-2 gap-2">
             {tiposLancamento.map(t => (
-              <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, tipo: t.value }))}
+              <button key={t.value} type="button" onClick={() => setForm(f => ({
+                ...f,
+                tipo: t.value,
+                // Ao trocar o tipo, a situação que não vale para ele volta a "Previsto".
+                situacao: situacoesDoTipo(t.value).includes(f.situacao) ? f.situacao : "pendente",
+              }))}
                 className={`h-10 rounded-md border text-sm font-medium transition-all cursor-pointer ${
                   form.tipo === t.value
                     ? t.value === "entrada" ? "border-[#0e7e6e] bg-[#0e7e6e]/10 text-[#0e7e6e]" : "border-red-400 bg-red-50 text-red-600"
@@ -284,7 +292,7 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
         </FieldMd>
         <FieldMd label="Situação" required>
           <select required value={form.situacao} onChange={set("situacao")} className={selectCls} style={chevronBg}>
-            {situacoesLancamento.map(s => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+            {situacoesDoTipo(form.tipo).map(s => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
           </select>
         </FieldMd>
         <div className="col-span-2">
@@ -293,12 +301,12 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
           </FieldMd>
         </div>
         <FieldMd label="Data" required>
-          <input type="date" required value={form.dataCompetencia} onChange={set("dataCompetencia")} className={inputMdCls + " font-mono"} />
+          <CampoData required value={form.dataCompetencia} onChange={v => setForm(f => ({ ...f, dataCompetencia: v }))} className={inputMdCls + " font-mono"} />
         </FieldMd>
         <FieldMd label="Valor (R$)" required>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-            <input type="number" required min="0" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
+            <input type="number" required min="0.01" step="0.01" value={form.valor} onChange={set("valor")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
           </div>
         </FieldMd>
         <FieldMd label="Conta" required>
@@ -330,15 +338,19 @@ function ModalNovoLancamento({ projetos, contas, categorias, onClose, onSave }: 
 export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos, create: createLancamento } = useLancamentos();
   const { data: projetos, loading: loadingProjetos } = useProjetos();
-  const { data: contas, loading: loadingContas, error: errorContas } = useContas();
+  const { data: contas, loading: loadingContas, error: errorContas, recarregar: recarregarContas } = useContas();
   const { data: categorias, loading: loadingCategorias } = useCategorias();
 
   const [tab, setTab] = useState<FinanceTab>("lancamentos");
+  const { user } = useAuth();
+  const comHistorico = podeVerAuditoria(user?.perfil);
   const [drawerId, setDrawerId] = useState<number | null>(null);
   const [anexosPorLanc, setAnexosPorLanc] = useState<Record<number, Anexo[]>>({});
   const [anexosLoading, setAnexosLoading] = useState(false);
   const [modalNovo, setModalNovo] = useState(false);
   const { periodo, setPeriodo, dataIni, setDataIni, dataFim, setDataFim, intervalo } = usePeriodo();
+  // RF39: a tela inteira (lista, cartões e gráfico) mostra o projeto escolhido.
+  const [filtroProjeto, setFiltroProjeto] = useState<FiltroProjeto>("todos");
 
   const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
 
@@ -361,7 +373,14 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
   // números sempre baterem.
   const periodoValido = intervaloValido(intervalo);
   const periodoLabel = formatIntervalo(periodo, intervalo);
-  const doPeriodo = useMemo(() => filtrarPorIntervalo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const doProjeto = useMemo(() => filtrarPorProjeto(lancamentos, filtroProjeto), [lancamentos, filtroProjeto]);
+  const doPeriodo = useMemo(() => filtrarPorIntervalo(doProjeto, intervalo), [doProjeto, intervalo]);
+  const projetoSelecionado = typeof filtroProjeto === "number" ? projetos.find(p => p.id === filtroProjeto) ?? null : null;
+  const rotuloFiltroProjeto = filtroProjeto === "nenhum" ? "Sem projeto" : projetoSelecionado?.nome ?? null;
+  const projetosOrdenados = useMemo(
+    () => [...projetos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [projetos],
+  );
 
   // Período primeiro, tipo depois: a aba nunca mostra lançamentos fora do período.
   const filtered = filtrarPorTipo(doPeriodo, tipoDaAba[tab]);
@@ -383,17 +402,22 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
     { key: "fluxo", label: "Fluxo de Caixa" },
   ];
 
+  const doFiltro = rotuloFiltroProjeto ? ` (${rotuloFiltroProjeto})` : "";
   const mensagemVazia = !periodoValido
     ? "Período inválido: a data inicial deve ser anterior ou igual à final."
     : doPeriodo.length === 0
-    ? "Nenhum lançamento no período selecionado."
+    ? `Nenhum lançamento no período selecionado${doFiltro}.`
     : tab === "entradas"
-    ? "Nenhuma entrada no período selecionado."
-    : "Nenhuma saída no período selecionado.";
+    ? `Nenhuma entrada no período selecionado${doFiltro}.`
+    : `Nenhuma saída no período selecionado${doFiltro}.`;
 
-  const resumo = useMemo(() => resumoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const resumo = useMemo(() => resumoPeriodo(doProjeto, intervalo), [doProjeto, intervalo]);
+  const execucao = useMemo(
+    () => (projetoSelecionado ? execucaoDoProjeto(projetoSelecionado, lancamentos) : null),
+    [projetoSelecionado, lancamentos],
+  );
   const saldoContas = useMemo(() => saldoTotalContas(contas), [contas]);
-  const fluxo = useMemo(() => serieFluxoPeriodo(lancamentos, intervalo), [lancamentos, intervalo]);
+  const mesInicialSemanal = useMemo(() => mesDoPeriodo(intervalo), [intervalo]);
 
   const drawerLancamento = drawerId !== null ? lancamentos.find(l => l.id === drawerId) ?? null : null;
 
@@ -426,6 +450,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
 
   const handleSaveLancamento = async (input: NovoLancamento) => {
     const criado = await createLancamento(input);
+    // O backend ajusta o saldo da conta quando o lançamento já nasce pago/recebido (RF25).
+    await recarregarContas();
     addLog({
       modulo: "Financeiro",
       acao: "adição",
@@ -439,7 +465,8 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
       {modalNovo && (
         <ModalNovoLancamento
           projetos={projetos}
-          contas={contas}
+          // Conta inativa não recebe lançamento novo (RNF10).
+          contas={contas.filter(c => c.ativa)}
           categorias={categorias}
           onClose={() => setModalNovo(false)}
           onSave={handleSaveLancamento}
@@ -461,9 +488,25 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
         <div className="flex items-baseline justify-between">
           <div>
             <h1 className="font-serif text-2xl text-[var(--foreground)]">Financeiro</h1>
-            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">{periodoLabel}</p>
+            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
+              {periodoLabel}{rotuloFiltroProjeto && <> · <span className="text-[var(--foreground)] font-medium">{rotuloFiltroProjeto}</span></>}
+            </p>
           </div>
           <div className="flex gap-2">
+            <select
+              aria-label="Projeto"
+              value={String(filtroProjeto)}
+              onChange={e => {
+                const v = e.target.value;
+                setFiltroProjeto(v === "todos" || v === "nenhum" ? v : Number(v));
+              }}
+              className="text-xs font-medium border border-[var(--border)] rounded-md pl-3 pr-8 py-1.5 bg-white hover:bg-[var(--muted)] transition-colors cursor-pointer appearance-none focus:outline-none focus:border-[#1a3a6b]"
+              style={{ ...chevronBg, backgroundPosition: "right 10px center" }}
+            >
+              <option value="todos">Todos os projetos</option>
+              {projetosOrdenados.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              <option value="nenhum">Sem projeto</option>
+            </select>
             <FiltroPeriodo
               periodo={periodo} setPeriodo={setPeriodo}
               dataIni={dataIni} setDataIni={setDataIni}
@@ -483,7 +526,19 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
               <SummaryCard label="Total entradas" value={fmt(resumo.entradas)} sub={periodoLabel} color="text-[#0e7e6e]" />
               <SummaryCard label="Total saídas" value={fmt(resumo.saidas)} sub={periodoLabel} color="text-red-600" />
               <SummaryCard label="Saldo do período" value={fmt(resumo.entradas - resumo.saidas)} sub="Resultado operacional" />
-              <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
+              {execucao ? (
+                // RF05 / RF12: com um projeto escolhido, o quarto cartão é o orçamento dele.
+                <SummaryCard
+                  label="Orçamento executado"
+                  value={fmt(execucao.executado)}
+                  sub={execucao.orcamento === null || execucao.percentual === null
+                    ? "Projeto sem orçamento definido"
+                    : `de ${fmt(execucao.orcamento)} (${execucao.percentual}%)${execucao.estourado ? " · orçamento esgotado" : ""}`}
+                  color={execucao.estourado ? "text-red-600" : undefined}
+                />
+              ) : (
+                <SummaryCard label="Saldo das contas" value={fmt(saldoContas)} sub={contas.map(c => c.nome).join(" + ") || "Nenhuma conta cadastrada"} />
+              )}
             </div>
 
             <div className="bg-white rounded-lg border border-[var(--border)]">
@@ -509,37 +564,15 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
               </div>
 
               {tab === "fluxo" ? (
-                <div className="p-5">
-                  <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                    Entradas vs. Saídas por {rotuloAgrupamento[fluxo.agrupamento]} — {periodoLabel}
-                  </p>
-                  {fluxo.pontos.length === 0 ? (
-                    <p className="h-[260px] flex items-center justify-center text-sm text-[var(--muted-foreground)]">
-                      {periodoValido
-                        ? "Nenhum lançamento no período selecionado."
-                        : "Período inválido: a data inicial deve ser anterior ou igual à final."}
-                    </p>
-                  ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={fluxo.pontos} barGap={4}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e9f2" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 11, fill: "#6b7a99" }} axisLine={false} tickLine={false} />
-                      <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ fontSize: 12, border: "1px solid #d4dae7", borderRadius: 6 }} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="entradas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Entradas" fill="#0e7e6e" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="saidas" animationDuration={DURACAO_ANIMACAO_GRAFICO} name="Saídas" fill="#e05555" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  )}
-                </div>
+                // A troca de período no filtro reabre o gráfico no mês correspondente.
+                <GraficoSemanal key={mesInicialSemanal} mesInicial={mesInicialSemanal} projeto={filtroProjeto} lancamentos={lancamentos} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[var(--border)]">
-                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", ...(ANEXOS_DISPONIVEIS ? ["Comprovantes"] : [])].map((h) => (
-                          <th key={h} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
+                        {["Data", "Descrição", "Projeto", "Conta", "Valor", "Situação", ...(ANEXOS_DISPONIVEIS ? ["Comprovantes"] : []), ...(comHistorico ? [""] : [])].map((h, i) => (
+                          <th key={`${i}-${h}`} className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide text-[var(--muted-foreground)] font-medium whitespace-nowrap">
                             {h}
                           </th>
                         ))}
@@ -548,7 +581,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                     <tbody>
                       {filtered.length === 0 && (
                         <tr>
-                          <td colSpan={ANEXOS_DISPONIVEIS ? 7 : 6} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                          <td colSpan={6 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} className="px-5 py-8 text-center text-sm text-[var(--muted-foreground)]">
                             {mensagemVazia}
                           </td>
                         </tr>
@@ -582,6 +615,9 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                                 {qtd > 0 ? `${qtd} arquivo${qtd > 1 ? "s" : ""}` : "Anexar"}
                               </button>
                             </td>}
+                            {comHistorico && <td className="px-5 py-3 text-right">
+                              <BotaoHistorico recursoTipo="lancamento" recursoId={l.id} titulo={l.descricao || `Lançamento #${l.id}`} />
+                            </td>}
                           </tr>
                         );
                       })}
@@ -595,7 +631,7 @@ export default function Financeiro({ addLog }: { addLog: (e: Omit<LogEntry, "id"
                             {tab !== "entradas" && <span className="text-red-600">-{fmt(totalSaidas)}</span>}
                           </div>
                         </td>
-                        <td colSpan={ANEXOS_DISPONIVEIS ? 2 : 1} />
+                        <td colSpan={1 + (ANEXOS_DISPONIVEIS ? 1 : 0) + (comHistorico ? 1 : 0)} />
                       </tr>
                     </tfoot>
                   </table>

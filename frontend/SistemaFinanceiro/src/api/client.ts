@@ -56,7 +56,7 @@ export interface RequestOptions extends RequestInit {
   publica?: boolean;
 }
 
-async function tratarResposta<T>(res: Response, publica: boolean): Promise<T> {
+async function verificarResposta(res: Response, publica: boolean): Promise<void> {
   if (!res.ok) {
     const mensagem = await parseErrorMessage(res);
     if (res.status === 401 && !publica) {
@@ -65,6 +65,10 @@ async function tratarResposta<T>(res: Response, publica: boolean): Promise<T> {
     }
     throw new ApiError(mensagem, res.status);
   }
+}
+
+async function tratarResposta<T>(res: Response, publica: boolean): Promise<T> {
+  await verificarResposta(res, publica);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -90,4 +94,11 @@ export async function requestForm<T>(path: string, form: FormData, options: Requ
     body: form,
   });
   return tratarResposta<T>(res, false);
+}
+
+/** Download de arquivo gerado pelo backend (ex.: CSV da auditoria). */
+export async function requestBlob(path: string): Promise<Blob> {
+  const res = await fetch(`${API_URL}${path}`, { headers: authHeaders() });
+  await verificarResposta(res, false);
+  return res.blob();
 }
