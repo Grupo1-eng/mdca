@@ -5,11 +5,10 @@ import { useLancamentos } from '@/hooks/useLancamentos';
 import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
-import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/context/AuthContext';
 import { usePeriodo } from '@/context/PeriodoContext';
 import {
-  arvoreCategorias, dataDoLancamento, execucaoOrcamentaria, intervaloValido, serieFluxoCaixaPeriodo, type FiltroTipo,
+  arvoreCategorias, dataDoLancamento, intervaloValido, serieFluxoCaixaPeriodo, type FiltroTipo,
 } from '@/lib/aggregations';
 import { baixarPlanilha } from '@/lib/planilha';
 import { filtrarExtrato, totaisFluxo, totaisPorCategoria } from '@/lib/relatorios';
@@ -17,6 +16,8 @@ import { rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import { LoadingState, ErrorState } from './StatusMessage';
 import FiltroPeriodo, { DURACAO_ANIMACAO_GRAFICO, formatIntervalo, rotuloAgrupamento } from './FiltroPeriodo';
 import { chevronBg, selectCls } from './ModalShell';
+import BotaoExportar from './BotaoExportar';
+import RelatorioExecucao from './RelatorioExecucao';
 
 type RelatorioKey = "execucao" | "extrato" | "fluxo" | "balancete";
 
@@ -28,36 +29,6 @@ const relatoriosMeta: { key: RelatorioKey; label: string; sublabel: string }[] =
 ];
 
 const rotuloTipo: Record<FiltroTipo, string> = { todos: "Todos", entrada: "Entradas", saida: "Saídas" };
-
-/** Botão de exportação em planilha: mostra o andamento e o erro, se houver. */
-function BotaoExportar({ gerar, desabilitado }: { gerar: () => Promise<void>; desabilitado?: boolean }) {
-  const [exportando, setExportando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const exportar = async () => {
-    setExportando(true);
-    setErro(null);
-    try {
-      await gerar();
-    } catch {
-      setErro("Não foi possível gerar a planilha.");
-    } finally {
-      setExportando(false);
-    }
-  };
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={exportar}
-        disabled={exportando || desabilitado}
-        className="text-xs border border-[var(--border)] rounded px-3 py-1.5 hover:bg-[var(--muted)] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        {exportando ? "Gerando…" : "Exportar planilha"}
-      </button>
-      {erro && <p className="text-[10px] text-red-600">{erro}</p>}
-    </div>
-  );
-}
 
 /** Filtro de período dos relatórios: o mesmo do Painel e da tela Financeiro. */
 function PeriodoRelatorio() {
@@ -71,132 +42,6 @@ function PeriodoRelatorio() {
   );
 }
 
-function RelExecucao() {
-  const projetos = useProjetos();
-  const categorias = useCategorias();
-  const orcamentos = useOrcamentos();
-  const lancamentos = useLancamentos();
-  const { user } = useAuth();
-  const fontes = [projetos, categorias, orcamentos, lancamentos];
-  const loading = fontes.some(f => f.loading);
-  const error = fontes.find(f => f.error)?.error ?? null;
-  const execucaoData = useMemo(
-    () => execucaoOrcamentaria(projetos.data, categorias.data, orcamentos.data, lancamentos.data),
-    [projetos.data, categorias.data, orcamentos.data, lancamentos.data],
-  );
-  const [expanded, setExpanded] = useState<number | null>(null);
-
-  const totalOrcado = execucaoData.reduce((a, b) => a + b.orcado, 0);
-  const totalRealizado = execucaoData.reduce((a, b) => a + b.realizado, 0);
-
-  const exportar = () => baixarPlanilha({
-    titulo: "Execução Orçamentária",
-    filtros: ["Orçado: orçamentos cadastrados · Realizado: saídas pagas"],
-    usuario: user?.nome ?? null,
-    geradoEm: new Date(),
-    colunas: ["Projeto", "Categoria", "Orçado", "Realizado", "Saldo"],
-    linhas: execucaoData.flatMap((p) => [
-      [p.projeto, null, p.orcado, p.realizado, p.orcado - p.realizado],
-      ...p.categorias.map((c) => [p.projeto, c.nome, c.orcado, c.realizado, c.orcado - c.realizado]),
-    ]),
-    totais: ["Total geral", null, totalOrcado, totalRealizado, totalOrcado - totalRealizado],
-  }, [30, 26, 14, 14, 14]);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="font-semibold text-[var(--foreground)]">Execução Orçamentária</h2>
-          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Orçado (orçamentos cadastrados) vs. realizado (saídas pagas), por projeto e categoria</p>
-        </div>
-        <BotaoExportar gerar={exportar} desabilitado={loading || execucaoData.length === 0} />
-      </div>
-      {error && <ErrorState message={error} />}
-      {loading ? <LoadingState /> : (
-        <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#0f1e3d] text-white">
-                <th className="text-left px-5 py-3 text-xs font-mono uppercase tracking-wide font-medium">Projeto / Categoria</th>
-                <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Orçado</th>
-                <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Realizado</th>
-                <th className="text-right px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium">Saldo</th>
-                <th className="px-4 py-3 text-xs font-mono uppercase tracking-wide font-medium w-36">Execução</th>
-              </tr>
-            </thead>
-            <tbody>
-              {execucaoData.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-8 text-center text-xs text-[var(--muted-foreground)]">Nenhum projeto com orçamento cadastrado.</td></tr>
-              )}
-              {execucaoData.map((p) => {
-                const pct = p.orcado > 0 ? Math.round((p.realizado / p.orcado) * 100) : 0;
-                const isOpen = expanded === p.projetoId;
-                return (
-                  <React.Fragment key={p.projetoId}>
-                    <tr
-                      className="border-t border-[var(--border)] bg-white hover:bg-[var(--muted)] cursor-pointer transition-colors"
-                      onClick={() => setExpanded(isOpen ? null : p.projetoId)}
-                    >
-                      <td className="px-5 py-3 font-semibold text-[var(--foreground)] flex items-center gap-2">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-[var(--muted-foreground)] transition-transform ${isOpen ? "rotate-90" : ""}`}><path d="M9 18l6-6-6-6"/></svg>
-                        {p.projeto}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs">{fmt(p.orcado)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-[#0e7e6e] font-medium">{fmt(p.realizado)}</td>
-                      <td className={`px-4 py-3 text-right font-mono text-xs font-medium ${(p.orcado - p.realizado) >= 0 ? "text-[var(--muted-foreground)]" : "text-red-600"}`}>{fmt(p.orcado - p.realizado)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
-                            <div className="h-full bg-[#0e7e6e] rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
-                          </div>
-                          <span className="text-xs font-mono w-8 text-right text-[var(--muted-foreground)]">{pct}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                    {isOpen && p.categorias.map((cat) => {
-                      const cp = cat.orcado > 0 ? Math.round((cat.realizado / cat.orcado) * 100) : 0;
-                      return (
-                        <tr key={cat.nome} className="border-t border-[var(--border)] bg-[#f8f9fc]">
-                          <td className="px-5 py-2.5 text-xs text-[var(--muted-foreground)] pl-12">{cat.nome}</td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-[var(--muted-foreground)]">{fmt(cat.orcado)}</td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-[#0e7e6e]">{fmt(cat.realizado)}</td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-[var(--muted-foreground)]">{fmt(cat.orcado - cat.realizado)}</td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-[var(--border)] rounded-full overflow-hidden">
-                                <div className="h-full bg-[#0e7e6e]/60 rounded-full" style={{ width: `${Math.min(cp, 100)}%` }} />
-                              </div>
-                              <span className="text-[10px] font-mono w-8 text-right text-[var(--muted-foreground)]">{cp}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-[#0f1e3d]/20 bg-[#edf0f5]">
-                <td className="px-5 py-3 text-xs font-mono font-semibold uppercase tracking-wide text-[var(--foreground)]">Total Geral</td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{fmt(totalOrcado)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-[#0e7e6e]">{fmt(totalRealizado)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{fmt(totalOrcado - totalRealizado)}</td>
-                <td className="px-4 py-3">
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">
-                    {totalOrcado > 0 ? Math.round((totalRealizado / totalOrcado) * 100) : 0}%
-                  </span>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// RF07: extrato por período, projeto e categoria, com totais por categoria.
 function RelExtrato() {
   const { data: lancamentos, loading: loadingLancamentos, error } = useLancamentos();
   const { data: projetos, loading: loadingProjetos } = useProjetos();
@@ -293,7 +138,7 @@ function RelExtrato() {
           {arvore.map(({ categoria, subcategorias }) => (
             <React.Fragment key={categoria.id}>
               <option value={categoria.id}>{categoria.nome}</option>
-              {subcategorias.map(s => <option key={s.id} value={s.id}>{"  — "}{s.nome}</option>)}
+              {subcategorias.map(s => <option key={s.id} value={s.id}>{"\u00a0\u00a0— "}{s.nome}</option>)}
             </React.Fragment>
           ))}
         </select>
@@ -565,7 +410,7 @@ export default function Relatorios() {
       </aside>
       {/* Content */}
       <div className="flex-1 bg-white rounded-r-lg border border-[var(--border)] border-l-0 p-6 overflow-y-auto">
-        {rel === "execucao" && <RelExecucao />}
+        {rel === "execucao" && <RelatorioExecucao />}
         {rel === "extrato" && <RelExtrato />}
         {rel === "fluxo" && <RelFluxo />}
         {rel === "balancete" && <RelBalancete />}

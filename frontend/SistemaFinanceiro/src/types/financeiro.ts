@@ -233,20 +233,6 @@ export interface AuthResponse {
   usuario: AuthUser;
 }
 
-export interface CategoriaExecucao {
-  nome: string;
-  orcado: number;
-  realizado: number;
-}
-
-export interface ExecucaoProjeto {
-  projetoId: number;
-  projeto: string;
-  orcado: number;
-  realizado: number;
-  categorias: CategoriaExecucao[];
-}
-
 // ── Auditoria ───────────────────────────────────────────────────────────────
 export type ValorAuditoria = string | number | boolean | null;
 
