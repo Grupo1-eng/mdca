@@ -1,13 +1,5 @@
 import type { Perfil } from "@/types/financeiro"
-import type { Atividade, Encontro } from "../educandos/types"
-
-export function contarEncontros(
-  encontros: Encontro[],
-  atividadeId: string,
-): number {
-  return encontros.filter((encontro) => encontro.atividadeId === atividadeId)
-    .length
-}
+import type { Atividade, Encontro, LinhaChamada } from "../educandos/types"
 
 // "todas" desliga o filtro de iniciativa ou de situação.
 export function filtrarAtividades(
@@ -16,12 +8,12 @@ export function filtrarAtividades(
   iniciativaId: string,
   situacao: string,
 ): Atividade[] {
-  const termo = busca.trim().toLowerCase()
+  const termo = busca.trim().toLocaleLowerCase("pt-BR")
   return atividades.filter(
     (atividade) =>
       (!termo ||
-        atividade.nome.toLowerCase().includes(termo) ||
-        atividade.responsavel.toLowerCase().includes(termo)) &&
+        atividade.nome.toLocaleLowerCase("pt-BR").includes(termo) ||
+        atividade.responsavelNome.toLocaleLowerCase("pt-BR").includes(termo)) &&
       (iniciativaId === "todas" || atividade.iniciativaId === iniciativaId) &&
       (situacao === "todas" || atividade.situacao === situacao),
   )
@@ -31,8 +23,9 @@ export interface PermissoesAtividades {
   registrarAtividade: boolean
 }
 
-// Documento da Sprint 1, seção 3.1: o educador registra atividades, encontros
-// e frequência; a coordenação tem acesso a atividades e frequência.
+// Documento da Sprint 1, seção 3.1, e PERFIS_REGISTRO_ATIVIDADES do backend:
+// coordenação e educador registram atividades, encontros e chamada, em
+// qualquer atividade da organização (decisão 2, 2026-11-17).
 export function permissoesAtividades(
   perfil: Perfil | undefined,
 ): PermissoesAtividades {
@@ -41,18 +34,18 @@ export function permissoesAtividades(
   }
 }
 
-export function novoIdAtividade(): string {
-  return `atv-${Math.random().toString(36).slice(2, 8)}`
-}
-
-export function atividadeVazia(responsavel = ""): Atividade {
+export function atividadeVazia(responsavelId = ""): Atividade {
   return {
     id: "",
     nome: "",
     iniciativaId: "",
-    responsavel,
+    iniciativaNome: "",
+    responsavelId,
+    responsavelNome: "",
     situacao: "Ativa",
     descricao: "",
+    encontrosTotal: 0,
+    encontrosRealizados: 0,
   }
 }
 
@@ -61,26 +54,69 @@ export function validarAtividade(atividade: Atividade): string | null {
   if (!atividade.nome.trim()) return "Informe o nome da atividade."
   if (!atividade.iniciativaId)
     return "Selecione o projeto, serviço ou programa da atividade."
-  if (!atividade.responsavel.trim()) return "Informe o responsável."
+  if (!atividade.responsavelId) return "Selecione o responsável."
   return null
 }
 
-// Cria quando o id ainda não existe na lista e atualiza quando já existe.
-// Lança erro com a mensagem de validação, sem alterar a lista.
-export function salvarAtividadeEmMemoria(
-  lista: Atividade[],
-  registro: Atividade,
-): Atividade[] {
-  const erro = validarAtividade(registro)
-  if (erro) throw new Error(erro)
+// Decisão 3: atividade encerrada não aceita encontros novos (pode ser reaberta).
+export function aceitaEncontroNovo(atividade: Pick<Atividade, "situacao">): boolean {
+  return atividade.situacao !== "Encerrada"
+}
 
-  const limpo: Atividade = {
-    ...registro,
-    nome: registro.nome.trim(),
-    responsavel: registro.responsavel.trim(),
-    descricao: registro.descricao.trim(),
+// Decisão 1 (em aberto): por ora, chamada em qualquer encontro não cancelado.
+// Espelha `aceitaChamada` do backend (regras-atividades.ts).
+export function aceitaChamada(encontro: Pick<Encontro, "situacao">): boolean {
+  return encontro.situacao !== "Cancelado"
+}
+
+export function encontroVazio(atividadeId: string, hoje: string): Encontro {
+  return {
+    id: "",
+    atividadeId,
+    data: hoje,
+    horaInicio: "",
+    horaFim: "",
+    local: "",
+    observacoes: "",
+    situacao: "Planejado",
+    presencasRegistradas: 0,
   }
-  return lista.some((atividade) => atividade.id === limpo.id)
-    ? lista.map((atividade) => (atividade.id === limpo.id ? limpo : atividade))
-    : [...lista, limpo]
+}
+
+const HORARIO = /^([01]\d|2[0-3]):[0-5]\d$/
+
+export function validarEncontro(encontro: Encontro): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(encontro.data)) return "Informe a data do encontro."
+  if (encontro.horaInicio && !HORARIO.test(encontro.horaInicio))
+    return "O horário de início deve estar no formato HH:MM."
+  if (encontro.horaFim && !HORARIO.test(encontro.horaFim))
+    return "O horário de término deve estar no formato HH:MM."
+  if (encontro.horaInicio && encontro.horaFim && encontro.horaFim <= encontro.horaInicio)
+    return "O término deve ser depois do início."
+  return null
+}
+
+export function resumoChamada(linhas: LinhaChamada[]) {
+  return {
+    presentes: linhas.filter((l) => l.presente === true).length,
+    ausentes: linhas.filter((l) => l.presente === false).length,
+    semRegistro: linhas.filter((l) => l.presente === null).length,
+  }
+}
+
+// Marca todos os ainda sem registro como presentes (atalho da chamada).
+export function marcarRestantesPresentes(linhas: LinhaChamada[]): LinhaChamada[] {
+  return linhas.map((l) => (l.presente === null ? { ...l, presente: true } : l))
+}
+
+export function dataVisivel(valor: string): string {
+  const [ano, mes, dia] = valor.split("-")
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : "—"
+}
+
+// Hoje no fuso do navegador, como AAAA-MM-DD.
+export function hojeLocal(agora = new Date()): string {
+  const mes = String(agora.getMonth() + 1).padStart(2, "0")
+  const dia = String(agora.getDate()).padStart(2, "0")
+  return `${agora.getFullYear()}-${mes}-${dia}`
 }

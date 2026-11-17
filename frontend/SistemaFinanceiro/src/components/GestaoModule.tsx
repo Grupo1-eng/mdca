@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext"
 import GestaoDashboard from "@/components/GestaoDashboard"
 import AgendaPage from "@/modules/gestao/agenda/AgendaPage"
 import AtividadesPage from "@/modules/gestao/atividades/AtividadesPage"
+import AtividadeDetalhePage from "@/modules/gestao/atividades/AtividadeDetalhePage"
 import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
 import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
 import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
@@ -140,6 +141,7 @@ export default function GestaoModule() {
           <Route path="educandos/novo" element={<EducandoNovoPage />} />
           <Route path="educandos/:id" element={<EducandoDetalhePage />} />
           <Route path="atividades" element={<AtividadesPage />} />
+          <Route path="atividades/:id" element={<AtividadeDetalhePage />} />
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="projetos" element={<ProjetosPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />

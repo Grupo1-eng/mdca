@@ -23,6 +23,22 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-17 — Atividades, encontros e frequência no banco
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** #N (branch `feature/gestao-atividades-frequencia`)
+
+**O que mudou:**
+- **Backend** (só `gestao/`, sem migration, sem DELETE): `/api/atividades` (listar com filtros `projetoId` e `situacao`, ver, criar, editar e `GET /responsaveis`), `/api/encontros` (por atividade, ver, criar, editar; cancelar é mudar a situação) e `/api/frequencias` (`GET`/`PUT /encontro/:id` para a chamada, numa transação com upsert; `GET /educando/:id` para o histórico). Organização verificada pela iniciativa (atividade → projeto); outra organização responde 404. Regras compartilhadas em `gestao/atividades/regras-atividades.ts`.
+- **Frontend:** a tela de Atividades usa a API (o aviso de demonstração saiu) e o responsável é escolhido numa lista. Rota nova `/gestao/atividades/:id` com os encontros (criar, editar, marcar realizado, cancelar) e a chamada. A aba Frequência da ficha mostra o histórico real e a taxa de presença nos encontros realizados. Saíram os dados de exemplo (`atividadesSeed`, `encontrosSeed`, `iniciativasSeed`, `iniciativasDemonstracao`, `salvarAtividadeEmMemoria`).
+
+**Por quê:** plano da Sprint 4 (RF17, RF18, RF19, RN05, RN06). Ver a [decisão](decisoes.md).
+
+**Pendências:**
+- Decisão 1 (quando a chamada pode ser registrada) segue em aberto; aplicada provisoriamente a opção recomendada.
+- Indicadores do Dashboard com atividades e frequência (próximo item da Sprint 4) e auditoria das gravações da Gestão (RF13).
+
+---
+
 ## 2026-11-17 — Tela de Usuários na Gestão
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** #N (branch `feature/gestao-usuarios`)

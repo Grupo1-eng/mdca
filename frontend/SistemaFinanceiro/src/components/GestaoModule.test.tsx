@@ -71,17 +71,21 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Carregando ficha")
   })
 
+  // Atividades vêm da API (/api/atividades): sem aviso de demonstração nem
+  // dados de exemplo; a tela abre carregando.
   it("renderiza a listagem de atividades em /gestao/atividades", () => {
     const html = renderizarRota("/gestao/atividades")
     expect(html).toContain("Atividades e Frequência")
-    expect(html).toContain("ainda não são salvas no servidor")
-    expect(html).toContain("Oficina de Música")
-    expect(html).toContain("Educador Marcos Reis")
-    expect(html).toContain("Convivência e Fortalecimento de Vínculos")
+    expect(html).toContain("Carregando atividades")
+    expect(html).not.toContain("ainda não são salvas no servidor")
+    expect(html).not.toContain("Oficina de Música")
     expect(html).toContain('href="/gestao/atividades"')
     // Coordenação pode registrar atividades.
     expect(html).toContain("Nova atividade")
-    expect(html).toContain("Editar")
+  })
+
+  it("abre o detalhe da atividade em carregamento", () => {
+    expect(renderizarRota("/gestao/atividades/3")).toContain("Carregando atividade")
   })
 
   it("abre a lista de iniciativas em carregamento", () => {

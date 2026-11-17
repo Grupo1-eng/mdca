@@ -1,10 +1,7 @@
 import type {
   Atendimento,
-  Atividade,
   Educando,
   Encaminhamento,
-  Encontro,
-  Iniciativa,
 } from "../types"
 
 const hoje = new Date()
@@ -13,37 +10,6 @@ const iso = (offsetDias: number) => {
   data.setDate(data.getDate() + offsetDias)
   return data.toISOString().slice(0, 10)
 }
-
-export const iniciativasSeed: Iniciativa[] = [
-  {
-    id: "ini-1",
-    codigo: "PRJ-2026-001",
-    nome: "Convivência e Fortalecimento de Vínculos",
-    tipo: "Serviço",
-    situacao: "Ativo",
-  },
-  {
-    id: "ini-2",
-    codigo: "PRJ-2026-002",
-    nome: "Projeto Semear – Contraturno Escolar",
-    tipo: "Projeto",
-    situacao: "Ativo",
-  },
-  {
-    id: "ini-3",
-    codigo: "PRG-2025-007",
-    nome: "Programa Jovem Aprendiz Cidadão",
-    tipo: "Programa",
-    situacao: "Ativo",
-  },
-  {
-    id: "ini-4",
-    codigo: "PRJ-2024-011",
-    nome: "Projeto Arte na Praça",
-    tipo: "Projeto",
-    situacao: "Encerrado",
-  },
-]
 
 export const educandosSeed: Educando[] = [
   {
@@ -359,81 +325,5 @@ export const encaminhamentosSeed: Encaminhamento[] = [
     destino: "Programa Jovem Aprendiz – empresa parceira",
     motivo: "Inclusão em vaga de aprendizagem.",
     acompanhamentos: [],
-  },
-]
-
-export const atividadesSeed: Atividade[] = [
-  {
-    id: "atv-1",
-    nome: "Oficina de Música",
-    iniciativaId: "ini-1",
-    responsavel: "Educador Marcos Reis",
-    situacao: "Ativa",
-    descricao: "Oficina semanal de percussão e canto coletivo.",
-  },
-  {
-    id: "atv-2",
-    nome: "Reforço Escolar – Matemática",
-    iniciativaId: "ini-2",
-    responsavel: "Educadora Paula Menezes",
-    situacao: "Ativa",
-    descricao: "Apoio pedagógico em contraturno.",
-  },
-  {
-    id: "atv-3",
-    nome: "Roda de Projeto de Vida",
-    iniciativaId: "ini-3",
-    responsavel: "Rafael Dias",
-    situacao: "Ativa",
-    descricao: "Encontros quinzenais com adolescentes do programa.",
-  },
-]
-
-export const encontrosSeed: Encontro[] = [
-  {
-    id: "enco-1",
-    atividadeId: "atv-1",
-    data: iso(-3),
-    horario: "14:00",
-    local: "Sala de Oficinas",
-    situacao: "Realizado",
-    presencas: [
-      { educandoId: "edu-1", presente: true },
-      { educandoId: "edu-4", presente: false },
-      { educandoId: "edu-5", presente: true },
-    ],
-  },
-  {
-    id: "enco-2",
-    atividadeId: "atv-1",
-    data: iso(-1),
-    horario: "14:00",
-    local: "Sala de Oficinas",
-    situacao: "Realizado",
-    presencas: [
-      { educandoId: "edu-1", presente: true },
-      { educandoId: "edu-5", presente: true },
-    ],
-  },
-  {
-    id: "enco-3",
-    atividadeId: "atv-2",
-    data: iso(-2),
-    horario: "09:00",
-    local: "Sala 2",
-    situacao: "Realizado",
-    presencas: [
-      { educandoId: "edu-2", presente: true },
-      { educandoId: "edu-5", presente: false },
-    ],
-  },
-  {
-    id: "enco-4",
-    atividadeId: "atv-3",
-    data: iso(2),
-    horario: "18:30",
-    local: "Auditório",
-    situacao: "Planejado",
-    presencas: [{ educandoId: "edu-3", presente: false }],
   },
 ]
