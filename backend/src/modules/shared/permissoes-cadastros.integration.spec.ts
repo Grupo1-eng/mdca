@@ -79,32 +79,29 @@ describe('Permissões de cadastro (integração)', () => {
   describe('projetos', () => {
     const novo = { nome: 'Oficinas', tipo: 'PROJETO', status: 'Ativo' };
 
-    it.each(['educador', 'tecnico_servico_social', 'tecnico_psicologia'])(
-      '%s consulta, mas não cria, edita nem exclui projetos',
-      async (perfil) => {
-        logadoComo(perfil);
+    // O cadastro e a edição passaram para a Gestão (/api/iniciativas):
+    // /api/projetos é só de consulta, para todos os perfis.
+    it.each([
+      'coordenador',
+      'coordenador_financeiro',
+      'gestor_financeiro',
+      'analista_financeiro',
+      'administrativo',
+      'educador',
+      'tecnico_servico_social',
+      'tecnico_psicologia',
+    ])('%s consulta, mas não cria, edita nem exclui projetos por /api/projetos', async (perfil) => {
+      logadoComo(perfil);
 
-        expect((await enviar('get', '/api/projetos')).status).toBe(200);
-        expect((await enviar('get', '/api/projetos/5')).status).toBe(200);
-        expect((await enviar('post', '/api/projetos', novo)).status).toBe(403);
-        expect((await enviar('put', '/api/projetos/5', { nome: 'X' })).status).toBe(403);
-        expect((await enviar('delete', '/api/projetos/5')).status).toBe(403);
-        expect(prisma.projeto.create).not.toHaveBeenCalled();
-        expect(prisma.projeto.update).not.toHaveBeenCalled();
-        expect(prisma.projeto.delete).not.toHaveBeenCalled();
-      },
-    );
-
-    it.each(['coordenador', 'coordenador_financeiro', 'gestor_financeiro', 'analista_financeiro', 'administrativo'])(
-      '%s cria, edita e exclui projetos',
-      async (perfil) => {
-        logadoComo(perfil);
-
-        expect((await enviar('post', '/api/projetos', novo)).status).toBe(201);
-        expect((await enviar('put', '/api/projetos/5', { nome: 'X' })).status).toBe(200);
-        expect((await enviar('delete', '/api/projetos/5')).status).toBe(204);
-      },
-    );
+      expect((await enviar('get', '/api/projetos')).status).toBe(200);
+      expect((await enviar('get', '/api/projetos/5')).status).toBe(200);
+      expect((await enviar('post', '/api/projetos', novo)).status).toBe(404);
+      expect((await enviar('put', '/api/projetos/5', { nome: 'X' })).status).toBe(404);
+      expect((await enviar('delete', '/api/projetos/5')).status).toBe(404);
+      expect(prisma.projeto.create).not.toHaveBeenCalled();
+      expect(prisma.projeto.update).not.toHaveBeenCalled();
+      expect(prisma.projeto.delete).not.toHaveBeenCalled();
+    });
   });
 
   describe('organização', () => {

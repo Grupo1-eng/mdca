@@ -3,11 +3,8 @@ import { fmt, formatDate, formatDuracao, getYear } from '@/lib/format';
 import { useProjetos } from '@/hooks/useProjetos';
 import { useLancamentos } from '@/hooks/useLancamentos';
 import { LoadingState, ErrorState } from './StatusMessage';
-import { ModalShell, FieldMd, inputMdCls, selectCls, chevronBg } from './ModalShell';
 import { type LogEntry } from './NavBar';
-import type { NovoProjeto, TipoProjeto } from '@/types/financeiro';
 import BotaoHistorico from './BotaoHistorico';
-import CampoData from './CampoData';
 
 const statusColors: Record<string, string> = {
   "Em andamento": "bg-emerald-100 text-emerald-800",
@@ -15,105 +12,18 @@ const statusColors: Record<string, string> = {
   Concluído: "bg-slate-100 text-slate-600",
 };
 
-const statusOpcoes = ["Planejamento", "Em andamento", "Concluído"];
-const tiposProjeto: { value: TipoProjeto; label: string }[] = [
-  { value: "PROJETO", label: "Projeto" },
-  { value: "SERVICO", label: "Serviço" },
-  { value: "PROGRAMA", label: "Programa" },
-];
-
 // O banco não guarda cor: ela é só visual, fixa por projeto.
 const cores = ["#0e7e6e", "#1a3a6b", "#7c5fbd", "#6b7a99", "#c2410c", "#0f766e"];
 const corDoProjeto = (id: number) => cores[id % cores.length];
 
-function ModalNovoProjeto({ onClose, onSave }: { onClose: () => void; onSave: (input: NovoProjeto) => Promise<void> }) {
-  const [form, setForm] = useState({
-    nome: "", descricao: "", tipo: "PROJETO" as TipoProjeto, status: "Planejamento",
-    dataInicio: "", dataFim: "", orcamentoTotal: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      await onSave({
-        nome: form.nome.trim(),
-        descricao: form.descricao.trim() || null,
-        tipo: form.tipo,
-        status: form.status,
-        dataInicio: form.dataInicio || null,
-        dataFim: form.dataFim || null,
-        orcamentoTotal: form.orcamentoTotal || null,
-      });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível salvar o projeto.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <ModalShell
-      title="Novo projeto" subtitle="Cadastre um novo projeto ou iniciativa"
-      onClose={onClose} onSubmit={handleSubmit} submitLabel="Salvar projeto"
-      submitting={submitting} error={error}
-    >
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <FieldMd label="Nome do projeto" required>
-            <input type="text" required value={form.nome} onChange={set("nome")} placeholder="Ex: Projeto Semear" className={inputMdCls} />
-          </FieldMd>
-        </div>
-        <div className="col-span-2">
-          <FieldMd label="Descrição">
-            <textarea value={form.descricao} onChange={set("descricao")} rows={2} placeholder="Descreva brevemente o objetivo do projeto…"
-              className={inputMdCls + " h-auto py-2 resize-none"} />
-          </FieldMd>
-        </div>
-        <FieldMd label="Tipo" required>
-          <select required value={form.tipo} onChange={set("tipo")} className={selectCls} style={chevronBg}>
-            {tiposProjeto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </FieldMd>
-        <FieldMd label="Status" required>
-          <select required value={form.status} onChange={set("status")} className={selectCls} style={chevronBg}>
-            {statusOpcoes.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </FieldMd>
-        <div className="col-span-2">
-          <FieldMd label="Orçamento total (R$)">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)] font-mono select-none">R$</span>
-              <input type="number" min="0" step="0.01" value={form.orcamentoTotal} onChange={set("orcamentoTotal")} placeholder="0,00" className={inputMdCls + " pl-10 font-mono"} />
-            </div>
-          </FieldMd>
-        </div>
-        <FieldMd label="Início">
-          <CampoData value={form.dataInicio} onChange={v => setForm(f => ({ ...f, dataInicio: v }))} className={inputMdCls + " font-mono"} />
-        </FieldMd>
-        <FieldMd label="Fim previsto">
-          <CampoData value={form.dataFim} onChange={v => setForm(f => ({ ...f, dataFim: v }))} className={inputMdCls + " font-mono"} />
-        </FieldMd>
-      </div>
-    </ModalShell>
-  );
-}
-
 export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" | "timestamp">) => void }) {
-  const { data: projetos, loading: loadingProjetos, error: errorProjetos, create } = useProjetos();
+  const { data: projetos, loading: loadingProjetos, error: errorProjetos } = useProjetos();
   const { data: lancamentos, loading: loadingLancamentos, error: errorLancamentos } = useLancamentos();
   const loading = loadingProjetos || loadingLancamentos;
   const error = errorProjetos ?? errorLancamentos;
   const [statusFiltro, setStatusFiltro] = useState<string>("todos");
   const [anoFiltro, setAnoFiltro] = useState<string>("todos");
   const [busca, setBusca] = useState("");
-  const [modal, setModal] = useState(false);
 
   // Realizado = saídas já pagas lançadas no projeto.
   const realizadoPorProjeto = useMemo(() => {
@@ -144,20 +54,8 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
   const limparFiltros = () => { setStatusFiltro("todos"); setAnoFiltro("todos"); setBusca(""); };
   const hasFilters = statusFiltro !== "todos" || anoFiltro !== "todos" || busca !== "";
 
-  const handleSaveProjeto = async (input: NovoProjeto) => {
-    const criado = await create(input);
-    addLog({
-      modulo: "Projetos",
-      acao: "adição",
-      descricao: `Novo projeto cadastrado: ${criado.nome}`,
-      detalhe: `${criado.status} · ${criado.orcamentoTotal !== null ? fmt(criado.orcamentoTotal) : "sem orçamento"}`,
-    });
-  };
-
   return (
     <div className="space-y-5">
-      {modal && <ModalNovoProjeto onClose={() => setModal(false)} onSave={handleSaveProjeto} />}
-
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
@@ -166,10 +64,10 @@ export default function Projetos({ addLog }: { addLog: (e: Omit<LogEntry, "id" |
             {filtrados.length} de {projetos.length} iniciativas
             {hasFilters && <button onClick={limparFiltros} className="ml-2 text-[#0e7e6e] hover:underline cursor-pointer">Limpar filtros</button>}
           </p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+            O cadastro de projetos, serviços e programas é feito pela coordenação, no módulo Gestão.
+          </p>
         </div>
-        <button onClick={() => setModal(true)} className="text-xs bg-[#1a3a6b] text-white rounded px-3 py-1.5 hover:bg-[#142e57] transition-colors cursor-pointer">
-          + Novo Projeto
-        </button>
       </div>
 
       {error && <ErrorState message={error} />}

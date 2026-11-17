@@ -41,3 +41,11 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 **Decisão:** entrada só tem as situações `pendente` e `recebido`; saída só `pendente` e `pago`. A regra fica em `backend/src/modules/financeiro/lancamentos/regras-lancamento.ts`, e o frontend espelha em `situacoesDoTipo` (`src/lib/rotulos.ts`).
 
 **Consequência:** criar ou editar com combinação inválida responde 400. Uma situação nova (ex.: `cancelado`, do RF35) precisa entrar nas duas listas e ser tratada no saldo (`saldo-conta.ts`) e nos gráficos.
+
+## 2026-11-17 — Projetos, serviços e programas são cadastrados só pela Gestão
+
+**Contexto:** havia dois caminhos para gravar na tabela compartilhada `projeto`: a tela Projetos do Financeiro (`POST/PUT/DELETE /api/projetos`) e o cadastro da Gestão (`POST/PUT /api/iniciativas`, PR #30). Os grupos combinaram que só a Gestão cadastra, e o Financeiro deu aval para a Gestão fazer a mudança no lado dele. Ver o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:** `/api/projetos` é só de consulta (`GET`), para todos os perfis logados. Criar e editar ficam em `/api/iniciativas`, só para a coordenação (`PERFIS_CADASTRO_INICIATIVA`). Não há exclusão de projeto pela API.
+
+**Consequência:** a tela Projetos do Financeiro não tem mais o botão "+ Novo Projeto"; o orçamento total do projeto só é editado pela Gestão. Para apagar um projeto criado por engano é preciso acesso direto ao banco.
