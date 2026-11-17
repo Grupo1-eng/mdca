@@ -1,43 +1,36 @@
+import { useEffect, useState } from "react"
+import { ErrorState, LoadingState } from "@/components/StatusMessage"
+import { historicoFrequencia } from "../../api/atividades"
+import { resumoFrequencia } from "../../api/atividadesMapper"
 import { ehIdPersistido } from "../../api/educandosMapper"
-import { useEducandosGestao } from "../EducandosContext"
+import { dataVisivel } from "../../atividades/model"
+import type { RegistroFrequencia } from "../types"
 import { Badge, Card, SensitiveNote } from "./EducandoUi"
 
-export default function FrequenciaPanel({
-  educandoId,
-}: {
-  educandoId: string
-}) {
-  const {
-    encontros,
-    atividades,
-    iniciativaDemonstracaoNome: iniciativaNome,
-  } = useEducandosGestao()
-  // Educando do banco: o registro de frequência ainda não tem rota no
-  // backend, então não há o que mostrar (os encontros de exemplo não são dele).
-  if (ehIdPersistido(educandoId)) {
-    return (
-      <SensitiveNote>
-        O histórico de frequência deste educando aparecerá aqui quando o
-        registro de presença nos encontros for integrado (próxima etapa).
-      </SensitiveNote>
-    )
+// Histórico de frequência do educando (RF19), da API real.
+export default function FrequenciaPanel({ educandoId }: { educandoId: string }) {
+  const persistido = ehIdPersistido(educandoId)
+  const [registros, setRegistros] = useState<RegistroFrequencia[] | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!persistido) return
+    setRegistros(null)
+    setErro(null)
+    historicoFrequencia(educandoId)
+      .then(setRegistros)
+      .catch((falha: unknown) =>
+        setErro(falha instanceof Error ? falha.message : "Não foi possível carregar a frequência."),
+      )
+  }, [educandoId, persistido])
+
+  if (!persistido) {
+    return <SensitiveNote>Salve o cadastro do educando para registrar a frequência.</SensitiveNote>
   }
-  const registros = [...encontros]
-    .filter((encontro) =>
-      encontro.presencas.some((presenca) => presenca.educandoId === educandoId),
-    )
-    .sort((a, b) => b.data.localeCompare(a.data))
-  const realizados = registros.filter(
-    (encontro) => encontro.situacao === "Realizado",
-  )
-  const presentes = realizados.filter(
-    (encontro) =>
-      encontro.presencas.find((presenca) => presenca.educandoId === educandoId)
-        ?.presente,
-  ).length
-  const taxa = realizados.length
-    ? Math.round((presentes / realizados.length) * 100)
-    : 0
+  if (erro) return <ErrorState message={erro} />
+  if (!registros) return <LoadingState label="Carregando frequência" />
+
+  const { realizados, presentes, taxa } = resumoFrequencia(registros)
 
   return (
     <div className="space-y-4">
@@ -46,10 +39,13 @@ export default function FrequenciaPanel({
           Frequência nos encontros realizados
         </p>
         <p className="mt-1 text-2xl font-semibold">
-          {taxa}%{" "}
+          {taxa === null ? "—" : `${taxa}%`}{" "}
           <span className="text-sm font-normal text-[var(--muted-foreground)]">
-            ({presentes} de {realizados.length})
+            ({presentes} de {realizados})
           </span>
+        </p>
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          Encontros cancelados ou ainda planejados não entram na taxa.
         </p>
       </Card>
 
@@ -66,40 +62,30 @@ export default function FrequenciaPanel({
               </tr>
             </thead>
             <tbody>
-              {registros.map((encontro) => {
-                const atividade = atividades.find(
-                  (item) => item.id === encontro.atividadeId,
-                )
-                const presente = encontro.presencas.find(
-                  (presenca) => presenca.educandoId === educandoId,
-                )?.presente
-                return (
-                  <tr
-                    key={encontro.id}
-                    className="border-b border-[var(--border)] last:border-0"
-                  >
-                    <td className="px-4 py-3">
-                      {encontro.data.split("-").reverse().join("/")}
-                    </td>
-                    <td className="px-4 py-3">{atividade?.nome ?? "—"}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                      {atividade ? iniciativaNome(atividade.iniciativaId) : "—"}
-                    </td>
-                    <td className="px-4 py-3">{encontro.situacao}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={presente ? "default" : "secondary"}>
-                        {presente ? "Presente" : "Ausente"}
-                      </Badge>
-                    </td>
-                  </tr>
-                )
-              })}
+              {registros.map((registro) => (
+                <tr key={registro.encontroId} className="border-b border-[var(--border)] last:border-0">
+                  <td className="px-4 py-3">
+                    {dataVisivel(registro.data)}
+                    {registro.horaInicio && (
+                      <span className="text-[var(--muted-foreground)]"> {registro.horaInicio}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{registro.atividadeNome}</td>
+                  <td className="px-4 py-3 text-[var(--muted-foreground)]">{registro.iniciativaNome}</td>
+                  <td className="px-4 py-3">{registro.situacaoEncontro}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant={registro.presente ? "default" : "secondary"}>
+                      {registro.presente ? "Presente" : "Ausente"}
+                    </Badge>
+                    {registro.observacao && (
+                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">{registro.observacao}</p>
+                    )}
+                  </td>
+                </tr>
+              ))}
               {registros.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-10 text-center text-[var(--muted-foreground)]"
-                  >
+                  <td colSpan={5} className="px-4 py-10 text-center text-[var(--muted-foreground)]">
                     Nenhum registro de frequência para este educando.
                   </td>
                 </tr>

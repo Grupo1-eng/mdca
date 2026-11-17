@@ -88,27 +88,66 @@ export interface Encaminhamento {
 
 export type SituacaoAtividade = "Ativa" | "Encerrada"
 
-// Mesmos campos da Atividade do SistemaGestao. O backend ainda não expõe
-// /api/atividades; ver CLAUDE.md antes de integrar.
+// Atividade de uma iniciativa (GET /api/atividades). O responsável é um
+// usuário da organização (coordenação ou educador).
 export interface Atividade {
   id: string
   nome: string
   iniciativaId: string
-  responsavel: string
+  iniciativaNome: string
+  responsavelId: string
+  responsavelNome: string
   situacao: SituacaoAtividade
   descricao: string
+  encontrosTotal: number
+  // Cancelado não conta como realizado (RN05).
+  encontrosRealizados: number
 }
 
+export interface ResponsavelAtividade {
+  id: string
+  nome: string
+}
+
+export type SituacaoEncontro = "Planejado" | "Realizado" | "Cancelado"
+
+// Encontro de uma atividade (GET /api/encontros). Data só como dia
+// (AAAA-MM-DD) e horários como texto HH:MM.
 export interface Encontro {
   id: string
   atividadeId: string
   data: string
-  horario: string
+  horaInicio: string
+  horaFim: string
   local: string
-  situacao: "Planejado" | "Realizado" | "Cancelado"
-  presencas: Array<{
-    educandoId: string
-    presente: boolean
-    observacao?: string
-  }>
+  observacoes: string
+  situacao: SituacaoEncontro
+  presencasRegistradas: number
+}
+
+// Uma linha da chamada de um encontro (GET /api/frequencias/encontro/:id).
+// `presente` null = ainda sem registro.
+export interface LinhaChamada {
+  educandoId: string
+  nome: string
+  presente: boolean | null
+  observacao: string
+  desvinculado: boolean
+}
+
+export interface Chamada {
+  aceitaChamada: boolean
+  linhas: LinhaChamada[]
+}
+
+// Histórico de frequência do educando (GET /api/frequencias/educando/:id).
+export interface RegistroFrequencia {
+  encontroId: string
+  data: string
+  horaInicio: string
+  situacaoEncontro: SituacaoEncontro
+  atividadeNome: string
+  iniciativaNome: string
+  presente: boolean
+  observacao: string
 }

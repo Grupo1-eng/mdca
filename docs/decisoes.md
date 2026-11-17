@@ -49,3 +49,14 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 **Decisão:** `/api/projetos` é só de consulta (`GET`), para todos os perfis logados. Criar e editar ficam em `/api/iniciativas`, só para a coordenação (`PERFIS_CADASTRO_INICIATIVA`). Não há exclusão de projeto pela API.
 
 **Consequência:** a tela Projetos do Financeiro não tem mais o botão "+ Novo Projeto"; o orçamento total do projeto só é editado pela Gestão. Para apagar um projeto criado por engano é preciso acesso direto ao banco.
+
+## 2026-11-17 — Atividades, encontros e chamada: quem grava e quando
+
+**Contexto:** a integração de atividades, encontros e frequência com o banco (RF17, RF18, RF19) exigia três decisões do grupo da Gestão. Ver o [plano](gestao/plano-atividades-frequencia.md) e o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:**
+- Coordenação e educador gravam atividades, encontros e chamada em **qualquer** atividade da organização; os demais perfis da Gestão só consultam (`PERFIS_REGISTRO_ATIVIDADES`).
+- Atividade encerrada **não aceita encontros novos**, mas pode voltar para ativa.
+- **Em aberto:** quando a chamada pode ser registrada. Até a decisão, vale a opção recomendada: em qualquer encontro não cancelado, sem mudar a situação dele. A regra fica só em `aceitaChamada` (backend `gestao/atividades/regras-atividades.ts` e frontend `gestao/atividades/model.ts`).
+
+**Consequência:** a chamada só inclui educandos ativos vinculados à iniciativa da atividade (e quem já tem presença gravada no encontro). Encontro cancelado não conta como realizado (RN05) e não recebe chamada. Regravar a chamada atualiza a presença (RN06).

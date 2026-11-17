@@ -12,10 +12,8 @@ import * as api from "../api/educandos"
 import { deEducandoApi, ehIdPersistido } from "../api/educandosMapper"
 import { listarIniciativas } from "../api/iniciativas"
 import { salvarEducandoRemoto } from "../api/educandosFluxo"
-import { atividadesSeed, encontrosSeed, iniciativasSeed } from "./data/mock"
-import { salvarAtividadeEmMemoria } from "../atividades/model"
 import { permissoesEducandos } from "./model"
-import type { Atividade, Educando, Encontro, Iniciativa } from "./types"
+import type { Educando, Iniciativa } from "./types"
 
 export type SaveState = "idle" | "saving" | "saved" | "error"
 
@@ -27,27 +25,23 @@ interface EducandosContextValue {
   // educandos.
   iniciativas: Iniciativa[]
   // Educandos vêm da API real (GET /api/educandos); atendimentos e
-  // encaminhamentos, de useEvolucoesEducando. Atividades e encontros ainda
-  // são mock (com iniciativas de exemplo), até a próxima etapa.
+  // encaminhamentos, de useEvolucoesEducando. Atividades, encontros e
+  // frequência têm telas próprias (api/atividades.ts).
   educandos: Educando[]
   cargaEducandos: CargaEducandos
   erroEducandos: string | null
   // Idempotente: só busca na primeira chamada (ou depois de um erro).
   carregarEducandos: () => void
+  // Idempotente: carrega as iniciativas sem os educandos (tela de atividades).
+  carregarIniciativas: () => void
   // Busca de novo as iniciativas (depois de cadastrar ou editar uma).
   atualizarIniciativas: () => void
   // Busca a ficha completa (com responsáveis) e atualiza a lista.
   carregarEducando: (id: string) => Promise<void>
-  atividades: Atividade[]
-  encontros: Encontro[]
   iniciativaNome: (id: string) => string
-  // Só para as atividades e encontros de demonstração.
-  iniciativasDemonstracao: Iniciativa[]
-  iniciativaDemonstracaoNome: (id: string) => string
   // Devolve o registro salvo, com o id definitivo do servidor.
   salvarEducando: (educando: Educando) => Promise<Educando>
   alternarSituacaoEducando: (id: string) => Promise<void>
-  salvarAtividade: (atividade: Atividade) => void
 }
 
 const EducandosContext = createContext<EducandosContextValue | null>(null)
@@ -59,8 +53,6 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     useState<CargaEducandos>("ociosa")
   const cargaAtual = useRef<CargaEducandos>("ociosa")
   const [erroEducandos, setErroEducandos] = useState<string | null>(null)
-  const [atividades, setAtividades] = useState(atividadesSeed)
-  const atividadesAtuais = useRef(atividadesSeed)
 
   const [iniciativas, setIniciativas] = useState<Iniciativa[]>([])
   const iniciativasCarregadas = useRef(false)
@@ -85,12 +77,6 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     (id: string) =>
       iniciativas.find((iniciativa) => iniciativa.id === id)?.nome ?? "—",
     [iniciativas],
-  )
-
-  const iniciativaDemonstracaoNome = useCallback(
-    (id: string) =>
-      iniciativasSeed.find((iniciativa) => iniciativa.id === id)?.nome ?? "—",
-    [],
   )
 
   const aplicarEducandos = useCallback((proximos: Educando[]) => {
@@ -175,13 +161,6 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
     [mesclarEducando],
   )
 
-  const salvarAtividade = useCallback((registro: Atividade) => {
-    // Mesmo padrão de salvarEducando: a validação lança erro de forma síncrona.
-    const proximas = salvarAtividadeEmMemoria(atividadesAtuais.current, registro)
-    atividadesAtuais.current = proximas
-    setAtividades(proximas)
-  }, [])
-
   const value = useMemo<EducandosContextValue>(
     () => ({
       iniciativas,
@@ -189,28 +168,22 @@ export function GestaoEducandosProvider({ children }: { children: ReactNode }) {
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      carregarIniciativas,
       atualizarIniciativas,
       carregarEducando,
-      atividades,
-      encontros: encontrosSeed,
       iniciativaNome,
-      iniciativasDemonstracao: iniciativasSeed,
-      iniciativaDemonstracaoNome,
       salvarEducando,
       alternarSituacaoEducando,
-      salvarAtividade,
     }),
     [
       iniciativas,
-      iniciativaDemonstracaoNome,
       educandos,
       cargaEducandos,
       erroEducandos,
       carregarEducandos,
+      carregarIniciativas,
       atualizarIniciativas,
       carregarEducando,
-      atividades,
-      salvarAtividade,
       iniciativaNome,
       salvarEducando,
       alternarSituacaoEducando,

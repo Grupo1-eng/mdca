@@ -7,6 +7,9 @@ import { AcompanhamentosEncaminhamentoModule } from './acompanhamentos-encaminha
 import { CompromissosModule } from './compromissos/compromissos.module';
 import { IniciativasModule } from './iniciativas/iniciativas.module';
 import { EducandoProjetosModule } from './educando-projetos/educando-projetos.module';
+import { AtividadesModule } from './atividades/atividades.module';
+import { EncontrosModule } from './encontros/encontros.module';
+import { FrequenciasModule } from './frequencias/frequencias.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { EducandoProjetosModule } from './educando-projetos/educando-projetos.mo
     CompromissosModule,
     IniciativasModule,
     EducandoProjetosModule,
+    AtividadesModule,
+    EncontrosModule,
+    FrequenciasModule,
   ],
 })
 export class GestaoModule {}
