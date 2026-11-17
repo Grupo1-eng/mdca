@@ -4,7 +4,7 @@
 //
 // Lançamentos guardam `valor` sempre positivo; a direção vem de `tipo`.
 import type {
-  Categoria, CategoriaExecucao, Conta, ExecucaoProjeto, Lancamento, Orcamento, Projeto,
+  Categoria, Conta, Lancamento, Projeto,
   TipoLancamento,
 } from "@/types/financeiro";
 import { dataLocal } from "./format";
@@ -321,38 +321,4 @@ export function arvoreCategorias(categorias: Categoria[]): NoCategoria[] {
       categoria,
       subcategorias: categorias.filter((c) => c.categoriaPaiId === categoria.id),
     }));
-}
-
-/**
- * Execução orçamentária por projeto: orçado vem dos orçamentos cadastrados e
- * realizado das saídas já pagas, ambos por categoria.
- */
-export function execucaoOrcamentaria(
-  projetos: Projeto[],
-  categorias: Categoria[],
-  orcamentos: Orcamento[],
-  lancamentos: Lancamento[],
-): ExecucaoProjeto[] {
-  const nomeCategoria = new Map(categorias.map((c) => [c.id, c.nome]));
-  const pagas = lancamentos.filter((l) => l.tipo === "saida" && l.situacao === "pago");
-
-  return projetos.flatMap((projeto) => {
-    const doProjeto = orcamentos.filter((o) => o.projetoId === projeto.id);
-    if (doProjeto.length === 0) return [];
-
-    const categoriaIds = Array.from(new Set(doProjeto.map((o) => o.categoriaId)));
-    const linhas: CategoriaExecucao[] = categoriaIds.map((categoriaId) => ({
-      nome: nomeCategoria.get(categoriaId) ?? `Categoria ${categoriaId}`,
-      orcado: doProjeto.filter((o) => o.categoriaId === categoriaId).reduce((a, b) => a + b.valorPrevisto, 0),
-      realizado: soma(pagas.filter((l) => l.projetoId === projeto.id && l.categoriaId === categoriaId)),
-    }));
-
-    return [{
-      projetoId: projeto.id,
-      projeto: projeto.nome,
-      orcado: linhas.reduce((a, b) => a + b.orcado, 0),
-      realizado: linhas.reduce((a, b) => a + b.realizado, 0),
-      categorias: linhas,
-    }];
-  });
 }

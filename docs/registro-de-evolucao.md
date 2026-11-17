@@ -23,6 +23,24 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-13 — Relatório de execução orçamentária por projeto (US-16)
+
+**Tipo:** evolução · **Grupo:** financeiro · **PR:** #N (branch `feature/financeiro-relatorio-execucao-orcamentaria`)
+
+**O que mudou:**
+- A tela **Relatórios › Execução Orçamentária** agora mostra um projeto por vez: descrição, entradas e saídas por origem, saldo do projeto e orçado x realizado por categoria (com diferença, percentual e alerta de categoria acima do orçado).
+- **Projetos sem orçamento** e **categorias com gasto mas sem orçamento** passam a aparecer. Antes sumiam, e o realizado total ficava menor que as saídas pagas.
+- Respeita o filtro de período para entradas, saídas e realizado. O orçado soma todos os orçamentos do projeto.
+- Origem = contato do lançamento (sem contato: "Sem origem informada"). Saldo do projeto = entradas recebidas − saídas pagas.
+- Cálculo em `frontend/SistemaFinanceiro/src/lib/relatorioProjeto.ts` (com testes), tela em `components/RelatorioExecucao.tsx`. `BotaoExportar` virou componente compartilhado.
+- Removidos `execucaoOrcamentaria` (e seus tipos e testes), que ficaram sem uso.
+
+**Por quê:** US-16 (gerar relatório de execução orçamentária por projeto, comparando orçado e realizado por categoria).
+
+**Pendências:** origem como fonte de recurso, definição de saldo do projeto e período x orçado dependem de validação (ver `docs/financeiro/perguntas-em-aberto.md`). `GET /api/orcamentos` ainda não filtra por organização.
+
+---
+
 ## 2026-11-12 — Cadastro de iniciativas na Gestão, vínculo do educando e ajustes das telas
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** #30 (branch `ajustes-iniciais-sprint-4`)

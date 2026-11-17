@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Categoria, Conta, Lancamento, Orcamento, Projeto } from "@/types/financeiro";
+import type { Categoria, Conta, Lancamento, Projeto } from "@/types/financeiro";
 import {
   arvoreCategorias,
   contasPagas,
@@ -7,7 +7,6 @@ import {
   contasParaPainel,
   dataDoLancamento,
   execucaoDoProjeto,
-  execucaoOrcamentaria,
   filtrarPorIntervalo,
   filtrarPorProjeto,
   filtrarPorTipo,
@@ -326,36 +325,6 @@ describe("arvoreCategorias", () => {
   });
 });
 
-describe("execucaoOrcamentaria", () => {
-  const projetos: Projeto[] = [
-    { id: 1, organizacaoId: 1, nome: "Semear", descricao: null, status: "Em andamento", orcamentoTotal: null, dataInicio: null, dataFim: null },
-  ];
-  const categorias: Categoria[] = [
-    { id: 10, nome: "Material", tipo: "despesa", categoriaPaiId: null, ativa: true },
-    { id: 11, nome: "Transporte", tipo: "despesa", categoriaPaiId: null, ativa: true },
-  ];
-  const orcamentos: Orcamento[] = [
-    { id: 1, projetoId: 1, categoriaId: 10, periodoReferencia: "2026", valorPrevisto: 1000 },
-    { id: 2, projetoId: 1, categoriaId: 11, periodoReferencia: "2026", valorPrevisto: 500 },
-  ];
-
-  it("cruza orçado (orçamentos) com realizado (saídas pagas) por projeto e categoria", () => {
-    const [p] = execucaoOrcamentaria(projetos, categorias, orcamentos, [
-      lanc({ projetoId: 1, categoriaId: 10, tipo: "saida", valor: 300, situacao: "pago" }),
-      lanc({ projetoId: 1, categoriaId: 10, tipo: "saida", valor: 999, situacao: "pendente" }),
-      lanc({ projetoId: 1, categoriaId: 10, tipo: "entrada", valor: 999, situacao: "recebido" }),
-    ]);
-    expect(p).toMatchObject({ projetoId: 1, projeto: "Semear", orcado: 1500, realizado: 300 });
-    expect(p.categorias).toEqual([
-      { nome: "Material", orcado: 1000, realizado: 300 },
-      { nome: "Transporte", orcado: 500, realizado: 0 },
-    ]);
-  });
-
-  it("ignora projetos sem orçamento", () => {
-    expect(execucaoOrcamentaria(projetos, categorias, [], [])).toEqual([]);
-  });
-});
 // RF27: as contas vencidas aparecem separadas das já pagas/recebidas.
 describe("contasPagas", () => {
   it("lista só os lançamentos realizados do período, do mais recente ao mais antigo", () => {
