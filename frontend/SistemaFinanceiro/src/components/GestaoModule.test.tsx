@@ -35,6 +35,9 @@ describe("rotas migradas da Gestão", () => {
   it("mantém o Dashboard em /gestao", () => {
     const html = renderizarRota("/gestao")
     expect(html).toContain("Visão geral")
+    // Sem números de exemplo: o que ainda não tem rota aparece como próxima etapa.
+    expect(html).toContain("Disponível na próxima etapa")
+    expect(html).toContain('href="/gestao/agenda"')
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')
     expect(html).toContain('href="/gestao/projetos"')
@@ -49,6 +52,8 @@ describe("rotas migradas da Gestão", () => {
     const html = renderizarRota("/gestao/educandos")
     expect(html).toContain("Crianças e adolescentes vinculados")
     expect(html).toContain("Carregando educandos")
+    // Iniciativas vêm de /api/iniciativas: o filtro e a coluna voltaram.
+    expect(html).toContain("Filtrar por iniciativa")
     expect(html).toContain("Novo educando")
     expect(html).toContain('href="/gestao/educandos/novo"')
   })
@@ -69,6 +74,7 @@ describe("rotas migradas da Gestão", () => {
   it("renderiza a listagem de atividades em /gestao/atividades", () => {
     const html = renderizarRota("/gestao/atividades")
     expect(html).toContain("Atividades e Frequência")
+    expect(html).toContain("ainda não são salvas no servidor")
     expect(html).toContain("Oficina de Música")
     expect(html).toContain("Educador Marcos Reis")
     expect(html).toContain("Convivência e Fortalecimento de Vínculos")

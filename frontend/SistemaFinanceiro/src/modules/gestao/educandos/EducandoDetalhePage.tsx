@@ -6,6 +6,7 @@ import {
   usePermissoesEducandos,
   useSalvarGestao,
 } from "./EducandosContext"
+import { VINCULO_INICIATIVA_PENDENTE } from "../api/educandosMapper"
 import EducandoForm from "./components/EducandoForm"
 import EvolucaoPanel from "./components/EvolucaoPanel"
 import FrequenciaPanel from "./components/FrequenciaPanel"
@@ -122,11 +123,18 @@ export default function EducandoDetalhePage() {
 
       <PageHeader
         titulo={educando.nome}
-        descricao={`${iniciativaNome(educando.iniciativaId)} · ingresso em ${
-          educando.dataIngresso
-            ? educando.dataIngresso.split("-").reverse().join("/")
-            : "data não informada"
-        }`}
+        descricao={
+          // Iniciativa e ingresso dependem do vínculo com o projeto (sem rota ainda).
+          VINCULO_INICIATIVA_PENDENTE
+            ? educando.nascimento
+              ? `Nascimento em ${educando.nascimento.split("-").reverse().join("/")}`
+              : "Ficha do educando"
+            : `${iniciativaNome(educando.iniciativaId)} · ingresso em ${
+                educando.dataIngresso
+                  ? educando.dataIngresso.split("-").reverse().join("/")
+                  : "data não informada"
+              }`
+        }
         acoes={
           <>
             <SaveStatus estado={estado} />

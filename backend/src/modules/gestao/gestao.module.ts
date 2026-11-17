@@ -5,6 +5,8 @@ import { EvolucoesModule } from './evolucoes/evolucoes.module';
 import { EncaminhamentosModule } from './encaminhamentos/encaminhamentos.module';
 import { AcompanhamentosEncaminhamentoModule } from './acompanhamentos-encaminhamento/acompanhamentos-encaminhamento.module';
 import { CompromissosModule } from './compromissos/compromissos.module';
+import { IniciativasModule } from './iniciativas/iniciativas.module';
+import { EducandoProjetosModule } from './educando-projetos/educando-projetos.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { CompromissosModule } from './compromissos/compromissos.module';
     EncaminhamentosModule,
     AcompanhamentosEncaminhamentoModule,
     CompromissosModule,
+    IniciativasModule,
+    EducandoProjetosModule,
   ],
 })
 export class GestaoModule {}

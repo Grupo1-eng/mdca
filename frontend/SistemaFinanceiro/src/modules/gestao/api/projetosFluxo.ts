@@ -1,14 +1,7 @@
-import { listarProjetos, organizacaoIdDoToken } from "./projetos"
-import { daOrganizacao, deProjetoApi, type IniciativaTela } from "./projetosMapper"
+import { listarProjetos } from "./projetos"
+import { deProjetoApi, type IniciativaTela } from "./projetosMapper"
 
-export async function carregarIniciativas(): Promise<{
-  iniciativas: IniciativaTela[]
-  separaOrganizacao: boolean
-}> {
-  const organizacaoId = organizacaoIdDoToken()
-  const lista = (await listarProjetos()).map(deProjetoApi)
-  return {
-    iniciativas: daOrganizacao(lista, organizacaoId),
-    separaOrganizacao: organizacaoId !== null,
-  }
+// A organização já vem filtrada pelo backend (GET /api/iniciativas).
+export async function carregarIniciativas(): Promise<IniciativaTela[]> {
+  return (await listarProjetos()).map(deProjetoApi)
 }

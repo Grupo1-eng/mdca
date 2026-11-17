@@ -30,16 +30,8 @@ import {
 import {
   PERFIS,
   PERFIS_TECNICOS,
-  Perfil,
 } from '../../auth/perfis.constants';
-
-// Perfis da Gestão que podem listar educandos (dados de crianças e
-// adolescentes). Perfis exclusivos do Financeiro ficam de fora.
-const PERFIS_LISTAGEM_EDUCANDOS: Perfil[] = [
-  ...PERFIS_TECNICOS,
-  PERFIS.EDUCADOR,
-  PERFIS.ADMINISTRATIVO,
-];
+import { PERFIS_GESTAO } from '../perfis-gestao';
 
 @Controller('api/educandos')
 @UseGuards(JwtAuthGuard, PerfisGuard)
@@ -47,7 +39,7 @@ export class EducandosController {
   constructor(private readonly service: EducandosService) {}
 
   @Get()
-  @Perfis(...PERFIS_LISTAGEM_EDUCANDOS)
+  @Perfis(...PERFIS_GESTAO)
   listarTodos(
     @UsuarioAtual() usuario: UsuarioAutenticado,
 

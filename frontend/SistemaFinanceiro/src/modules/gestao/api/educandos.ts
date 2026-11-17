@@ -20,6 +20,16 @@ export interface ResponsavelApi {
   escolaridade: string | null
 }
 
+// Vínculo do educando com uma iniciativa (tabela educando_projeto).
+export interface VinculoApi {
+  id: number
+  educandoId: number
+  projetoId: number
+  dataIngresso: string
+  situacao: string
+  projeto?: { id: number; nome: string; tipo: string }
+}
+
 export interface EducandoApi {
   id: number
   organizacaoId: number
@@ -46,6 +56,8 @@ export interface EducandoApi {
   tecnicoResponsavelId: number | null
   // Só vem em GET /api/educandos/:id.
   responsaveis?: ResponsavelApi[]
+  // Vínculos ativos com iniciativas, do mais recente ao mais antigo.
+  educandoProjetos?: VinculoApi[]
   // Colunas da migration 20261029180000_gestao_sprint3_campos. Ausentes até
   // ela ser aplicada no banco.
   genero?: string | null
@@ -55,7 +67,10 @@ export interface EducandoApi {
 }
 
 export type EducandoPayload = Partial<
-  Omit<EducandoApi, "id" | "organizacaoId" | "situacaoAtual" | "responsaveis">
+  Omit<
+    EducandoApi,
+    "id" | "organizacaoId" | "situacaoAtual" | "responsaveis" | "educandoProjetos"
+  >
 > & { nome: string }
 
 export type ResponsavelPayload = Omit<ResponsavelApi, "id">
@@ -115,5 +130,31 @@ export function atualizarResponsavel(
   return request<ResponsavelApi>(`/api/responsaveis-familiares/${id}`, {
     method: "PUT",
     body: JSON.stringify(dados),
+  })
+}
+
+// Vínculo com iniciativa. Sem DELETE: trocar de iniciativa encerra o vínculo
+// antigo e cria outro.
+export function criarVinculo(dados: {
+  educandoId: number
+  projetoId: number
+  dataIngresso?: string
+}): Promise<VinculoApi> {
+  return request<VinculoApi>("/api/educando-projetos", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  })
+}
+
+export function atualizarVinculo(id: number, dataIngresso: string): Promise<VinculoApi> {
+  return request<VinculoApi>(`/api/educando-projetos/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ dataIngresso }),
+  })
+}
+
+export function encerrarVinculo(id: number): Promise<VinculoApi> {
+  return request<VinculoApi>(`/api/educando-projetos/${id}/encerrar`, {
+    method: "PATCH",
   })
 }

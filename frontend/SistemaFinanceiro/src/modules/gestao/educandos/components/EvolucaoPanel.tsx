@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { ErrorState, LoadingState } from "@/components/StatusMessage"
 import { CAMPOS_AGUARDANDO_MIGRACAO } from "../../api/educandosMapper"
+import { agoraLocal } from "../../api/evolucoesMapper"
 import { usePermissoesEducandos, useSalvarGestao } from "../EducandosContext"
 import { nomePerfil, situacaoAtualEncaminhamento } from "../model"
 import type {
@@ -109,7 +110,7 @@ function EncaminhamentoCard({
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const situacao = situacaoAtualEncaminhamento(encaminhamento)
   const [form, setForm] = useState<FormAcompanhamento>({
-    data: new Date().toISOString().slice(0, 10),
+    data: agoraLocal().slice(0, 10),
     situacao,
     observacao: "",
   })
@@ -280,7 +281,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
   const [form, setForm, limparForm] = useRascunho(
     `rascunho:gestao:evolucao:${educandoId}`,
     {
-      dataHora: new Date().toISOString().slice(0, 16),
+      dataHora: agoraLocal(),
       registro: "",
       intervencaoUsuario: "",
       intervencaoFamilia: "",

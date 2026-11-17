@@ -24,6 +24,12 @@ export function isoParaDataHoraLocal(iso: string): string {
   return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}T${dois(d.getHours())}:${dois(d.getMinutes())}`
 }
 
+// Agora, como "AAAA-MM-DDTHH:mm" no fuso do navegador (valor padrão de
+// campos datetime-local; toISOString daria o horário UTC, 3h adiantado).
+export function agoraLocal(agora: Date = new Date()): string {
+  return isoParaDataHoraLocal(agora.toISOString())
+}
+
 // ISO do servidor -> "AAAA-MM-DD" no fuso do navegador.
 export function isoParaDataLocal(iso: string): string {
   return isoParaDataHoraLocal(iso).slice(0, 10)

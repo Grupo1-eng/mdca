@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { situacaoAtualEncaminhamento } from "../educandos/model"
 import { CAMPOS_AGUARDANDO_MIGRACAO } from "./educandosMapper"
 import {
+  agoraLocal,
   dataHoraLocalParaIso,
   dataLocalParaIso,
   deEncaminhamentoApi,
@@ -23,6 +24,11 @@ describe("datas", () => {
 
   it("data sem hora não muda de dia ao passar por UTC", () => {
     expect(isoParaDataLocal(dataLocalParaIso("2026-10-01"))).toBe("2026-10-01")
+  })
+
+  it("agora local não usa o horário UTC", () => {
+    // 21h47 em Brasília já é 00h47 do dia seguinte em UTC.
+    expect(agoraLocal(new Date(2026, 10, 4, 21, 47))).toBe("2026-11-04T21:47")
   })
 
   it("recusa data inválida", () => {

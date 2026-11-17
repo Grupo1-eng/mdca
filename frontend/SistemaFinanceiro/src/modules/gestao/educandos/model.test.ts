@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { educandosSeed } from "./data/mock"
 import {
+  cpfIncompleto,
+  formatarCpf,
   alternarSituacaoEmMemoria,
   duplicidadeDe,
   educandoVazio,
@@ -126,5 +128,20 @@ describe("domínio temporário de Educandos", () => {
     expect(
       inativados.find((educando) => educando.id === novo.id)?.situacaoVinculo,
     ).toBe("Inativo")
+  })
+})
+
+describe("CPF", () => {
+  it("aceita só números, no máximo 11, com máscara", () => {
+    expect(formatarCpf("123")).toBe("123")
+    expect(formatarCpf("1234567")).toBe("123.456.7")
+    expect(formatarCpf("12345678910")).toBe("123.456.789-10")
+    expect(formatarCpf("123.456.789-10999abc")).toBe("123.456.789-10")
+  })
+
+  it("CPF vazio é permitido; preenchido precisa de 11 dígitos", () => {
+    expect(cpfIncompleto("")).toBe(false)
+    expect(cpfIncompleto("123.456.789-1")).toBe(true)
+    expect(cpfIncompleto("123.456.789-10")).toBe(false)
   })
 })

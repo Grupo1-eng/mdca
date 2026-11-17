@@ -10,6 +10,14 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEducandoDto } from './dto/create-educando.dto';
 import { UpdateEducandoDto } from './dto/update-educando.dto';
 
+// Vínculos ativos com iniciativas, do mais recente ao mais antigo. A tela
+// usa o primeiro como vínculo principal.
+const VINCULOS_ATIVOS = {
+  where: { situacao: 'ativo' },
+  orderBy: { dataIngresso: 'desc' },
+  include: { projeto: { select: { id: true, nome: true, tipo: true } } },
+} satisfies Prisma.Educando$educandoProjetosArgs;
+
 @Injectable()
 export class EducandosService {
   constructor(private readonly prisma: PrismaService) {}
@@ -39,6 +47,10 @@ export class EducandosService {
           : {}),
       },
 
+      include: {
+        educandoProjetos: VINCULOS_ATIVOS,
+      },
+
       orderBy: {
         nome: 'asc',
       },
@@ -57,6 +69,8 @@ export class EducandosService {
 
       include: {
         responsaveis: true,
+
+        educandoProjetos: VINCULOS_ATIVOS,
 
         tecnicoResponsavel: {
           select: {
