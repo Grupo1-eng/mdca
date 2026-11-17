@@ -36,7 +36,8 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 **Pendências:**
 - Deve entrar na `main` **depois do PR #30**; antes disso, ninguém conseguiria cadastrar projetos.
-- `createProjeto`/`updateProjeto` (`src/api/projetos.ts`) e o `create`/`update` do `useProjetos` ficaram sem uso; foram mantidos para não mexer na estrutura comum `useApiResource`. O Financeiro pode removê-los quando quiser.
+- ~~`createProjeto`/`updateProjeto` sem uso~~: removidos no mesmo dia (branch `feature/gestao-limpeza-projetos-financeiro`, a pedido do usuário, com o aval do Financeiro). `useProjetos` passou a expor só a consulta, e o teste de contrato E2E (`contrato.e2e.test.ts`) cria o projeto por `POST /api/iniciativas`.
+- Para o Financeiro: rodando o E2E contra um banco descartável, o teste "cria, lista e atualiza lançamento" falha porque o teste anterior desativa a conta (`ativa: false`) e a regra do PR #28 recusa lançamento em conta inativa. É anterior a esta mudança; o ajuste no teste cabe a eles.
 - Não há mais exclusão de projeto pela API.
 
 ---

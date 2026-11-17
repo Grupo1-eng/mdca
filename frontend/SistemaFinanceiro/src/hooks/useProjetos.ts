@@ -1,9 +1,13 @@
 import { useApiResource } from "./useApiResource";
-import { getProjetos, createProjeto, updateProjeto } from "@/api/projetos";
-import type { Projeto, NovoProjeto } from "@/types/financeiro";
+import { getProjetos } from "@/api/projetos";
+import type { Projeto } from "@/types/financeiro";
 
-const api = { list: getProjetos, create: createProjeto, update: updateProjeto };
+// Projetos são só de consulta aqui (cadastro na Gestão). O useApiResource
+// exige create/update; como o hook não os expõe, eles nunca são chamados.
+const somenteConsulta = () => Promise.reject(new Error("Projetos são cadastrados pela coordenação, no módulo Gestão."));
+const api = { list: getProjetos, create: somenteConsulta, update: somenteConsulta };
 
 export function useProjetos() {
-  return useApiResource<Projeto, NovoProjeto, Partial<NovoProjeto>>(api);
+  const { data, loading, error, refetch, recarregar } = useApiResource<Projeto>(api);
+  return { data, loading, error, refetch, recarregar };
 }

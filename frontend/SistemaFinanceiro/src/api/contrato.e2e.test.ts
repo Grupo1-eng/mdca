@@ -4,11 +4,11 @@
 //
 //   VITE_API_URL=http://localhost:3000 E2E_EMAIL=... E2E_SENHA=... npx vitest run contrato.e2e
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { EVENTO_SESSAO_EXPIRADA, getToken, setToken } from "./client";
+import { EVENTO_SESSAO_EXPIRADA, getToken, request, setToken } from "./client";
 import { login, me } from "./auth";
 import { createConta, getContas, updateConta } from "./contas";
 import { createCategoria, getCategorias } from "./categorias";
-import { createProjeto } from "./projetos";
+import { normalizarProjeto } from "./normalizar";
 import { createLancamento, getLancamentos, updateLancamento } from "./lancamentos";
 import { createContato } from "./contatos";
 import { createFonte } from "./fontes";
@@ -64,8 +64,12 @@ describe.skipIf(!process.env.VITE_API_URL)("contrato com o backend real", () => 
     expect(no?.subcategorias.map(s => s.id)).toEqual([sub.id]);
   });
 
+  // O cadastro de projetos é da Gestão (/api/iniciativas, só coordenação).
   it("cria projeto com datas e orçamento", async () => {
-    const projeto = await createProjeto({ nome: "Projeto e2e", tipo: "PROJETO", status: "Planejamento", orcamentoTotal: "5000", dataInicio: "2026-09-01" });
+    const projeto = normalizarProjeto(await request("/api/iniciativas", {
+      method: "POST",
+      body: JSON.stringify({ nome: "Projeto e2e", tipo: "PROJETO", status: "Planejamento", orcamentoTotal: "5000", dataInicio: "2026-09-01" }),
+    }));
     projetoId = projeto.id;
     expect(projeto.orcamentoTotal).toBe(5000);
     expect(formatDate(projeto.dataInicio)).toBe("01/09/2026");
