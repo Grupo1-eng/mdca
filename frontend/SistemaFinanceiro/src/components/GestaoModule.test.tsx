@@ -104,4 +104,11 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain('href="/gestao"')
     expect(html).toContain('href="/gestao/educandos"')
   })
+
+  it("mostra Usuários no menu da coordenação e abre a lista em carregamento", () => {
+    expect(renderizarRota("/gestao")).toContain('href="/gestao/usuarios"')
+    const html = renderizarRota("/gestao/usuarios")
+    expect(html).toContain("Carregando usuários")
+    expect(html).toContain("Novo usuário")
+  })
 })
