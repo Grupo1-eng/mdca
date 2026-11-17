@@ -23,6 +23,22 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-17 — Tela de Usuários na Gestão
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** #N (branch `feature/gestao-usuarios`)
+
+**O que mudou:**
+- Nova tela `/gestao/usuarios`, com o item "Usuários" no menu da Gestão visível só para a coordenação. Outros perfis que abrirem a rota veem um aviso.
+- Lista os usuários da organização com busca por nome ou e-mail e filtros de perfil e situação. Cria, edita, inativa (com confirmação) e reativa. Os 8 perfis aparecem separados em Gestão e Financeiro.
+- Mesmas regras da tela do Financeiro: senha com no mínimo 8 caracteres, ninguém muda o próprio perfil nem se inativa, senha em branco na edição mantém a atual.
+- Usa a rota compartilhada `/api/usuarios` (sem mudança no backend) por chamadas próprias em `modules/gestao/api/usuarios.ts`. Regras em `modules/gestao/usuarios/model.ts`, com testes. Os rótulos de perfil do `GestaoModule` passaram a vir desse modelo.
+
+**Por quê:** combinado com o Financeiro: a coordenação também gerencia os usuários pela Gestão. Permite criar os usuários de teste dos outros perfis.
+
+**Pendências:** `GET /api/usuarios` não tem restrição de perfil no backend (qualquer usuário logado da organização lista); a tela só aparece para a coordenação.
+
+---
+
 ## 2026-11-17 — Cadastro de projetos sai do Financeiro
 
 **Tipo:** evolução · **Grupo:** ambos (feito pela gestão, com aval do financeiro) · **PR:** #N (branch `feature/gestao-remove-cadastro-projetos-financeiro`)

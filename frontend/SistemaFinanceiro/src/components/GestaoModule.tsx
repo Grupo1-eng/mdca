@@ -8,8 +8,12 @@ import EducandoDetalhePage from "@/modules/gestao/educandos/EducandoDetalhePage"
 import EducandoNovoPage from "@/modules/gestao/educandos/EducandoNovoPage"
 import EducandosPage from "@/modules/gestao/educandos/EducandosPage"
 import ProjetosPage from "@/modules/gestao/projetos/ProjetosPage"
+import UsuariosPage from "@/modules/gestao/usuarios/UsuariosPage"
+import {
+  podeGerenciarUsuarios,
+  rotuloPerfilGestao,
+} from "@/modules/gestao/usuarios/model"
 import { podeAcessarModulo } from "@/lib/moduloDestino"
-import type { Perfil } from "@/types/financeiro"
 
 const menu = [
   { label: "Dashboard", to: "/gestao", habilitado: true },
@@ -19,16 +23,8 @@ const menu = [
   { label: "Projetos, Serviços e Programas", to: "/gestao/projetos", habilitado: true },
 ] as const
 
-const perfilLabel: Record<Perfil, string> = {
-  coordenador: "Coordenação",
-  tecnico_servico_social: "Técnico – Serviço Social",
-  tecnico_psicologia: "Técnico – Psicologia",
-  educador: "Educador",
-  administrativo: "Administrativo",
-  coordenador_financeiro: "Coordenação financeira",
-  gestor_financeiro: "Gestão financeira",
-  analista_financeiro: "Análise financeira",
-}
+// Só a coordenação gerencia usuários: o item não aparece para os demais.
+const itemUsuarios = { label: "Usuários", to: "/gestao/usuarios", habilitado: true } as const
 
 function iniciais(nome: string): string {
   return (
@@ -44,6 +40,9 @@ function iniciais(nome: string): string {
 export default function GestaoModule() {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
+  const itensMenu = podeGerenciarUsuarios(user?.perfil)
+    ? [...menu, itemUsuarios]
+    : menu
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -70,7 +69,7 @@ export default function GestaoModule() {
                   {user?.nome}
                 </p>
                 <p className="text-[10px] text-white/40">
-                  {user ? perfilLabel[user.perfil] : ""}
+                  {user ? rotuloPerfilGestao[user.perfil] : ""}
                 </p>
               </div>
               <div
@@ -101,7 +100,7 @@ export default function GestaoModule() {
             className="flex items-center gap-1 overflow-x-auto pb-2"
             aria-label="Navegação da Gestão"
           >
-            {menu.map((item) =>
+            {itensMenu.map((item) =>
               item.habilitado ? (
                 <Link
                   key={item.label}
@@ -143,6 +142,7 @@ export default function GestaoModule() {
           <Route path="atividades" element={<AtividadesPage />} />
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="projetos" element={<ProjetosPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="*" element={<Navigate to="/gestao" replace />} />
         </Routes>
       </main>
