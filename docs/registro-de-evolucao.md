@@ -23,6 +23,24 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-17 — Cadastro de projetos sai do Financeiro
+
+**Tipo:** evolução · **Grupo:** ambos (feito pela gestão, com aval do financeiro) · **PR:** #N (branch `feature/gestao-remove-cadastro-projetos-financeiro`)
+
+**O que mudou:**
+- `POST`, `PUT` e `DELETE /api/projetos` foram removidos (respondem 404). `GET /api/projetos` e `GET /api/projetos/:id` continuam iguais. O `ProjetosService` ficou só com a leitura.
+- A tela Projetos do Financeiro perdeu o botão "+ Novo Projeto" e o formulário, e ganhou um aviso de que o cadastro é feito pela coordenação na Gestão.
+- Testes do Financeiro ajustados: `permissoes-cadastros.integration.spec.ts` agora confere que nenhum perfil grava por `/api/projetos`; saiu de `financeiro.integration.spec.ts` o teste de criação de projeto (a regra de organização do token é testada nas iniciativas da Gestão).
+
+**Por quê:** combinado entre os grupos: só a Gestão cadastra projetos, serviços e programas (`/api/iniciativas`, PR #30). Ver a [decisão](decisoes.md).
+
+**Pendências:**
+- Deve entrar na `main` **depois do PR #30**; antes disso, ninguém conseguiria cadastrar projetos.
+- `createProjeto`/`updateProjeto` (`src/api/projetos.ts`) e o `create`/`update` do `useProjetos` ficaram sem uso; foram mantidos para não mexer na estrutura comum `useApiResource`. O Financeiro pode removê-los quando quiser.
+- Não há mais exclusão de projeto pela API.
+
+---
+
 ## 2026-11-13 — Relatório de execução orçamentária por projeto (US-16)
 
 **Tipo:** evolução · **Grupo:** financeiro · **PR:** #N (branch `feature/financeiro-relatorio-execucao-orcamentaria`)
