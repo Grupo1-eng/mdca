@@ -23,13 +23,14 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
-## 2026-11-19 — Relatórios em PDF: execução orçamentária e fluxo de caixa (RF60)
+## 2026-11-19 — Relatórios em PDF: execução orçamentária, fluxo de caixa e extrato (RF60)
 
 **Tipo:** evolução · **Grupo:** financeiro · **PR:** #N (branch `feature/financeiro-relatorios-pdf`)
 
 **O que mudou:**
 - **Botão "Exportar PDF"** na tela Relatórios › Execução Orçamentária, ao lado da planilha. O PDF traz: organização, título e período no cabeçalho; identificação do projeto (tipo, situação, vigência, orçamento total, descrição); resumo (orçado, realizado, % executado, saldo a executar, entradas recebidas, saldo do projeto); orçado x realizado por categoria com a situação em texto ("Acima do orçado", "Sem orçamento"); e entradas e saídas por origem com a participação no total. Rodapé com quem emitiu, quando e "Página X de Y".
 - **Botão "Exportar PDF"** também em Relatórios › Fluxo de Caixa: resumo do período (entradas, saídas e resultado, realizados e previstos), dois gráficos de pizza (entradas previstas divididas em recebidas e a receber; saídas previstas divididas em pagas e a pagar), tabela realizado x previsto por semana, mês ou ano (a semana aparece como "Semana de 01/11") com o total. Os relatórios em PDF não trazem seção de critérios do cálculo.
+- **Botão "Exportar PDF"** também em Relatórios › Extrato Financeiro, em A4 paisagem: os filtros aplicados no cabeçalho; resumo separando o realizado (recebidas, pagas) do pendente (a receber, a pagar); lançamentos em ordem cronológica com projeto, conta, categoria completa ("Pessoal › Salários"), favorecido/origem (contato), situação, entrada e saída; e os totais por categoria.
 - **Gerador genérico** em `frontend/SistemaFinanceiro/src/lib/pdf.ts` (jsPDF + jspdf-autotable, carregados só ao exportar): o relatório monta um `DocumentoPdf` puro (`lib/pdfExecucao.ts`, com testes) e o gerador só desenha. Tabelas repetem o cabeçalho a cada página, e tabelas pequenas não são partidas.
 - **Login e `GET /api/auth/me`** passam a devolver `organizacao: { id, nome }`, usada no cabeçalho do PDF.
 - O tipo `Projeto` do frontend ganhou `tipo` (o backend já devolvia). O `pnpm-lock.yaml` foi regerado (estava sem o `write-excel-file`; `pnpm install --frozen-lockfile` falhava).
@@ -37,7 +38,6 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 **Por quê:** RF60 (relatórios em PDF), pendente desde a exportação em planilha (PR #24). A Execução Orçamentária veio primeiro por ser a usada na prestação de contas aos financiadores.
 
 **Pendências:**
-- PDF do Extrato Financeiro.
 - Logo do MDCA no cabeçalho (o `src/imports/coisaaa.png` do frontend é um ponteiro do Git LFS, não a imagem).
 - A planilha da Execução continua misturando as três tabelas numa só; pode passar a usar o mesmo documento do PDF.
 

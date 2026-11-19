@@ -5,6 +5,7 @@ import { useLancamentos } from '@/hooks/useLancamentos';
 import { useProjetos } from '@/hooks/useProjetos';
 import { useContas } from '@/hooks/useContas';
 import { useCategorias } from '@/hooks/useCategorias';
+import { useContatos } from '@/hooks/useContatos';
 import { useAuth } from '@/context/AuthContext';
 import { usePeriodo } from '@/context/PeriodoContext';
 import {
@@ -13,6 +14,7 @@ import {
 import { baixarPlanilha } from '@/lib/planilha';
 import { baixarPdf } from '@/lib/pdf';
 import { documentoFluxoPdf } from '@/lib/pdfFluxo';
+import { documentoExtratoPdf } from '@/lib/pdfExtrato';
 import { filtrarExtrato, totaisFluxo, totaisPorCategoria } from '@/lib/relatorios';
 import { rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -49,12 +51,15 @@ function RelExtrato() {
   const { data: projetos, loading: loadingProjetos } = useProjetos();
   const { data: contas, loading: loadingContas } = useContas();
   const { data: categorias, loading: loadingCategorias } = useCategorias();
+  // Só o PDF usa os contatos (coluna "Favorecido / Origem").
+  const { data: contatos, loading: loadingContatos } = useContatos();
   const { periodo, intervalo } = usePeriodo();
   const { user } = useAuth();
-  const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias;
+  const loading = loadingLancamentos || loadingProjetos || loadingContas || loadingCategorias || loadingContatos;
 
   const nomeProjeto = useMemo(() => new Map(projetos.map(p => [p.id, p.nome])), [projetos]);
   const nomeConta = useMemo(() => new Map(contas.map(c => [c.id, c.nome])), [contas]);
+  const nomeContato = useMemo(() => new Map(contatos.map(c => [c.id, c.nome])), [contatos]);
   const nomeCategoria = useMemo(() => new Map(categorias.map(c => [c.id, c.nome])), [categorias]);
   const arvore = useMemo(() => arvoreCategorias(categorias), [categorias]);
 
@@ -71,15 +76,31 @@ function RelExtrato() {
   const totalE = filtered.filter(l => l.tipo === "entrada").reduce((a, b) => a + b.valor, 0);
   const totalS = filtered.filter(l => l.tipo === "saida").reduce((a, b) => a + b.valor, 0);
 
+  // Filtros aplicados, iguais na planilha e no PDF.
+  const filtrosAplicados = () => [
+    `Período: ${formatIntervalo(periodo, intervalo)}`,
+    `Projeto: ${projetoId !== null ? nomeProjeto.get(projetoId) ?? projetoId : "Todos"}`,
+    `Categoria: ${categoriaId !== null ? nomeCategoria.get(categoriaId) ?? categoriaId : "Todas"}`,
+    `Tipo: ${rotuloTipo[tipo]}`,
+    ...(termo.trim() ? [`Busca: ${termo.trim()}`] : []),
+  ];
+
+  // RF60: o PDF usa os mesmos lançamentos filtrados da tela.
+  const exportarPdf = () => baixarPdf(documentoExtratoPdf({
+    lancamentos: filtered,
+    categorias,
+    nomeProjeto,
+    nomeConta,
+    nomeContato,
+    filtros: filtrosAplicados(),
+    organizacao: user?.organizacao?.nome ?? null,
+    usuario: user?.nome ?? null,
+    geradoEm: new Date(),
+  }));
+
   const exportar = () => baixarPlanilha({
     titulo: "Extrato Financeiro",
-    filtros: [
-      `Período: ${formatIntervalo(periodo, intervalo)}`,
-      `Projeto: ${projetoId !== null ? nomeProjeto.get(projetoId) ?? projetoId : "Todos"}`,
-      `Categoria: ${categoriaId !== null ? nomeCategoria.get(categoriaId) ?? categoriaId : "Todas"}`,
-      `Tipo: ${rotuloTipo[tipo]}`,
-      ...(termo.trim() ? [`Busca: ${termo.trim()}`] : []),
-    ],
+    filtros: filtrosAplicados(),
     usuario: user?.nome ?? null,
     geradoEm: new Date(),
     colunas: ["Data", "Descrição", "Projeto", "Conta", "Categoria", "Situação", "Entrada", "Saída"],
@@ -108,6 +129,7 @@ function RelExtrato() {
         <div className="flex items-start gap-2">
           <PeriodoRelatorio />
           <BotaoExportar gerar={exportar} desabilitado={loading || filtered.length === 0} />
+          <BotaoExportar gerar={exportarPdf} formato="pdf" desabilitado={loading || filtered.length === 0} />
         </div>
       </div>
       <div className="flex flex-wrap gap-3 mb-4">

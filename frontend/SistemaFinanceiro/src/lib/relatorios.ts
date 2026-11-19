@@ -42,6 +42,12 @@ function nomeCompleto(categoria: Categoria | undefined, porId: Map<number, Categ
   return pai ? `${pai.nome} › ${categoria.nome}` : categoria.nome;
 }
 
+/** Nome de exibição de cada categoria, com a principal antes da subcategoria. */
+export function nomesCompletosDeCategoria(categorias: Categoria[]): Map<number, string> {
+  const porId = new Map(categorias.map((c) => [c.id, c]));
+  return new Map(categorias.map((c) => [c.id, nomeCompleto(c, porId, c.id)]));
+}
+
 export interface TotalCategoria {
   categoria: string;
   entradas: number;
