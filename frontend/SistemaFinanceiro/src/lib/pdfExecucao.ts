@@ -59,19 +59,6 @@ export function documentoExecucaoPdf(entrada: EntradaPdfExecucao): DocumentoPdf 
   ]);
   const emAlerta = r.categorias.flatMap((c, i) => (c.estourada ? [i] : []));
 
-  const notas = [
-    `Período dos lançamentos: ${periodo}. Cada lançamento é datado pela competência; sem ela, pela data de pagamento; sem as duas, pela data de cadastro.`,
-    "Entradas: lançamentos de entrada recebidos. Saídas e realizado: lançamentos de saída pagos. Lançamentos pendentes não entram no relatório.",
-    "Orçado: soma de todos os orçamentos por categoria cadastrados para o projeto, sem recorte pelo período.",
-    "Origem: contato informado no lançamento. Lançamentos sem contato aparecem como \"Sem origem informada\".",
-    "Saldo do projeto: entradas recebidas menos saídas pagas do projeto. Não corresponde ao saldo de uma conta bancária.",
-  ];
-  if (projeto.orcamentoTotal !== null && Math.abs(projeto.orcamentoTotal - r.totalOrcado) >= 0.01) {
-    notas.push(
-      `O orçamento total cadastrado no projeto (${dinheiroPdf(projeto.orcamentoTotal)}) é diferente da soma dos orçamentos por categoria (${dinheiroPdf(r.totalOrcado)}). Os percentuais usam a soma por categoria.`,
-    );
-  }
-
   return {
     titulo: `Execução Orçamentária — ${r.nome}`,
     organizacao,
@@ -123,7 +110,6 @@ export function documentoExecucaoPdf(entrada: EntradaPdfExecucao): DocumentoPdf 
       tabelaOrigem(r.entradasPorOrigem, r.totalEntradas),
       { tipo: "secao", titulo: "Saídas por origem" },
       tabelaOrigem(r.saidasPorOrigem, r.totalSaidas),
-      { tipo: "notas", titulo: "Critérios", itens: notas },
     ],
   };
 }

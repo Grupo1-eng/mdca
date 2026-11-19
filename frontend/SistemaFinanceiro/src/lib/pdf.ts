@@ -34,12 +34,32 @@ export interface CampoPdf {
   valor: string;
 }
 
+/** Cor RGB (0–255). */
+export type CorPdf = [number, number, number];
+
+export interface FatiaPdf {
+  rotulo: string;
+  valor: number;
+  cor: CorPdf;
+}
+
+export interface GraficoPizzaPdf {
+  titulo: string;
+  fatias: FatiaPdf[];
+  /** Linha abaixo da legenda, ex.: "Previstas: R$ 1.500,00". */
+  rodape?: string;
+  /** Texto mostrado no lugar da pizza quando todas as fatias são zero. */
+  vazio?: string;
+}
+
 export type BlocoPdf =
   | { tipo: "secao"; titulo: string }
   | { tipo: "paragrafo"; texto: string }
   /** Pares "rótulo: valor", ex.: os dados de identificação de um projeto. */
   | { tipo: "campos"; itens: CampoPdf[] }
   | { tipo: "indicadores"; itens: IndicadorPdf[] }
+  /** Gráficos de pizza lado a lado (até 2 por linha). */
+  | { tipo: "pizzas"; graficos: GraficoPizzaPdf[] }
   | {
       tipo: "tabela";
       colunas: ColunaPdf[];
@@ -87,7 +107,7 @@ const INDICADORES_POR_LINHA = 3;
  * buscado e copiado do PDF normalmente.
  */
 export function textoPdf(texto: string): string {
-  return texto.replace(/[   ]/g, " ").replace(/−/g, "-");
+  return texto.replace(/[\u00a0\u202f\u2007]/g, " ").replace(/\u2212/g, "-");
 }
 
 export function dinheiroPdf(valor: number): string {
@@ -101,6 +121,27 @@ export function formatarCelula(valor: CelulaPdf, formato: FormatoColuna = "texto
   if (formato === "dinheiro") return dinheiroPdf(valor);
   if (formato === "percentual") return `${valor}%`;
   return String(valor);
+}
+
+/**
+ * Percentual inteiro de cada valor no total, somando exatamente 100 (maiores
+ * restos): com arredondamento simples, 33,5% + 66,5% daria 34% + 67% = 101%.
+ * Total zero devolve tudo zero.
+ */
+export function percentuaisDasFatias(valores: number[]): number[] {
+  const positivos = valores.map((v) => Math.max(v, 0));
+  const total = positivos.reduce((a, b) => a + b, 0);
+  if (total <= 0) return positivos.map(() => 0);
+  const exatos = positivos.map((v) => (v / total) * 100);
+  const inteiros = exatos.map(Math.floor);
+  let faltam = 100 - inteiros.reduce((a, b) => a + b, 0);
+  const porResto = exatos.map((v, i) => ({ i, resto: v - inteiros[i] })).sort((a, b) => b.resto - a.resto);
+  for (const { i } of porResto) {
+    if (faltam <= 0) break;
+    inteiros[i] += 1;
+    faltam -= 1;
+  }
+  return inteiros;
 }
 
 /** Valor negativo em coluna numérica aparece em vermelho. */
@@ -189,6 +230,7 @@ function alturaParaManterJunto(bloco: BlocoPdf | undefined): number {
     const linhas = Math.max(bloco.linhas.length, 1) + 1 + (bloco.totais ? 1 : 0);
     return linhas * ALTURA_LINHA_ESTIMADA;
   }
+  if (bloco?.tipo === "pizzas") return ALTURA_PIZZA;
   return 15;
 }
 
@@ -235,6 +277,108 @@ function desenharCampos(ctx: Contexto, itens: CampoPdf[]): void {
   });
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? ctx.y;
   ctx.y = finalY + 6;
+}
+
+const PIZZAS_POR_LINHA = 2;
+const RAIO_PIZZA = 20;
+const ALTURA_PIZZA = 2 * RAIO_PIZZA + 14;
+
+/**
+ * Fatia de `inicio` a `fim` (radianos, 0 = 3 horas, sentido horário na página),
+ * aproximada por segmentos de reta curtos: o jsPDF não preenche arcos.
+ */
+function desenharFatia(doc: jsPDF, cx: number, cy: number, inicio: number, fim: number, cor: CorPdf): void {
+  const passos = Math.max(2, Math.ceil((fim - inicio) / (Math.PI / 90)));
+  const pontos: [number, number][] = [[cx, cy]];
+  for (let i = 0; i <= passos; i++) {
+    const a = inicio + ((fim - inicio) * i) / passos;
+    pontos.push([cx + RAIO_PIZZA * Math.cos(a), cy + RAIO_PIZZA * Math.sin(a)]);
+  }
+  // `lines` recebe deslocamentos relativos ao ponto anterior.
+  const segmentos = pontos.slice(1).map(([x, y], i) => [x - pontos[i][0], y - pontos[i][1]]);
+  doc.setFillColor(...cor);
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.5);
+  doc.lines(segmentos, cx, cy, [1, 1], "FD", true);
+}
+
+function desenharPizza(doc: jsPDF, x: number, y: number, largura: number, grafico: GraficoPizzaPdf): void {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...COR_TEXTO);
+  doc.text(textoPdf(grafico.titulo), x, y + 3, { maxWidth: largura });
+
+  const cx = x + RAIO_PIZZA;
+  const cy = y + 9 + RAIO_PIZZA;
+  const valores = grafico.fatias.map((f) => Math.max(f.valor, 0));
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (total <= 0) {
+    doc.setDrawColor(...COR_BORDA);
+    doc.setLineWidth(0.3);
+    doc.circle(cx, cy, RAIO_PIZZA, "S");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_SUAVE);
+    doc.text(textoPdf(grafico.vazio ?? "Sem valores no período."), x + 2 * RAIO_PIZZA + 6, cy, { maxWidth: largura - 2 * RAIO_PIZZA - 6 });
+    return;
+  }
+
+  // Começa às 12 horas e segue no sentido horário.
+  let angulo = -Math.PI / 2;
+  const fatiasComValor = grafico.fatias.filter((_, i) => valores[i] > 0);
+  if (fatiasComValor.length === 1) {
+    doc.setFillColor(...fatiasComValor[0].cor);
+    doc.circle(cx, cy, RAIO_PIZZA, "F");
+  } else {
+    grafico.fatias.forEach((fatia, i) => {
+      if (valores[i] <= 0) return;
+      const fim = angulo + (valores[i] / total) * 2 * Math.PI;
+      desenharFatia(doc, cx, cy, angulo, fim, fatia.cor);
+      angulo = fim;
+    });
+  }
+
+  // Legenda à direita: cor, rótulo e, abaixo, valor e percentual.
+  const percentuais = percentuaisDasFatias(valores);
+  const xLegenda = x + 2 * RAIO_PIZZA + 6;
+  const larguraLegenda = largura - 2 * RAIO_PIZZA - 6;
+  let yLegenda = cy - RAIO_PIZZA + 6;
+  grafico.fatias.forEach((fatia, i) => {
+    doc.setFillColor(...fatia.cor);
+    doc.rect(xLegenda, yLegenda - 2.6, 3, 3, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_SUAVE);
+    doc.text(textoPdf(fatia.rotulo), xLegenda + 5, yLegenda, { maxWidth: larguraLegenda - 5 });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...COR_TEXTO);
+    doc.text(textoPdf(`${dinheiroPdf(fatia.valor)} (${percentuais[i]}%)`), xLegenda + 5, yLegenda + 4.5);
+    yLegenda += 12;
+  });
+  if (grafico.rodape) {
+    doc.setDrawColor(...COR_BORDA);
+    doc.setLineWidth(0.2);
+    doc.line(xLegenda, yLegenda - 4, xLegenda + larguraLegenda, yLegenda - 4);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_SUAVE);
+    doc.text(textoPdf(grafico.rodape), xLegenda, yLegenda, { maxWidth: larguraLegenda });
+  }
+}
+
+function desenharPizzas(ctx: Contexto, graficos: GraficoPizzaPdf[]): void {
+  const { doc } = ctx;
+  const espaco = 8;
+  const largura = (larguraUtil(doc) - espaco * (PIZZAS_POR_LINHA - 1)) / PIZZAS_POR_LINHA;
+  for (let i = 0; i < graficos.length; i += PIZZAS_POR_LINHA) {
+    garantirEspaco(ctx, ALTURA_PIZZA);
+    graficos.slice(i, i + PIZZAS_POR_LINHA).forEach((g, j) => desenharPizza(doc, MARGEM + j * (largura + espaco), ctx.y, largura, g));
+    ctx.y += ALTURA_PIZZA;
+  }
+  doc.setLineWidth(0.2);
+  ctx.y += 2;
 }
 
 function corDoTom(tom: TomIndicador | undefined): [number, number, number] {
@@ -365,6 +509,7 @@ export async function gerarPdf(documento: DocumentoPdf, opcoes: { comprimir?: bo
     else if (bloco.tipo === "paragrafo") desenharParagrafo(ctx, bloco.texto);
     else if (bloco.tipo === "campos") desenharCampos(ctx, bloco.itens);
     else if (bloco.tipo === "indicadores") desenharIndicadores(ctx, bloco.itens);
+    else if (bloco.tipo === "pizzas") desenharPizzas(ctx, bloco.graficos);
     else if (bloco.tipo === "tabela") desenharTabela(ctx, bloco);
     else desenharNotas(ctx, bloco.itens, bloco.titulo);
   });

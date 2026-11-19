@@ -11,6 +11,8 @@ import {
   arvoreCategorias, dataDoLancamento, intervaloValido, serieFluxoCaixaPeriodo, type FiltroTipo,
 } from '@/lib/aggregations';
 import { baixarPlanilha } from '@/lib/planilha';
+import { baixarPdf } from '@/lib/pdf';
+import { documentoFluxoPdf } from '@/lib/pdfFluxo';
 import { filtrarExtrato, totaisFluxo, totaisPorCategoria } from '@/lib/relatorios';
 import { rotuloSituacao, valorComSinal } from '@/lib/rotulos';
 import { LoadingState, ErrorState } from './StatusMessage';
@@ -262,6 +264,16 @@ function RelFluxo() {
     ],
   }, [14, 18, 18, 18, 18, 18]);
 
+  // RF60: o PDF usa a mesma série da tela e da planilha.
+  const exportarPdf = () => baixarPdf(documentoFluxoPdf({
+    agrupamento: serie.agrupamento,
+    pontos: serie.pontos,
+    periodo: formatIntervalo(periodo, intervalo),
+    organizacao: user?.organizacao?.nome ?? null,
+    usuario: user?.nome ?? null,
+    geradoEm: new Date(),
+  }));
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4 mb-5">
@@ -274,6 +286,7 @@ function RelFluxo() {
         <div className="flex items-start gap-2">
           <PeriodoRelatorio />
           <BotaoExportar gerar={exportar} desabilitado={loading || serie.pontos.length === 0} />
+          <BotaoExportar gerar={exportarPdf} formato="pdf" desabilitado={loading || serie.pontos.length === 0} />
         </div>
       </div>
       {error && <ErrorState message={error} />}

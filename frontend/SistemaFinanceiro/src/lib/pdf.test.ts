@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatarCelula, gerarPdf, textoPdf, type DocumentoPdf } from "./pdf";
+import { formatarCelula, gerarPdf, percentuaisDasFatias, textoPdf, type DocumentoPdf } from "./pdf";
 import { nomeArquivo } from "./planilha";
 
 /**
@@ -47,9 +47,24 @@ describe("formatarCelula", () => {
   });
 });
 
+describe("percentuaisDasFatias", () => {
+  it("soma exatamente 100, mesmo quando o arredondamento simples daria 101", () => {
+    const [a, b] = percentuaisDasFatias([33.5, 66.5]);
+    expect(a + b).toBe(100);
+    expect(Math.abs(a - 33.5)).toBeLessThan(1);
+    expect(percentuaisDasFatias([1, 1, 1])).toEqual([34, 33, 33]);
+    expect(percentuaisDasFatias([2, 1, 1, 1, 1, 1, 1])).toEqual([25, 13, 13, 13, 12, 12, 12]);
+  });
+
+  it("devolve zeros quando o total é zero e ignora negativos", () => {
+    expect(percentuaisDasFatias([0, 0])).toEqual([0, 0]);
+    expect(percentuaisDasFatias([50, -10])).toEqual([100, 0]);
+  });
+});
+
 describe("textoPdf", () => {
   it("troca caracteres que a fonte padrão não tem", () => {
-    expect(textoPdf("R$ 10 − 5")).toBe("R$ 10 - 5");
+    expect(textoPdf("R$\u202f10 \u2212 5")).toBe("R$ 10 - 5");
   });
 });
 
@@ -101,6 +116,24 @@ describe("gerarPdf", () => {
       blocos: [{ tipo: "campos", itens: [{ rotulo: "Vigência", valor: "01/01/2026 a 31/12/2026" }, { rotulo: "Tipo", valor: "Programa" }] }],
     });
     expect(t).toEqual(expect.arrayContaining(["Vigência", "01/01/2026 a 31/12/2026", "Tipo", "Programa"]));
+  });
+
+  it("desenha gráficos de pizza com legenda de valor e percentual, ou o texto de vazio", async () => {
+    const { textos: t } = await gerar({
+      blocos: [{
+        tipo: "pizzas",
+        graficos: [
+          { titulo: "Entradas previstas x realizadas", fatias: [{ rotulo: "Recebidas", valor: 750, cor: [0, 128, 0] }, { rotulo: "A receber", valor: 250, cor: [150, 200, 150] }], rodape: "Previstas: R$ 1.000,00" },
+          { titulo: "Saídas previstas x realizadas", fatias: [{ rotulo: "Pagas", valor: 0, cor: [200, 0, 0] }, { rotulo: "A pagar", valor: 0, cor: [240, 180, 180] }], vazio: "Nenhuma saída prevista no período." },
+        ],
+      }],
+    });
+    expect(t).toEqual(expect.arrayContaining([
+      "Entradas previstas x realizadas", "Recebidas", "R$ 750,00 (75%)", "A receber", "R$ 250,00 (25%)", "Previstas: R$ 1.000,00",
+      "Saídas previstas x realizadas",
+    ]));
+    // O texto de vazio pode quebrar em linhas ao lado do círculo.
+    expect(t.join(" ")).toContain("Nenhuma saída prevista no período.");
   });
 
   it("mostra o texto de vazio quando a tabela não tem linhas", async () => {

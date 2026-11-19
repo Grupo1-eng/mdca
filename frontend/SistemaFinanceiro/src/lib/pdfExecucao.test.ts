@@ -144,19 +144,8 @@ describe("documentoExecucaoPdf — números", () => {
 });
 
 describe("documentoExecucaoPdf — critérios", () => {
-  it("explica as regras do cálculo", () => {
-    const notas = bloco(documento(), "notas").itens.join("\n");
-    expect(notas).toContain("Lançamentos pendentes não entram");
-    expect(notas).toContain("sem recorte pelo período");
-    expect(notas).toContain("Sem origem informada");
-    expect(notas).toContain("Não corresponde ao saldo de uma conta bancária");
-  });
-
-  it("avisa quando o orçamento total do projeto difere da soma por categoria", () => {
-    const igual = bloco(documento(), "notas").itens.join("\n");
-    expect(igual).not.toContain("é diferente da soma");
-    const diferente = bloco(documento({ projeto: { ...projeto, orcamentoTotal: 2000 } }), "notas").itens.join("\n");
-    expect(diferente).toContain("O orçamento total cadastrado no projeto (R$ 2.000,00) é diferente da soma dos orçamentos por categoria (R$ 1.500,00)");
+  it("não tem a seção de critérios", () => {
+    expect(documento().blocos.some((b) => b.tipo === "notas")).toBe(false);
   });
 });
 
