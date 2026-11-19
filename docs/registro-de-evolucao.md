@@ -23,6 +23,25 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-19 — Execução orçamentária em PDF (RF60)
+
+**Tipo:** evolução · **Grupo:** financeiro · **PR:** #N (branch `feature/financeiro-relatorios-pdf`)
+
+**O que mudou:**
+- **Botão "Exportar PDF"** na tela Relatórios › Execução Orçamentária, ao lado da planilha. O PDF traz: organização, título e período no cabeçalho; identificação do projeto (tipo, situação, vigência, orçamento total, descrição); resumo (orçado, realizado, % executado, saldo a executar, entradas recebidas, saldo do projeto); orçado x realizado por categoria com a situação em texto ("Acima do orçado", "Sem orçamento"); entradas e saídas por origem com a participação no total; e as notas de critério do cálculo. Rodapé com quem emitiu, quando e "Página X de Y".
+- **Gerador genérico** em `frontend/SistemaFinanceiro/src/lib/pdf.ts` (jsPDF + jspdf-autotable, carregados só ao exportar): o relatório monta um `DocumentoPdf` puro (`lib/pdfExecucao.ts`, com testes) e o gerador só desenha. Tabelas repetem o cabeçalho a cada página, e tabelas pequenas não são partidas.
+- **Login e `GET /api/auth/me`** passam a devolver `organizacao: { id, nome }`, usada no cabeçalho do PDF.
+- O tipo `Projeto` do frontend ganhou `tipo` (o backend já devolvia). O `pnpm-lock.yaml` foi regerado (estava sem o `write-excel-file`; `pnpm install --frozen-lockfile` falhava).
+
+**Por quê:** RF60 (relatórios em PDF), pendente desde a exportação em planilha (PR #24). A Execução Orçamentária veio primeiro por ser a usada na prestação de contas aos financiadores.
+
+**Pendências:**
+- PDF do Extrato Financeiro e do Fluxo de Caixa.
+- Logo do MDCA no cabeçalho (o `src/imports/coisaaa.png` do frontend é um ponteiro do Git LFS, não a imagem).
+- A planilha da Execução continua misturando as três tabelas numa só; pode passar a usar o mesmo documento do PDF.
+
+---
+
 ## 2026-11-17 — Atividades, encontros e frequência no banco
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** #N (branch `feature/gestao-atividades-frequencia`)

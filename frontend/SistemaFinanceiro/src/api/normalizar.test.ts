@@ -62,7 +62,7 @@ describe("normalizarConta", () => {
 
 describe("normalizarProjeto", () => {
   it("converte orçamento Decimal e preserva null", () => {
-    const base = { id: 1, organizacaoId: 1, nome: "P", descricao: null, status: "Planejamento", dataInicio: null, dataFim: null };
+    const base = { id: 1, organizacaoId: 1, nome: "P", descricao: null, tipo: "PROJETO", status: "Planejamento", dataInicio: null, dataFim: null };
     expect(normalizarProjeto({ ...base, orcamentoTotal: "2500.10" }).orcamentoTotal).toBe(2500.1);
     expect(normalizarProjeto({ ...base, orcamentoTotal: null }).orcamentoTotal).toBeNull();
   });

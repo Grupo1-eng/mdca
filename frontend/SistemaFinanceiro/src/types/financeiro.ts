@@ -67,6 +67,8 @@ export interface Projeto {
   organizacaoId: number;
   nome: string;
   descricao: string | null;
+  /** PROJETO | SERVICO | PROGRAMA (cadastrado pela Gestão). */
+  tipo: string;
   status: string;
   orcamentoTotal: number | null;
   dataInicio: string | null;

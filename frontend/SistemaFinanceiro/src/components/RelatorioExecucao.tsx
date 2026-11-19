@@ -9,6 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 import { usePeriodo } from "@/context/PeriodoContext";
 import { intervaloValido } from "@/lib/aggregations";
 import { baixarPlanilha } from "@/lib/planilha";
+import { baixarPdf } from "@/lib/pdf";
+import { documentoExecucaoPdf } from "@/lib/pdfExecucao";
 import {
   relatorioExecucaoProjeto, type MovimentoPorOrigem, type RelatorioProjeto,
 } from "@/lib/relatorioProjeto";
@@ -131,6 +133,19 @@ export default function RelatorioExecucao() {
     }, [14, 36, 16, 16, 18]);
   };
 
+  // RF60: mesmo relatório da tela, em PDF. Os números vêm do mesmo `relatorio`.
+  const exportarPdf = async () => {
+    if (!relatorio || !projeto) return;
+    await baixarPdf(documentoExecucaoPdf({
+      relatorio,
+      projeto,
+      periodo: formatIntervalo(periodo, intervalo),
+      organizacao: user?.organizacao?.nome ?? null,
+      usuario: user?.nome ?? null,
+      geradoEm: new Date(),
+    }));
+  };
+
   const selectFiltroCls = selectCls + " h-9 text-xs pr-8 w-auto min-w-[220px]";
 
   return (
@@ -149,6 +164,7 @@ export default function RelatorioExecucao() {
             dataFim={dataFim} setDataFim={setDataFim}
           />
           <BotaoExportar gerar={exportar} desabilitado={loading || !relatorio} />
+          <BotaoExportar gerar={exportarPdf} formato="pdf" desabilitado={loading || !relatorio || !intervaloValido(intervalo)} />
         </div>
       </div>
 

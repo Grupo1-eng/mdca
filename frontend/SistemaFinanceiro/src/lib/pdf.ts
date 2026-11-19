@@ -29,9 +29,16 @@ export interface IndicadorPdf {
   tom?: TomIndicador;
 }
 
+export interface CampoPdf {
+  rotulo: string;
+  valor: string;
+}
+
 export type BlocoPdf =
   | { tipo: "secao"; titulo: string }
   | { tipo: "paragrafo"; texto: string }
+  /** Pares "rótulo: valor", ex.: os dados de identificação de um projeto. */
+  | { tipo: "campos"; itens: CampoPdf[] }
   | { tipo: "indicadores"; itens: IndicadorPdf[] }
   | {
       tipo: "tabela";
@@ -171,9 +178,23 @@ function desenharCabecalho(ctx: Contexto): void {
   ctx.y = y + 7;
 }
 
-function desenharSecao(ctx: Contexto, titulo: string): void {
-  // Título não fica sozinho no pé da página: exige espaço para algum conteúdo.
-  garantirEspaco(ctx, 20);
+// Tabelas até este tamanho não são partidas entre páginas: se não couberem
+// inteiras, vão (com o título da seção) para a página seguinte.
+const LINHAS_TABELA_PEQUENA = 15;
+const ALTURA_LINHA_ESTIMADA = 7;
+
+/** Altura que um bloco precisa junto do título que o antecede. */
+function alturaParaManterJunto(bloco: BlocoPdf | undefined): number {
+  if (bloco?.tipo === "tabela" && bloco.linhas.length <= LINHAS_TABELA_PEQUENA) {
+    const linhas = Math.max(bloco.linhas.length, 1) + 1 + (bloco.totais ? 1 : 0);
+    return linhas * ALTURA_LINHA_ESTIMADA;
+  }
+  return 15;
+}
+
+function desenharSecao(ctx: Contexto, titulo: string, proximo?: BlocoPdf): void {
+  // Título não fica sozinho no pé da página: exige espaço para o conteúdo que vem logo depois.
+  garantirEspaco(ctx, 5 + alturaParaManterJunto(proximo));
   const { doc } = ctx;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -194,6 +215,26 @@ function desenharParagrafo(ctx: Contexto, texto: string): void {
     ctx.y += 4.5;
   }
   ctx.y += 3;
+}
+
+/** Rótulo em negrito à esquerda e valor à direita, sem bordas; o valor quebra em linhas. */
+function desenharCampos(ctx: Contexto, itens: CampoPdf[]): void {
+  const { doc, autoTable, documento } = ctx;
+  garantirEspaco(ctx, 12);
+  autoTable(doc, {
+    startY: ctx.y,
+    margin: { left: MARGEM, right: MARGEM, top: MARGEM + 8, bottom: MARGEM_INFERIOR },
+    body: itens.map((c) => [textoPdf(c.rotulo), textoPdf(c.valor)]),
+    theme: "plain",
+    rowPageBreak: "avoid",
+    styles: { font: "helvetica", fontSize: 9, cellPadding: { top: 1, bottom: 1, left: 0, right: 2 }, textColor: COR_TEXTO, overflow: "linebreak" },
+    columnStyles: { 0: { cellWidth: 45, fontStyle: "bold", textColor: COR_SUAVE } },
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) cabecalhoContinuacao(doc, documento);
+    },
+  });
+  const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? ctx.y;
+  ctx.y = finalY + 6;
 }
 
 function corDoTom(tom: TomIndicador | undefined): [number, number, number] {
@@ -238,7 +279,7 @@ function desenharTabela(ctx: Contexto, bloco: Extract<BlocoPdf, { tipo: "tabela"
     ? linhas.map((linha) => linha.map((v, i) => formatarCelula(v, formatoDe(i))))
     : [[{ content: textoPdf(vazio ?? "Nenhum registro."), colSpan: colunas.length, styles: { halign: "center" as const, textColor: COR_SUAVE } }]];
 
-  garantirEspaco(ctx, 20);
+  garantirEspaco(ctx, alturaParaManterJunto(bloco));
   autoTable(doc, {
     startY: ctx.y,
     margin: { left: MARGEM, right: MARGEM, top: MARGEM + 8, bottom: MARGEM_INFERIOR },
@@ -319,13 +360,14 @@ export async function gerarPdf(documento: DocumentoPdf, opcoes: { comprimir?: bo
 
   const ctx: Contexto = { doc, autoTable, documento, y: MARGEM };
   desenharCabecalho(ctx);
-  for (const bloco of documento.blocos) {
-    if (bloco.tipo === "secao") desenharSecao(ctx, bloco.titulo);
+  documento.blocos.forEach((bloco, i) => {
+    if (bloco.tipo === "secao") desenharSecao(ctx, bloco.titulo, documento.blocos[i + 1]);
     else if (bloco.tipo === "paragrafo") desenharParagrafo(ctx, bloco.texto);
+    else if (bloco.tipo === "campos") desenharCampos(ctx, bloco.itens);
     else if (bloco.tipo === "indicadores") desenharIndicadores(ctx, bloco.itens);
     else if (bloco.tipo === "tabela") desenharTabela(ctx, bloco);
     else desenharNotas(ctx, bloco.itens, bloco.titulo);
-  }
+  });
   desenharRodapes(doc, documento);
   return doc;
 }

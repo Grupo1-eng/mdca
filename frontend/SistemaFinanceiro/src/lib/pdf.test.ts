@@ -96,6 +96,13 @@ describe("gerarPdf", () => {
     ]));
   });
 
+  it("desenha campos como rótulo e valor", async () => {
+    const { textos: t } = await gerar({
+      blocos: [{ tipo: "campos", itens: [{ rotulo: "Vigência", valor: "01/01/2026 a 31/12/2026" }, { rotulo: "Tipo", valor: "Programa" }] }],
+    });
+    expect(t).toEqual(expect.arrayContaining(["Vigência", "01/01/2026 a 31/12/2026", "Tipo", "Programa"]));
+  });
+
   it("mostra o texto de vazio quando a tabela não tem linhas", async () => {
     const { textos: t } = await gerar({
       blocos: [{ tipo: "tabela", colunas: [{ titulo: "Origem" }, { titulo: "Valor", formato: "dinheiro" }], linhas: [], vazio: "Nenhum lançamento no período." }],
@@ -115,6 +122,26 @@ describe("gerarPdf", () => {
     expect(t).toContain("Lançamento 120");
     // Páginas seguintes têm o cabeçalho resumido.
     expect(t).toContain("Movimento pelos Direitos da Criança e do Adolescente · Execução Orçamentária — Projeto Aprendiz");
+  });
+
+  it("não parte tabela pequena: ela vai inteira, com o título da seção, para a página seguinte", async () => {
+    const grande = Array.from({ length: 30 }, (_, i) => [`Linha ${i + 1}`, i]);
+    const pequena = Array.from({ length: 8 }, (_, i) => [`Pequena ${i + 1}`, i]);
+    const colunas = [{ titulo: "Descrição" }, { titulo: "Valor", formato: "dinheiro" as const }];
+    const { doc } = await gerar({
+      blocos: [
+        { tipo: "tabela", colunas, linhas: grande },
+        { tipo: "secao", titulo: "Saídas por origem" },
+        { tipo: "tabela", colunas, linhas: pequena },
+      ],
+    });
+    // Conteúdo de cada página (sem compressão), para saber onde cada texto caiu.
+    const paginas = (doc.internal as unknown as { pages: (string[] | null)[] }).pages.slice(1).map((p) => (p ?? []).join("\n"));
+    const paginaDe = (texto: string) => paginas.findIndex((p) => p.includes(`(${texto}) Tj`));
+    expect(paginaDe("Linha 30")).toBe(0);
+    expect(paginaDe("Saídas por origem".replace("í", "\xed"))).toBe(1);
+    expect(paginaDe("Pequena 1")).toBe(1);
+    expect(paginaDe("Pequena 8")).toBe(1);
   });
 
   it("usa A4 deitado na orientação paisagem", async () => {

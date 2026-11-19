@@ -25,7 +25,7 @@ function contato(id: number, nome: string): Contato {
 }
 
 const projeto: Projeto = {
-  id: 1, organizacaoId: 1, nome: "Semear", descricao: "Oficinas para jovens", status: "Em andamento",
+  id: 1, organizacaoId: 1, nome: "Semear", descricao: "Oficinas para jovens", tipo: "PROJETO", status: "Em andamento",
   orcamentoTotal: null, dataInicio: null, dataFim: null,
 };
 
