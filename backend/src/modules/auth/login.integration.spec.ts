@@ -13,6 +13,7 @@ describe('POST /api/auth/login (integração)', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
     },
+    organizacao: { findUnique: jest.fn() },
     auditoria: { create: jest.fn() },
     $transaction: jest.fn(),
     $connect: jest.fn(),
@@ -27,6 +28,7 @@ describe('POST /api/auth/login (integração)', () => {
     senhaHash: string;
     perfil: string;
     ativo: boolean;
+    organizacao: { id: number; nome: string };
   };
 
   // Cada teste ganha uma aplicação nova para o contador do rate limit não
@@ -43,6 +45,7 @@ describe('POST /api/auth/login (integração)', () => {
       senhaHash: await bcrypt.hash('senha-correta', 4),
       perfil: 'administrativo',
       ativo: true,
+      organizacao: { id: 1, nome: 'MDCA' },
     };
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
@@ -74,6 +77,7 @@ describe('POST /api/auth/login (integração)', () => {
       nome: 'Maria da Silva',
       email: 'maria@mdca.org.br',
       perfil: 'administrativo',
+      organizacao: { id: 1, nome: 'MDCA' },
     });
     expect(res.body.usuario.senhaHash).toBeUndefined();
     const payload = app.get(JwtService).verify(res.body.accessToken);
@@ -94,9 +98,9 @@ describe('POST /api/auth/login (integração)', () => {
 
     await login('senha-correta');
 
-    expect(prisma.usuario.findFirst).toHaveBeenCalledWith({
-      where: { email: usuario.email, ativo: true },
-    });
+    expect(prisma.usuario.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: usuario.email, ativo: true } }),
+    );
   });
 
   it('bloqueia com 429 a partir da 6ª tentativa no mesmo minuto', async () => {

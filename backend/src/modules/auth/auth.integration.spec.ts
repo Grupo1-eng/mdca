@@ -14,6 +14,7 @@ describe('Autenticação (integração)', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
     },
+    organizacao: { findUnique: jest.fn() },
     auditoria: { create: jest.fn() },
     $transaction: jest.fn(),
     $connect: jest.fn(),
@@ -91,8 +92,9 @@ describe('Autenticação (integração)', () => {
       expect(res.status).toBe(401);
     });
 
-    it('devolve o usuário do token, sem o hash da senha', async () => {
+    it('devolve o usuário do token com a organização, sem o hash da senha', async () => {
       prisma.usuario.findUnique.mockResolvedValue(usuarioAtivo);
+      prisma.organizacao.findUnique.mockResolvedValue({ id: 1, nome: 'MDCA' });
 
       const res = await request(app.getHttpServer())
         .get('/api/auth/me')
@@ -104,9 +106,14 @@ describe('Autenticação (integração)', () => {
         nome: 'Maria da Silva',
         email: 'maria@mdca.org.br',
         perfil: 'administrativo',
+        organizacao: { id: 1, nome: 'MDCA' },
       });
       expect(prisma.usuario.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 7 } }),
+      );
+      // A organização vem do token, nunca de um parâmetro da requisição.
+      expect(prisma.organizacao.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1 } }),
       );
     });
 

@@ -216,11 +216,20 @@ export interface EdicaoUsuario {
 }
 
 // Mesmo formato em POST /api/auth/login (`usuario`) e GET /api/auth/me.
+/** Organização de quem está logado, devolvida no login e em GET /api/auth/me. */
+export interface OrganizacaoDaSessao {
+  id: number;
+  nome: string;
+}
+
 export interface AuthUser {
   id: number;
   nome: string;
   email: string;
   perfil: Perfil;
+  // Opcional: um backend anterior a este campo não o devolve. Quem usa deve
+  // tratar a ausência (ex.: cabeçalho do PDF sem o nome da organização).
+  organizacao?: OrganizacaoDaSessao | null;
 }
 
 export interface LoginPayload {

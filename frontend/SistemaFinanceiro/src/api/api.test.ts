@@ -75,7 +75,10 @@ describe("client", () => {
 
 describe("auth", () => {
   it("faz login em /api/auth/login e guarda o accessToken", async () => {
-    const usuario = { id: 7, nome: "Maria", email: "maria@mdca.org.br", perfil: "administrativo" };
+    const usuario = {
+      id: 7, nome: "Maria", email: "maria@mdca.org.br", perfil: "administrativo",
+      organizacao: { id: 1, nome: "MDCA" },
+    };
     fetchMock.mockResolvedValue(resposta(200, { accessToken: "jwt", usuario }));
 
     const res = await login({ email: "maria@mdca.org.br", senha: "x" });
