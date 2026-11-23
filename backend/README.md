@@ -144,3 +144,30 @@ Tem o mesmo acesso do módulo financeiro (401 sem token, 403 sem perfil) e devol
 - Rota em `lancamentos.controller.ts` e consulta ao banco em `lancamentos.service.ts`.
 - Regra das semanas em `resumo-semanal.ts` e validação do `mes` em `dto/resumo-semanal-query.dto.ts`.
 - Testes: `resumo-semanal.spec.ts` e `resumo-semanal.integration.spec.ts`.
+
+## Exportar extrato financeiro em Excel
+
+`GET /api/lancamentos/extrato/exportar` devolve um arquivo `.xlsx` com o extrato, gerado direto do banco.
+Tem o mesmo acesso do módulo financeiro (401 sem token, 403 sem perfil) e só traz lançamentos da organização do usuário.
+
+Os filtros são opcionais e combinam entre si. Sem filtros, exporta todos os lançamentos.
+
+| Filtro        | Formato                       | Exemplo      |
+|---------------|-------------------------------|--------------|
+| `de`          | `AAAA-MM-DD` (primeiro dia)   | `2026-11-01` |
+| `ate`         | `AAAA-MM-DD` (último dia)     | `2026-11-30` |
+| `projetoId`   | id do projeto ou `nenhum`     | `12`         |
+| `categoriaId` | id da categoria (inclui subcategorias) | `3` |
+| `tipo`        | `entrada` ou `saida`          | `saida`      |
+| `busca`       | texto na descrição ou no projeto | `oficina` |
+
+- A planilha traz título, filtros aplicados, data, hora e usuário da emissão, uma linha por lançamento (Data, Descrição, Projeto, Conta, Categoria, Situação, Entrada, Saída) e a linha de totais.
+- A data do lançamento é a de competência, senão a de pagamento, senão a de criação, e as linhas saem ordenadas por ela.
+- Filtro com formato inválido responde `400`, e projeto ou categoria que não existem (ou de outra organização) respondem `404`.
+
+### O que foi adicionado
+
+- Rota em `lancamentos.controller.ts` e consulta ao banco em `lancamentos.service.ts`.
+- Montagem das linhas e dos totais em `extrato.ts`, geração do arquivo em `extrato-xlsx.ts` e validação dos filtros em `dto/extrato-query.dto.ts`.
+- Nova dependência `exceljs` no backend.
+- Testes: `extrato.spec.ts` e `extrato.integration.spec.ts`.

@@ -5,6 +5,10 @@ import { RegistroAuditoriaService } from '../../shared/auditorias/registro-audit
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
 import { limitesDoMes, resumoSemanalDoMes } from './resumo-semanal';
+import { ExtratoQueryDto } from './dto/extrato-query.dto';
+import { SEM_PROJETO } from './dto/resumo-semanal-query.dto';
+import { dataDeTexto, montarDadosDoExtrato, nomeDoArquivo, rotuloDoPeriodo } from './extrato';
+import { gerarPlanilhaDoExtrato } from './extrato-xlsx';
 import { ajustarSaldo, efeitoNoSaldo } from './saldo-conta';
 import { SITUACOES_POR_TIPO, situacaoCompativel } from './regras-lancamento';
 
@@ -55,6 +59,104 @@ export class LancamentosService {
     });
 
     return resumoSemanalDoMes(mes, lancamentos);
+  }
+
+  async exportarExtrato(
+    filtros: ExtratoQueryDto,
+    organizacaoId: number,
+    nomeUsuario: string | null,
+    agora = new Date(),
+  ) {
+    const de = lerData('de', filtros.de);
+    const ate = lerData('ate', filtros.ate);
+    if (de && ate && de > ate) {
+      throw new BadRequestException('A data inicial não pode ser posterior à data final');
+    }
+    const projetoId =
+      filtros.projetoId === undefined
+        ? undefined
+        : filtros.projetoId === SEM_PROJETO
+          ? null
+          : Number(filtros.projetoId);
+    const categoriaId = filtros.categoriaId === undefined ? undefined : Number(filtros.categoriaId);
+    const busca = filtros.busca?.trim() || undefined;
+
+    const projeto =
+      typeof projetoId === 'number'
+        ? await this.prisma.projeto.findFirst({
+            where: { id: projetoId, organizacaoId },
+            select: { nome: true },
+          })
+        : null;
+    if (typeof projetoId === 'number' && !projeto) {
+      throw new NotFoundException('Projeto não encontrado');
+    }
+    const categoria =
+      categoriaId !== undefined
+        ? await this.prisma.categoriaFinanceira.findUnique({
+            where: { id: categoriaId },
+            select: { nome: true },
+          })
+        : null;
+    if (categoriaId !== undefined && !categoria) {
+      throw new NotFoundException('Categoria não encontrada');
+    }
+
+    const intervalo = {
+      ...(de && { gte: de }),
+      ...(ate && { lt: new Date(ate.getTime() + DIA_EM_MS) }),
+    };
+    const condicoes: Prisma.LancamentoWhereInput[] = [];
+    if (de || ate) {
+      condicoes.push({
+        OR: [
+          { dataCompetencia: intervalo },
+          { dataCompetencia: null, dataPagamento: intervalo },
+          { dataCompetencia: null, dataPagamento: null, criadoEm: intervalo },
+        ],
+      });
+    }
+    if (busca) {
+      condicoes.push({
+        OR: [
+          { descricao: { contains: busca, mode: 'insensitive' } },
+          { projeto: { nome: { contains: busca, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    const lancamentos = await this.prisma.lancamento.findMany({
+      where: {
+        conta: { organizacaoId },
+        ...(projetoId !== undefined && { projetoId }),
+        ...(categoriaId !== undefined && {
+          categoria: { OR: [{ id: categoriaId }, { categoriaPaiId: categoriaId }] },
+        }),
+        ...(filtros.tipo && { tipo: filtros.tipo }),
+        ...(condicoes.length > 0 && { AND: condicoes }),
+      },
+      include: {
+        conta: { select: { nome: true } },
+        categoria: { select: { nome: true } },
+        projeto: { select: { nome: true } },
+      },
+    });
+
+    const dados = montarDadosDoExtrato(
+      lancamentos,
+      {
+        periodo: rotuloDoPeriodo(de ?? undefined, ate ?? undefined),
+        projeto:
+          projetoId === undefined ? 'Todos' : projetoId === null ? 'Sem projeto' : (projeto?.nome ?? ''),
+        categoria: categoria?.nome ?? 'Todas',
+        tipo: filtros.tipo === 'entrada' ? 'Entradas' : filtros.tipo === 'saida' ? 'Saídas' : 'Todos',
+        busca,
+      },
+      nomeUsuario,
+      agora,
+    );
+
+    return { arquivo: await gerarPlanilhaDoExtrato(dados), nome: nomeDoArquivo(agora) };
   }
 
   async buscarPorId(
@@ -159,4 +261,13 @@ function validarSituacao(tipo: string, situacao: string) {
     const validas = (SITUACOES_POR_TIPO[tipo] ?? []).join(' ou ');
     throw new BadRequestException(`Situação "${situacao}" não vale para ${tipo}: use ${validas}.`);
   }
+}
+
+const DIA_EM_MS = 24 * 60 * 60 * 1000;
+
+function lerData(campo: string, texto?: string): Date | null {
+  if (texto === undefined) return null;
+  const data = dataDeTexto(texto);
+  if (!data) throw new BadRequestException(`${campo} não é uma data válida`);
+  return data;
 }
