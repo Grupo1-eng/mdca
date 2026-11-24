@@ -95,11 +95,18 @@ export function formDeUsuario(usuario: Usuario): FormUsuario {
   }
 }
 
+// Formato mínimo: algo@dominio.ext, sem espaços. O backend confere de novo.
+const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export const MENSAGEM_EMAIL_INVALIDO =
+  "E-mail inválido. Confira se tem @ e domínio (ex.: nome@mdca.org.br)."
+
 // Devolve a mensagem do primeiro problema, ou null se o formulário está ok.
 // Na edição, a senha em branco mantém a atual.
 export function validarUsuario(form: FormUsuario): string | null {
   if (!form.nome.trim()) return "Informe o nome."
   if (!form.email.trim()) return "Informe o e-mail."
+  if (!FORMATO_EMAIL.test(form.email.trim())) return MENSAGEM_EMAIL_INVALIDO
   const novo = form.id === null
   if (novo && !form.senha) return "Defina a senha inicial."
   if (form.senha && form.senha.length < SENHA_MINIMA)
@@ -131,3 +138,31 @@ export function paraEdicaoUsuario(
   if (form.senha) dados.senha = form.senha
   return dados
 }
+
+// O backend compartilhado (/api/usuarios) devolve parte das validações em
+// inglês (mensagens padrão do class-validator, ex.: "email must be an email")
+// e o conflito de e-mail com texto genérico. Traduz para a tela.
+const TRADUCOES_ERRO: Array<[RegExp, string]> = [
+  // Na ordem dos campos do formulário.
+  [/nome (should not be empty|must be a string)/i, "Informe o nome."],
+  [/email must be an email/i, MENSAGEM_EMAIL_INVALIDO],
+  [/email (should not be empty|must be a string)/i, "Informe o e-mail."],
+  [/perfil must be one of/i, "Escolha um perfil válido."],
+  [/senha must be/i, `A senha deve ter pelo menos ${SENHA_MINIMA} caracteres.`],
+  [/restrição única|unique constraint/i, "Já existe um usuário com este e-mail."],
+]
+
+// Mensagens padrão do class-validator, em inglês.
+const PARECE_INGLES = /\b(must|should|property)\b/i
+
+export function mensagemErroUsuario(mensagem: string): string {
+  const traduzidas = TRADUCOES_ERRO.filter(([padrao]) =>
+    padrao.test(mensagem),
+  ).map(([, texto]) => texto)
+  if (traduzidas.length > 0) return [...new Set(traduzidas)].join(" ")
+  if (PARECE_INGLES.test(mensagem)) {
+    return "Não foi possível salvar. Confira os dados do formulário."
+  }
+  return mensagem
+}
+

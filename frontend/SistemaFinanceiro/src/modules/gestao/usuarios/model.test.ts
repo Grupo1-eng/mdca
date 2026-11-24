@@ -5,6 +5,8 @@ import {
   filtrarUsuarios,
   formDeUsuario,
   formNovoUsuario,
+  MENSAGEM_EMAIL_INVALIDO,
+  mensagemErroUsuario,
   paraEdicaoUsuario,
   paraNovoUsuario,
   podeGerenciarUsuarios,
@@ -76,6 +78,13 @@ describe("validarUsuario", () => {
     expect(validarUsuario(novo)).toBeNull()
   })
 
+  it("recusa e-mail sem @, sem domínio ou com espaço", () => {
+    for (const email of ["ana.mdca.org.br", "ana@", "ana@mdca", "ana @mdca.org.br", "@mdca.org.br"]) {
+      expect(validarUsuario({ ...novo, email })).toBe(MENSAGEM_EMAIL_INVALIDO)
+    }
+    expect(validarUsuario({ ...novo, email: " ana@mdca.org.br " })).toBeNull()
+  })
+
   it("exige nome, e-mail e senha inicial no cadastro", () => {
     expect(validarUsuario({ ...novo, nome: "  " })).toBe("Informe o nome.")
     expect(validarUsuario({ ...novo, email: "" })).toBe("Informe o e-mail.")
@@ -108,3 +117,34 @@ describe("dados enviados ao backend", () => {
     expect(paraEdicaoUsuario(formDeUsuario(usuario({ perfil: "coordenador" })), true)).not.toHaveProperty("perfil")
   })
 })
+
+describe("mensagemErroUsuario", () => {
+  it("traduz as mensagens padrão do backend em inglês", () => {
+    expect(mensagemErroUsuario("email must be an email")).toBe(MENSAGEM_EMAIL_INVALIDO)
+    expect(mensagemErroUsuario("nome should not be empty, email must be an email")).toBe(
+      `Informe o nome. ${MENSAGEM_EMAIL_INVALIDO}`,
+    )
+    expect(mensagemErroUsuario("perfil must be one of the following values: coordenador, educador")).toBe(
+      "Escolha um perfil válido.",
+    )
+  })
+
+  it("e-mail repetido vira mensagem clara", () => {
+    expect(
+      mensagemErroUsuario("Já existe um registro com esses dados (violação de restrição única)"),
+    ).toBe("Já existe um usuário com este e-mail.")
+  })
+
+  it("inglês desconhecido vira mensagem genérica em português", () => {
+    expect(mensagemErroUsuario("property foo should not exist")).toBe(
+      "Não foi possível salvar. Confira os dados do formulário.",
+    )
+  })
+
+  it("mensagem já em português passa como está", () => {
+    expect(mensagemErroUsuario("Você não pode alterar o próprio perfil.")).toBe(
+      "Você não pode alterar o próprio perfil.",
+    )
+  })
+})
+
