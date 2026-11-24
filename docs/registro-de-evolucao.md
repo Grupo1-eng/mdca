@@ -23,6 +23,21 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Listas dos técnicos, sigilo nos acompanhamentos e guia de uso
+
+**Tipo:** evolução e correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-melhorias-sem-compartilhado`)
+
+**O que mudou:**
+- `GET /api/encaminhamentos/em-aberto` e `GET /api/evolucoes/recentes` (técnicos e coordenação): listas do painel, só com educando, data, destino, situação e profissional, sem nenhum texto. No Dashboard, substituem os blocos "próxima etapa" dos técnicos; a coordenação também vê os encaminhamentos em aberto.
+- `GET /api/acompanhamentos-encaminhamento` e `/:id`: encaminhamento ligado a evolução sigilosa de outro serviço não entrega as observações (pendência do sigilo de 24/11).
+- `docs/gestao/guia-de-uso.md`: guia rápido por perfil, para a capacitação da equipe (questionário, pergunta 18).
+
+**Por quê:** questionário da MDCA (perguntas 18, 23, 24 e 25).
+
+**Pendências:** rascunho que sobrevive a fechar a aba (pergunta 26) ficou de fora de propósito: gravaria dados sensíveis nos computadores compartilhados da sede.
+
+---
+
 ## 2026-11-24 — Painel de indicadores da Gestão
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-painel-indicadores`)

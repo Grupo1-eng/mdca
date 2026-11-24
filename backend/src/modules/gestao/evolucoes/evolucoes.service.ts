@@ -27,6 +27,9 @@ const PROFISSIONAL = {
 
 type UsuarioLeitor = Leitor & { organizacaoId: number };
 
+// Itens nas listas do painel dos técnicos.
+const LIMITE_PAINEL = 8;
+
 @Injectable()
 export class EvolucoesService {
   constructor(
@@ -113,6 +116,24 @@ export class EvolucoesService {
     return evolucoes.map((evolucao) =>
       aplicarSigiloEvolucao(evolucao, usuario),
     );
+  }
+
+  // Só data, tipo, educando, profissional e a marca de sigilo: nenhum texto,
+  // então serve para qualquer técnico, sigilosa ou não.
+  async listarRecentes(organizacaoId: number, limite = LIMITE_PAINEL) {
+    return this.prisma.evolucao.findMany({
+      where: { educando: { is: { organizacaoId } } },
+      select: {
+        id: true,
+        tipo: true,
+        dataInicio: true,
+        sigiloso: true,
+        educando: { select: { id: true, nome: true } },
+        profissional: { select: { id: true, nome: true } },
+      },
+      orderBy: { dataInicio: 'desc' },
+      take: limite,
+    });
   }
 
   private async buscarRegistro(

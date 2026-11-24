@@ -11,13 +11,15 @@ import {
   proximosCompromissos,
 } from "@/modules/gestao/dashboard/indicadores"
 import PainelIndicadores from "@/modules/gestao/dashboard/PainelIndicadores"
+import {
+  EncaminhamentosEmAberto,
+  UltimosAtendimentos,
+} from "@/modules/gestao/dashboard/ListasTecnicos"
 import { useEducandosGestao } from "@/modules/gestao/educandos/EducandosContext"
 
-// Educandos, agenda e o painel de indicadores (GET /api/painel) vêm da API.
-// Encaminhamentos em aberto e últimos atendimentos (técnicos) ainda aparecem
-// como "próxima etapa", sem números de exemplo.
-
-const PROXIMA_ETAPA = "Disponível na próxima etapa da integração"
+// Tudo vem da API: educandos, agenda, painel de indicadores (GET /api/painel)
+// e, para técnicos e coordenação, encaminhamentos em aberto e últimos
+// atendimentos (sem texto de atendimento).
 
 function formatarData(data: string) {
   return data.split("-").reverse().join("/")
@@ -48,15 +50,6 @@ function SummaryCard({
       <p className="text-2xl font-semibold text-[var(--foreground)]">{value}</p>
       <p className="text-xs text-[var(--muted-foreground)] mt-1">{sub}</p>
     </div>
-  )
-}
-
-function EmBreve({ titulo, texto }: { titulo: string; texto: string }) {
-  return (
-    <section className="bg-white rounded-lg border border-dashed border-[var(--border)] p-5">
-      <h2 className="font-semibold text-sm text-[var(--foreground)]">{titulo}</h2>
-      <p className="text-xs text-[var(--muted-foreground)] mt-1">{texto}</p>
-    </section>
   )
 }
 
@@ -193,20 +186,15 @@ function PainelDoPerfil() {
   ) {
     return (
       <div className="grid gap-4">
-        <EmBreve
-          titulo="Encaminhamentos em aberto"
-          texto={`${PROXIMA_ETAPA}. Por enquanto, consulte na ficha de cada educando.`}
-        />
-        <EmBreve
-          titulo="Últimos atendimentos registrados"
-          texto={`${PROXIMA_ETAPA}. Por enquanto, consulte na ficha de cada educando.`}
-        />
+        <EncaminhamentosEmAberto />
+        <UltimosAtendimentos />
       </div>
     )
   }
   return (
     <div className="grid gap-4">
       <PendenciasCadastrais />
+      <EncaminhamentosEmAberto />
       <EducandosPorIniciativa />
     </div>
   )
