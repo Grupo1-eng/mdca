@@ -10,6 +10,7 @@ import { EducandoProjetosModule } from './educando-projetos/educando-projetos.mo
 import { AtividadesModule } from './atividades/atividades.module';
 import { EncontrosModule } from './encontros/encontros.module';
 import { FrequenciasModule } from './frequencias/frequencias.module';
+import { PainelModule } from './painel/painel.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FrequenciasModule } from './frequencias/frequencias.module';
     AtividadesModule,
     EncontrosModule,
     FrequenciasModule,
+    PainelModule,
   ],
 })
 export class GestaoModule {}

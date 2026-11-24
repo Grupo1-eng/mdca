@@ -10,11 +10,12 @@ import {
   hojeLocal,
   proximosCompromissos,
 } from "@/modules/gestao/dashboard/indicadores"
+import PainelIndicadores from "@/modules/gestao/dashboard/PainelIndicadores"
 import { useEducandosGestao } from "@/modules/gestao/educandos/EducandosContext"
 
-// Educandos e agenda vêm da API. Atendimentos, encaminhamentos, encontros e
-// indicadores por iniciativa dependem de rotas que ainda não existem e
-// aparecem como "próxima etapa", sem números de exemplo.
+// Educandos, agenda e o painel de indicadores (GET /api/painel) vêm da API.
+// Encaminhamentos em aberto e últimos atendimentos (técnicos) ainda aparecem
+// como "próxima etapa", sem números de exemplo.
 
 const PROXIMA_ETAPA = "Disponível na próxima etapa da integração"
 
@@ -176,10 +177,11 @@ function EducandosPorIniciativa() {
 function PainelDoPerfil() {
   const { user } = useAuth()
 
+  // O administrativo não recebe CPF e NIS na listagem (PR #39): sem o
+  // bloco de pendências cadastrais, que dependia desses campos.
   if (user?.perfil === "administrativo") {
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
-        <PendenciasCadastrais />
+      <div className="grid gap-4">
         <EducandosPorIniciativa />
       </div>
     )
@@ -190,7 +192,7 @@ function PainelDoPerfil() {
     user?.perfil === "tecnico_psicologia"
   ) {
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <EmBreve
           titulo="Encaminhamentos em aberto"
           texto={`${PROXIMA_ETAPA}. Por enquanto, consulte na ficha de cada educando.`}
@@ -203,13 +205,9 @@ function PainelDoPerfil() {
     )
   }
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4">
       <PendenciasCadastrais />
       <EducandosPorIniciativa />
-      <EmBreve
-        titulo="Encontros e frequência por iniciativa"
-        texto={`${PROXIMA_ETAPA}: encontros realizados, frequência média e atendimentos por iniciativa.`}
-      />
     </div>
   )
 }
@@ -236,7 +234,7 @@ export default function GestaoDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <SummaryCard
           label="Educandos ativos"
           value={valor(cargaEducandos === "pronta", educandosAtivos(educandos))}
@@ -247,21 +245,14 @@ export default function GestaoDashboard() {
           value={valor(carga === "pronta", compromissosAgendados(compromissos, hojeLocal()))}
           sub="Agenda de hoje em diante"
         />
-        <SummaryCard label="Atendimentos na semana" value="—" sub={PROXIMA_ETAPA} />
-        <SummaryCard label="Encontros realizados" value="—" sub={PROXIMA_ETAPA} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <PainelIndicadores />
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <ProximosCompromissos />
-        <div className="lg:col-span-2">
-          <EmBreve
-            titulo="Próximas chamadas de atividade"
-            texto={`${PROXIMA_ETAPA}: encontros e registro de frequência.`}
-          />
-        </div>
+        <PainelDoPerfil />
       </div>
-
-      <PainelDoPerfil />
     </div>
   )
 }
