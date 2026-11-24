@@ -9,6 +9,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEducandoDto } from './dto/create-educando.dto';
 import { UpdateEducandoDto } from './dto/update-educando.dto';
+import { Perfil } from '../../auth/perfis.constants';
+import { PERFIS_LISTAGEM_COMPLETA_EDUCANDOS } from '../perfis-gestao';
 
 // Vínculos ativos com iniciativas, do mais recente ao mais antigo. A tela
 // usa o primeiro como vínculo principal.
@@ -18,42 +20,49 @@ const VINCULOS_ATIVOS = {
   include: { projeto: { select: { id: true, nome: true, tipo: true } } },
 } satisfies Prisma.Educando$educandoProjetosArgs;
 
+// Listagem para educador e administrativo: sem documentos, saúde, renda,
+// endereço ou família. A chamada e a lista usam só isto.
+const LISTAGEM_REDUZIDA = {
+  id: true,
+  nome: true,
+  situacaoAtual: true,
+  educandoProjetos: VINCULOS_ATIVOS,
+} satisfies Prisma.EducandoSelect;
+
 @Injectable()
 export class EducandosService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Técnicos e coordenação recebem o cadastro inteiro; os demais perfis só
+  // id, nome, situação e vínculos ativos (PERFIS_LISTAGEM_COMPLETA_EDUCANDOS).
   async listarTodos(
     organizacaoId: number,
     apenasAtivos = true,
     nome?: string,
+    perfil?: string,
   ) {
+    const completo =
+      perfil !== undefined &&
+      PERFIS_LISTAGEM_COMPLETA_EDUCANDOS.includes(perfil as Perfil);
+
+    const where: Prisma.EducandoWhereInput = {
+      organizacaoId,
+      ...(apenasAtivos ? { situacaoAtual: 'ativo' } : {}),
+      ...(nome ? { nome: { contains: nome, mode: 'insensitive' } } : {}),
+    };
+
+    if (completo) {
+      return this.prisma.educando.findMany({
+        where,
+        include: { educandoProjetos: VINCULOS_ATIVOS },
+        orderBy: { nome: 'asc' },
+      });
+    }
+
     return this.prisma.educando.findMany({
-      where: {
-        organizacaoId,
-
-        ...(apenasAtivos
-          ? {
-              situacaoAtual: 'ativo',
-            }
-          : {}),
-
-        ...(nome
-          ? {
-              nome: {
-                contains: nome,
-                mode: 'insensitive',
-              },
-            }
-          : {}),
-      },
-
-      include: {
-        educandoProjetos: VINCULOS_ATIVOS,
-      },
-
-      orderBy: {
-        nome: 'asc',
-      },
+      where,
+      select: LISTAGEM_REDUZIDA,
+      orderBy: { nome: 'asc' },
     });
   }
 

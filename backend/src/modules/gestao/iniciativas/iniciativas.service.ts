@@ -4,6 +4,8 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { RegistroAuditoriaService } from '../../shared/auditorias/registro-auditoria.service';
 import { CreateProjetoDto } from '../../shared/projetos/dto/create-projeto.dto';
 import { UpdateProjetoDto } from '../../shared/projetos/dto/update-projeto.dto';
+import { Perfil } from '../../auth/perfis.constants';
+import { PERFIS_VEEM_ORCAMENTO_INICIATIVA } from '../perfis-gestao';
 
 // Iniciativas (projetos, serviços e programas) da organização do usuário.
 // Usa a tabela compartilhada `projeto` e os mesmos DTOs de /api/projetos,
@@ -20,6 +22,9 @@ const CAMPOS = {
   dataFim: true,
 } as const;
 
+// Sem o orçamento, para quem não está em PERFIS_VEEM_ORCAMENTO_INICIATIVA.
+const { orcamentoTotal: _orcamento, ...CAMPOS_SEM_ORCAMENTO } = CAMPOS;
+
 @Injectable()
 export class IniciativasService {
   constructor(
@@ -27,10 +32,13 @@ export class IniciativasService {
     private readonly auditoria: RegistroAuditoriaService,
   ) {}
 
-  async listar(organizacaoId: number) {
+  async listar(organizacaoId: number, perfil?: string) {
+    const veOrcamento =
+      perfil !== undefined &&
+      PERFIS_VEEM_ORCAMENTO_INICIATIVA.includes(perfil as Perfil);
     return this.prisma.projeto.findMany({
       where: { organizacaoId },
-      select: CAMPOS,
+      select: veOrcamento ? CAMPOS : CAMPOS_SEM_ORCAMENTO,
       orderBy: { nome: 'asc' },
     });
   }

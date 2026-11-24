@@ -111,6 +111,13 @@ describe("domínio temporário de Educandos", () => {
     expect(permissoesEducandos("educador").verCadastro).toBe(false)
   })
 
+  it("administrativo vê o mesmo que o educador: sem ficha cadastral", () => {
+    expect(permissoesEducandos("administrativo")).toEqual(
+      permissoesEducandos("educador"),
+    )
+    expect(permissoesEducandos("administrativo").verCadastro).toBe(false)
+  })
+
   it("cria, edita e inativa um educando durante a sessão", () => {
     const novo = novoEducando()
     const criados = salvarEducandoEmMemoria(educandosSeed, novo)

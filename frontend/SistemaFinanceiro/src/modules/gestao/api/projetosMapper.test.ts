@@ -20,6 +20,19 @@ describe("tipo", () => {
 })
 
 describe("deProjetoApi", () => {
+  it("sem orçamento (perfis fora da coordenação), o campo fica vazio", () => {
+    const tela = deProjetoApi({
+      id: 13,
+      nome: "Oficina",
+      descricao: null,
+      tipo: "PROJETO",
+      status: "Em andamento",
+      dataInicio: null,
+      dataFim: null,
+    })
+    expect(tela.orcamento).toBe("")
+  })
+
   it("não inventa código e lê a data pela parte AAAA-MM-DD", () => {
     const tela = deProjetoApi({
       id: 12,

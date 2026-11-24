@@ -30,6 +30,9 @@ export interface VinculoApi {
   projeto?: { id: number; nome: string; tipo: string }
 }
 
+// Técnicos e coordenação recebem o registro inteiro. Para educador e
+// administrativo, GET /api/educandos traz só id, nome, situacaoAtual e
+// educandoProjetos; os demais campos chegam ausentes (o mapper os trata).
 export interface EducandoApi {
   id: number
   organizacaoId: number
