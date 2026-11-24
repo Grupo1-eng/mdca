@@ -55,6 +55,7 @@ export class EducandosController {
       usuario.organizacaoId,
       apenasAtivos ?? true,
       nome,
+      usuario.perfil,
     );
   }
 

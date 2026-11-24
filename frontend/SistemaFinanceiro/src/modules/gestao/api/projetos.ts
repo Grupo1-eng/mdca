@@ -13,7 +13,8 @@ export interface ProjetoApi {
   descricao: string | null
   tipo: string
   status: string
-  orcamentoTotal: string | number | null
+  // Só para a coordenação; ausente para os demais perfis da Gestão.
+  orcamentoTotal?: string | number | null
   dataInicio: string | null
   dataFim: string | null
 }

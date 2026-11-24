@@ -69,3 +69,14 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 
 **Consequência:** o serviço é o do perfil **atual** de quem registrou (sem coluna própria no banco); se o profissional mudar de perfil, as sigilosas dele mudam junto. Se a MDCA disser que a coordenação não vê, basta tirá-la de `PERFIS_VEEM_TODO_SIGILOSO`.
 
+## 2026-11-24 — Educandos e orçamento: o que cada perfil recebe nas listagens
+
+**Contexto:** `GET /api/educandos` entregava o cadastro inteiro (CPF, RG, NIS, saúde, renda, endereço) ao educador e ao administrativo, e `GET /api/iniciativas` entregava o orçamento total a todos os perfis da Gestão; a tela escondia, a API não. A regra "administrativo vê a ficha cadastral" vinha do documento da Sprint 1, não da MDCA, que deixou o administrativo para a 2ª etapa (questionário, pergunta 34) e quer o financeiro restrito a quem trabalha no setor (perguntas 17 e 22).
+
+**Decisão:**
+- Listagem de educandos: técnicos e coordenação recebem o cadastro inteiro (`PERFIS_LISTAGEM_COMPLETA_EDUCANDOS`); educador e administrativo, só id, nome, situação e vínculos ativos.
+- Na tela, o administrativo vê o mesmo que o educador: lista e histórico de frequência, sem ficha cadastral.
+- Orçamento total das iniciativas só para a coordenação (`PERFIS_VEEM_ORCAMENTO_INICIATIVA`).
+
+**Consequência:** para abrir mais campos ao administrativo (por exemplo, identificação e escola), é preciso uma seleção própria no backend e voltar a mostrar a ficha na tela. As constantes ficam em `backend/src/modules/gestao/perfis-gestao.ts`.
+

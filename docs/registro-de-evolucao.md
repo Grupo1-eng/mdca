@@ -23,6 +23,21 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Listagens da Gestão com dados por perfil
+
+**Tipo:** correção (dados sensíveis) · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-dados-por-perfil`)
+
+**O que mudou:**
+- `GET /api/educandos`: educador e administrativo recebem só `id`, `nome`, `situacaoAtual` e `educandoProjetos` (vínculos ativos); técnicos e coordenação seguem com o registro inteiro.
+- `GET /api/iniciativas`: `orcamentoTotal` só para a coordenação.
+- Frontend: o administrativo passa a ver o educando como o educador (lista e frequência, sem a aba "Ficha cadastral"), já que a listagem não traz mais o cadastro. Ver [decisão](decisoes.md).
+
+**Por quê:** questionário da MDCA (perguntas 17, 22 e 34); itens 2 e 3 da comparação questionário × projeto.
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-24 — Evolução sigilosa aplicada no backend
 
 **Tipo:** correção (sigilo) · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-sigilo-evolucoes`)

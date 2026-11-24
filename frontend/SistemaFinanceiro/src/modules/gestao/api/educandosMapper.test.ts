@@ -81,6 +81,29 @@ describe("renda familiar", () => {
 })
 
 describe("deEducandoApi", () => {
+  it("listagem reduzida (educador e administrativo) não quebra a conversão", () => {
+    // GET /api/educandos para esses perfis: só id, nome, situação e vínculos.
+    const reduzido = {
+      id: 9,
+      nome: "Bruno Lima",
+      situacaoAtual: "ativo",
+      educandoProjetos: [],
+    } as unknown as EducandoApi
+    const educando = deEducandoApi(reduzido)
+    expect(educando).toMatchObject({
+      id: "9",
+      nome: "Bruno Lima",
+      situacaoVinculo: "Ativo",
+      cpf: "",
+      nis: "",
+      nascimento: "",
+      rendaFamiliar: "",
+      pessoasCasa: 0,
+      responsaveis: [],
+      motivosIngresso: [],
+    })
+  })
+
   it("converte ids, datas, situação e responsáveis", () => {
     const educando = deEducandoApi(apiBase)
     expect(educando).toMatchObject({

@@ -83,8 +83,10 @@ export function permissoesEducandos(
         verEvolucao: true,
         verSaude: true,
       }
+    // Administrativo: igual ao educador (lista e frequência, sem ficha). A
+    // MDCA deixou o administrativo para a 2ª etapa (questionário, pergunta 34),
+    // e GET /api/educandos não traz o cadastro para esse perfil.
     case "administrativo":
-      return { ...semAcesso, verCadastro: true }
     default:
       return semAcesso
   }

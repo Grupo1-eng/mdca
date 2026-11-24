@@ -33,7 +33,7 @@ export class IniciativasController {
 
   @Get()
   listar(@UsuarioAtual() usuario: UsuarioAutenticado) {
-    return this.service.listar(usuario.organizacaoId);
+    return this.service.listar(usuario.organizacaoId, usuario.perfil);
   }
 
   @Post()
