@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react"
+import { type FormEvent, useEffect, useRef, useState } from "react"
 import { ErrorState, LoadingState } from "@/components/StatusMessage"
 import { useAuth } from "@/context/AuthContext"
 import type { Perfil, Usuario } from "@/types/financeiro"
@@ -26,6 +26,7 @@ import {
   filtrarUsuarios,
   formDeUsuario,
   formNovoUsuario,
+  mensagemErroUsuario,
   paraEdicaoUsuario,
   paraNovoUsuario,
   podeGerenciarUsuarios,
@@ -78,6 +79,25 @@ export default function UsuariosPage() {
   const [form, setForm] = useState<FormUsuario | null>(null)
   const [erroForm, setErroForm] = useState<string | null>(null)
   const [inativando, setInativando] = useState<number | null>(null)
+  const [enviandoForm, setEnviandoForm] = useState(false)
+  const cartaoForm = useRef<HTMLDivElement>(null)
+  const campoNome = useRef<HTMLInputElement>(null)
+  // Muda a cada "Editar" ou "+ Novo usuário", para rolar mesmo ao trocar de
+  // usuário com o formulário já aberto.
+  const [aberturaForm, setAberturaForm] = useState(0)
+
+  // O formulário fica acima da lista: ao abrir, rola até ele e foca o nome.
+  useEffect(() => {
+    if (aberturaForm === 0) return
+    cartaoForm.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })
+    campoNome.current?.focus({ preventScroll: true })
+  }, [aberturaForm])
+
+  const abrirForm = (novo: FormUsuario) => {
+    setErroForm(null)
+    setForm(novo)
+    setAberturaForm((n) => n + 1)
+  }
 
   useEffect(() => {
     if (!podeGerenciar) return
@@ -118,17 +138,30 @@ export default function UsuariosPage() {
       setLista(await listarUsuarios())
     })
 
-  const gravar = (event: FormEvent) => {
+  // Erros do formulário aparecem dentro dele, em português, e não no topo
+  // da página (o backend devolve parte das validações em inglês).
+  const gravar = async (event: FormEvent) => {
     event.preventDefault()
     if (!form) return
     const problema = validarUsuario(form)
     setErroForm(problema)
     if (problema) return
-    void executar(async () => {
+    setEnviandoForm(true)
+    try {
       if (form.id === null) await criarUsuario(paraNovoUsuario(form))
       else await atualizarUsuario(form.id, paraEdicaoUsuario(form, propriaConta))
-      setForm(null)
-    })
+    } catch (falha) {
+      setErroForm(
+        mensagemErroUsuario(
+          falha instanceof Error ? falha.message : "Não foi possível salvar.",
+        ),
+      )
+      return
+    } finally {
+      setEnviandoForm(false)
+    }
+    setForm(null)
+    void executar(async () => {})
   }
 
   const confirmarInativacao = (id: number) =>
@@ -153,10 +186,7 @@ export default function UsuariosPage() {
             <button
               type="button"
               className={primaryButton}
-              onClick={() => {
-                setErroForm(null)
-                setForm(formNovoUsuario())
-              }}
+              onClick={() => abrirForm(formNovoUsuario())}
             >
               + Novo usuário
             </button>
@@ -211,6 +241,7 @@ export default function UsuariosPage() {
           </Card>
 
           {form && (
+            <div ref={cartaoForm} className="scroll-mt-4">
             <Card className="mb-4 p-5">
               <h2 className="mb-1 text-base font-semibold">
                 {form.id === null ? "Novo usuário" : "Editar usuário"}
@@ -221,12 +252,13 @@ export default function UsuariosPage() {
                   : "Deixe a senha em branco para manter a atual."}
               </p>
               <form
-                onSubmit={gravar}
+                onSubmit={(event) => void gravar(event)}
                 noValidate
                 className="grid gap-4 md:grid-cols-2"
               >
                 <Field label="Nome completo">
                   <input
+                    ref={campoNome}
                     className={inputClass}
                     value={form.nome}
                     onChange={(event) =>
@@ -286,13 +318,18 @@ export default function UsuariosPage() {
                   />
                 </Field>
                 {erroForm && (
-                  <p className="text-sm text-red-600 md:col-span-2">{erroForm}</p>
+                  <p
+                    role="alert"
+                    className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 md:col-span-2"
+                  >
+                    {erroForm}
+                  </p>
                 )}
                 <div className="flex flex-wrap items-center gap-3 md:col-span-2">
                   <button
                     type="submit"
                     className={primaryButton}
-                    disabled={estado === "saving"}
+                    disabled={estado === "saving" || enviandoForm}
                   >
                     {form.id === null ? "Criar usuário" : "Salvar alterações"}
                   </button>
@@ -306,6 +343,7 @@ export default function UsuariosPage() {
                 </div>
               </form>
             </Card>
+            </div>
           )}
 
           <Card>
@@ -382,10 +420,7 @@ export default function UsuariosPage() {
                                 <button
                                   type="button"
                                   className={`${linkButton} text-[#1a3a6b]`}
-                                  onClick={() => {
-                                    setErroForm(null)
-                                    setForm(formDeUsuario(u))
-                                  }}
+                                  onClick={() => abrirForm(formDeUsuario(u))}
                                 >
                                   Editar
                                 </button>

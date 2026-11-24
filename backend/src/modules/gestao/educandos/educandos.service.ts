@@ -11,6 +11,7 @@ import { CreateEducandoDto } from './dto/create-educando.dto';
 import { UpdateEducandoDto } from './dto/update-educando.dto';
 import { Perfil } from '../../auth/perfis.constants';
 import { PERFIS_LISTAGEM_COMPLETA_EDUCANDOS } from '../perfis-gestao';
+import { problemaFaixaEtaria } from './faixa-etaria';
 
 // Vínculos ativos com iniciativas, do mais recente ao mais antigo. A tela
 // usa o primeiro como vínculo principal.
@@ -166,6 +167,12 @@ export class EducandosService {
     dados: CreateEducandoDto,
     organizacaoId: number,
   ) {
+    // Só no cadastro: quem já é educando e completou 18 anos segue editável.
+    if (dados.dataNascimento) {
+      const problema = problemaFaixaEtaria(dados.dataNascimento);
+      if (problema) throw new BadRequestException(problema);
+    }
+
     await this.verificarDuplicidade(
       organizacaoId,
       dados.cpf,
