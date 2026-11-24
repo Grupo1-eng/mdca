@@ -23,6 +23,21 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Painel de indicadores da Gestão
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-painel-indicadores`)
+
+**O que mudou:**
+- Backend: `gestao/painel` com `GET /api/painel` (filtros de período e iniciativa, isolamento por organização, orçamento só para a coordenação). Cálculo em `calculo-painel.ts` (função pura). Ver [decisão](decisoes.md).
+- Frontend: bloco "Painel de indicadores" na tela inicial da Gestão, com período (atalhos "Este mês", "Mês passado", "Este ano"), iniciativa, quatro indicadores (mais o orçamento para a coordenação), tabela por iniciativa e exportação em CSV e PDF. Saíram os blocos "próxima etapa" que o painel substitui.
+- Correção: o bloco "Pendências cadastrais" saiu do painel do administrativo, que desde o PR #39 não recebe CPF e NIS (todos apareceriam como pendentes).
+
+**Por quê:** US05 (RF15, RF16, RN07, RN08); questionário da MDCA (perguntas 12, 13, 14, 21 e 22).
+
+**Pendências:** relatório por parceiro/financiador (depende de campo no projeto, compartilhado com o Financeiro).
+
+---
+
 ## 2026-11-24 — Faixa etária no cadastro e ajustes na tela de Usuários
 
 **Tipo:** evolução e correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-usuarios-ajustes`)

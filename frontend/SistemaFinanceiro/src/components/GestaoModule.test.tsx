@@ -35,8 +35,13 @@ describe("rotas migradas da Gestão", () => {
   it("mantém o Dashboard em /gestao", () => {
     const html = renderizarRota("/gestao")
     expect(html).toContain("Visão geral")
-    // Sem números de exemplo: o que ainda não tem rota aparece como próxima etapa.
-    expect(html).toContain("Disponível na próxima etapa")
+    // Painel de indicadores com filtros e exportação (US05), sem números
+    // de exemplo enquanto a API não responde.
+    expect(html).toContain("Painel de indicadores")
+    expect(html).toContain("Exportar CSV")
+    expect(html).toContain("Exportar PDF")
+    expect(html).toContain("Calculando indicadores")
+    expect(html).not.toContain("Disponível na próxima etapa")
     expect(html).toContain('href="/gestao/agenda"')
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')

@@ -88,3 +88,17 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 
 **Consequência:** quem já é educando e completa 18 anos continua editável e com o histórico preservado. Para mudar a faixa, alterar `IDADE_MINIMA`/`IDADE_MAXIMA` no backend e no frontend (`gestao/educandos/model.ts`).
 
+## 2026-11-24 — Painel da Gestão: como os indicadores são contados
+
+**Contexto:** US05 (RF15, RF16, RN07, RN08) pede um painel filtrável por período e por projeto, serviço ou programa, com educandos atendidos, atendimentos registrados, encontros realizados e frequência média, exportável em CSV e PDF. No questionário (perguntas 12, 21 e 22), a MDCA diz que presta contas quase sempre por mês e quer ver ações realizadas, frequência e informações financeiras.
+
+**Decisão:** `GET /api/painel?inicio&fim[&iniciativaId]` (todos os perfis da Gestão; só números agregados):
+- **Encontros realizados:** encontros com situação "realizado" no período (agendados e cancelados não contam, RN05).
+- **Frequência média:** presenças ÷ registros de chamada nos encontros realizados; sem chamada, "—".
+- **Atendimentos registrados:** evoluções no período. Contam para uma iniciativa quando registradas nela ou, sem iniciativa própria, quando o educando tem vínculo com ela (por isso a soma das linhas pode passar do total).
+- **Educandos atendidos:** educandos distintos com presença em encontro realizado ou com atendimento no período.
+- **Orçamento total** das iniciativas só para a coordenação (`PERFIS_VEEM_ORCAMENTO_INICIATIVA`). Execução financeira fica no Financeiro.
+- Datas do filtro no calendário de Brasília (UTC-3). Exportação feita na tela: CSV (`;`, para o Excel em português) e relatório para imprimir ou salvar como PDF pelo navegador, sem biblioteca nova.
+
+**Consequência:** chamada registrada em encontro que não foi marcado como realizado não entra na frequência. A cobrança da equipe é marcar o encontro como realizado.
+
