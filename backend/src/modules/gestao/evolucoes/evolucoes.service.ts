@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,24 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEvolucaoDto } from './dto/create-evolucao.dto';
 import { UpdateEvolucaoDto } from './dto/update-evolucao.dto';
+import {
+  Leitor,
+  aplicarSigiloEvolucao,
+  podeVerConteudo,
+} from './sigilo';
+
+// Quem registrou; o perfil decide quem vê uma evolução sigilosa (sigilo.ts).
+const PROFISSIONAL = {
+  profissional: {
+    select: {
+      id: true,
+      nome: true,
+      perfil: true,
+    },
+  },
+} as const;
+
+type UsuarioLeitor = Leitor & { organizacaoId: number };
 
 @Injectable()
 export class EvolucoesService {
@@ -62,20 +81,20 @@ export class EvolucoesService {
 
   async listarPorEducando(
     educandoId: number,
-    organizacaoId: number,
+    usuario: UsuarioLeitor,
   ) {
     await this.validarEducando(
       educandoId,
-      organizacaoId,
+      usuario.organizacaoId,
     );
 
-    return this.prisma.evolucao.findMany({
+    const evolucoes = await this.prisma.evolucao.findMany({
       where: {
         educandoId,
 
         educando: {
           is: {
-            organizacaoId,
+            organizacaoId: usuario.organizacaoId,
           },
         },
       },
@@ -85,19 +104,18 @@ export class EvolucoesService {
       },
 
       include: {
-        profissional: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
+        ...PROFISSIONAL,
 
         encaminhamentos: true,
       },
     });
+
+    return evolucoes.map((evolucao) =>
+      aplicarSigiloEvolucao(evolucao, usuario),
+    );
   }
 
-  async buscarPorId(
+  private async buscarRegistro(
     id: number,
     organizacaoId: number,
   ) {
@@ -113,12 +131,7 @@ export class EvolucoesService {
       },
 
       include: {
-        profissional: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
+        ...PROFISSIONAL,
 
         encaminhamentos: {
           include: {
@@ -135,6 +148,18 @@ export class EvolucoesService {
     }
 
     return evolucao;
+  }
+
+  async buscarPorId(
+    id: number,
+    usuario: UsuarioLeitor,
+  ) {
+    const evolucao = await this.buscarRegistro(
+      id,
+      usuario.organizacaoId,
+    );
+
+    return aplicarSigiloEvolucao(evolucao, usuario);
   }
 
   async criar(
@@ -163,12 +188,20 @@ export class EvolucoesService {
   async atualizar(
     id: number,
     dados: UpdateEvolucaoDto,
-    organizacaoId: number,
+    usuario: UsuarioLeitor,
   ) {
-    await this.buscarPorId(
+    const { organizacaoId } = usuario;
+    const evolucao = await this.buscarRegistro(
       id,
       organizacaoId,
     );
+
+    // Quem não vê o conteúdo também não altera (nem tira o sigilo).
+    if (!podeVerConteudo(evolucao, usuario)) {
+      throw new ForbiddenException(
+        'Evolução sigilosa: só o serviço de quem registrou e a coordenação podem alterá-la.',
+      );
+    }
 
     if (dados.educandoId !== undefined) {
       await this.validarEducando(

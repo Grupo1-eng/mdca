@@ -63,6 +63,8 @@ export interface Atendimento {
   intervencaoUsuario: string
   intervencaoFamilia: string
   sigiloso: boolean
+  // O backend não devolveu o texto: sigilosa de outro serviço.
+  conteudoOculto?: boolean
 }
 
 export type StatusEncaminhamento = "Pendente" | "Em andamento" | "Efetivado"
@@ -84,6 +86,8 @@ export interface Encaminhamento {
   // Situação atual guardada no servidor; usada quando não há acompanhamentos.
   situacao?: StatusEncaminhamento
   acompanhamentos: AcompanhamentoEncaminhamento[]
+  // Ligado a uma evolução sigilosa de outro serviço: sem motivo nem observações.
+  conteudoOculto?: boolean
 }
 
 export type SituacaoAtividade = "Ativa" | "Encerrada"

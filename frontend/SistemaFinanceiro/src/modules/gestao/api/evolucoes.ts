@@ -25,6 +25,9 @@ export interface EncaminhamentoApi {
   destino?: string | null
   profissionalId?: number | null
   profissional?: { id: number; nome: string } | null
+  // Ligado a uma evolução sigilosa que o usuário não pode ver: o backend
+  // devolve sem a descrição e sem as observações dos acompanhamentos.
+  conteudoOculto?: boolean
 }
 
 export interface EvolucaoApi {
@@ -38,12 +41,15 @@ export interface EvolucaoApi {
   dataInicio: string
   dataFim: string | null
   situacao: string
-  // Só na listagem por educando.
-  profissional?: { id: number; nome: string }
+  // Quem registrou; o perfil decide quem vê uma evolução sigilosa.
+  profissional?: { id: number; nome: string; perfil?: string }
   // Colunas da migration da Sprint 3; ausentes até ela ser aplicada.
   intervencaoUsuario?: string | null
   intervencaoFamilia?: string | null
   sigiloso?: boolean
+  // Sigilosa de outro serviço: o backend devolve sem titulo, descricao e
+  // intervenções (só o serviço de quem registrou e a coordenação veem).
+  conteudoOculto?: boolean
 }
 
 // O profissional vem do token no backend (RN03): não é enviado.

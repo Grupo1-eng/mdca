@@ -23,6 +23,23 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Evolução sigilosa aplicada no backend
+
+**Tipo:** correção (sigilo) · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-sigilo-evolucoes`)
+
+**O que mudou:**
+- `gestao/evolucoes/sigilo.ts`: quem vê o conteúdo de uma evolução sigilosa (quem registrou, técnicos do mesmo serviço e coordenação, ver [decisão](decisoes.md)).
+- `GET /api/evolucoes` e `GET /api/evolucoes/:id`: para quem não pode ver, `titulo`, `descricao`, `intervencaoUsuario` e `intervencaoFamilia` vêm `null`, com `conteudoOculto: true`; encaminhamentos aninhados perdem a descrição e as observações dos acompanhamentos. A resposta passa a trazer o perfil de quem registrou.
+- `PUT /api/evolucoes/:id`: 403 para quem não pode ver.
+- `GET /api/encaminhamentos` e `GET /api/encaminhamentos/:id`: encaminhamento ligado a evolução sigilosa de outro serviço vem sem descrição e sem observações.
+- Frontend: a ficha mostra o aviso de sigilo quando o backend oculta o conteúdo, e o perfil de quem registrou ao lado do nome.
+
+**Por quê:** MDCA, perguntas 24 e 25 (RF07, RN09). Antes, o sigilo era só visual.
+
+**Pendências:** `GET /api/acompanhamentos-encaminhamento` (rota direta) ainda devolve as observações; a tela não usa essa rota nem liga encaminhamentos a evoluções. Falta a MDCA confirmar se a coordenação vê os sigilosos.
+
+---
+
 ## 2026-11-17 — Atividades, encontros e frequência no banco
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** #N (branch `feature/gestao-atividades-frequencia`)

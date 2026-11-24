@@ -42,7 +42,7 @@ export class EvolucoesController {
   ) {
     return this.service.listarPorEducando(
       educandoId,
-      usuario.organizacaoId,
+      usuario,
     );
   }
 
@@ -53,7 +53,7 @@ export class EvolucoesController {
   ) {
     return this.service.buscarPorId(
       id,
-      usuario.organizacaoId,
+      usuario,
     );
   }
 
@@ -79,7 +79,7 @@ export class EvolucoesController {
     return this.service.atualizar(
       id,
       dados,
-      usuario.organizacaoId,
+      usuario,
     );
   }
 }

@@ -60,3 +60,12 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 - **Em aberto:** quando a chamada pode ser registrada. Até a decisão, vale a opção recomendada: em qualquer encontro não cancelado, sem mudar a situação dele. A regra fica só em `aceitaChamada` (backend `gestao/atividades/regras-atividades.ts` e frontend `gestao/atividades/model.ts`).
 
 **Consequência:** a chamada só inclui educandos ativos vinculados à iniciativa da atividade (e quem já tem presença gravada no encontro). Encontro cancelado não conta como realizado (RN05) e não recebe chamada. Regravar a chamada atualiza a presença (RN06).
+
+## 2026-11-24 — Evolução sigilosa: quem vê o conteúdo
+
+**Contexto:** a marcação `sigiloso` da evolução era gravada mas não era aplicada: todos os técnicos e a coordenação viam o conteúdo. No questionário (perguntas 24 e 25), a MDCA respondeu que as informações protegidas ficam "somente aos técnicos respectivos de cada serviço". Ver o [registro de evolução](registro-de-evolucao.md).
+
+**Decisão:** o conteúdo de uma evolução sigilosa vai para quem a registrou, para os técnicos do mesmo serviço (Serviço Social ou Psicologia) e para a coordenação (`PERFIS_VEEM_TODO_SIGILOSO`). O técnico de outro serviço recebe a evolução sem o texto e não pode alterá-la. A regra fica em `gestao/evolucoes/sigilo.ts`, aplicada no backend.
+
+**Consequência:** o serviço é o do perfil **atual** de quem registrou (sem coluna própria no banco); se o profissional mudar de perfil, as sigilosas dele mudam junto. Se a MDCA disser que a coordenação não vê, basta tirá-la de `PERFIS_VEEM_TODO_SIGILOSO`.
+

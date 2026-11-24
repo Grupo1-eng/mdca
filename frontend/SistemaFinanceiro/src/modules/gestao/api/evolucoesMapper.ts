@@ -6,6 +6,8 @@ import type {
   Encaminhamento,
   StatusEncaminhamento,
 } from "../educandos/types"
+import type { Perfil } from "@/types/financeiro"
+import { nomePerfil } from "../educandos/model"
 import { CAMPOS_AGUARDANDO_MIGRACAO } from "./educandosMapper"
 import type {
   AcompanhamentoApi,
@@ -64,13 +66,15 @@ export function deEvolucaoApi(api: EvolucaoApi): Atendimento {
     id: String(api.id),
     educandoId: String(api.educandoId),
     profissional: api.profissional?.nome ?? "—",
-    // O backend não devolve o perfil do profissional.
-    perfilProfissional: "",
+    perfilProfissional: api.profissional?.perfil
+      ? (nomePerfil(api.profissional.perfil as Perfil) ?? "")
+      : "",
     dataHora: isoParaDataHoraLocal(api.dataInicio),
     registro: api.descricao ?? "",
     intervencaoUsuario: api.intervencaoUsuario ?? "",
     intervencaoFamilia: api.intervencaoFamilia ?? "",
     sigiloso: api.sigiloso ?? false,
+    conteudoOculto: api.conteudoOculto ?? false,
   }
 }
 
@@ -96,6 +100,7 @@ export function deEncaminhamentoApi(api: EncaminhamentoApi): Encaminhamento {
     motivo: api.descricao ?? "",
     situacao: statusParaTela(api.situacaoAtual),
     acompanhamentos: (api.acompanhamentos ?? []).map(deAcompanhamentoApi),
+    conteudoOculto: api.conteudoOculto ?? false,
   }
 }
 
