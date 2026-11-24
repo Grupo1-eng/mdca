@@ -106,6 +106,11 @@ export function deEducandoApi(api: EducandoApi): Educando {
     saudeObs: texto(api.observacaoSaude),
     motivosIngresso: api.motivosIngresso ?? [],
     origemEncaminhamento: texto(api.origemEncaminhamento),
+    autorizacaoImagem:
+      api.autorizacaoImagem === true ? "Sim" : api.autorizacaoImagem === false ? "Não" : "",
+    autorizacaoImagemData: api.autorizacaoImagemData
+      ? api.autorizacaoImagemData.slice(0, 10)
+      : "",
   }
 }
 
@@ -142,6 +147,13 @@ export function paraEducandoPayload(educando: Educando): EducandoPayload {
     payload.origemEncaminhamento = vazioParaNull(educando.origemEncaminhamento)
     payload.motivosIngresso = educando.motivosIngresso
   }
+
+  // Só "Sim" ou "Não" contam como resposta (rascunho antigo, sem o campo,
+  // fica como não informado). Sem resposta, a data também fica vazia.
+  const resposta = educando.autorizacaoImagem
+  payload.autorizacaoImagem = resposta === "Sim" ? true : resposta === "Não" ? false : null
+  payload.autorizacaoImagemData =
+    payload.autorizacaoImagem === null ? null : educando.autorizacaoImagemData || null
 
   return payload
 }

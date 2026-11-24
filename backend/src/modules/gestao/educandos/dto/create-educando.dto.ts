@@ -2,6 +2,7 @@ import {
   IsDate,
   IsInt,
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -113,4 +114,15 @@ export class CreateEducandoDto {
   @IsArray()
   @IsString({ each: true })
   motivosIngresso?: string[];
+
+  // Autorização de uso de imagem e voz (questionário da MDCA, pergunta 24).
+  // null = não informado.
+  @IsOptional()
+  @IsBoolean({ message: 'A autorização de uso de imagem deve ser sim ou não.' })
+  autorizacaoImagem?: boolean | null;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate({ message: 'Informe uma data de assinatura válida.' })
+  autorizacaoImagemData?: Date | null;
 }

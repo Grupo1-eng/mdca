@@ -23,6 +23,21 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Autorização de uso de imagem e voz no cadastro do educando
+
+**Tipo:** evolução (com migration) · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-autorizacao-imagem`)
+
+**O que mudou:**
+- Migration `20261124120000_gestao_autorizacao_imagem`: colunas opcionais `autorizacao_imagem` (boolean) e `autorizacao_imagem_data` (date) em `gestao.educando`. NULL = não informado. Não altera dados existentes nem o Financeiro.
+- DTO do educando aceita `autorizacaoImagem` (true/false/null) e `autorizacaoImagemData`.
+- Frontend: bloco "Autorização de uso de imagem e voz" na ficha cadastral (Não informado / Autorizado / Não autorizado, e data da assinatura). Rascunho antigo, sem o campo, fica como não informado.
+
+**Por quê:** questionário da MDCA, pergunta 24 (autorização assinada pelos responsáveis).
+
+**Pendências:** a migration precisa ser aplicada no Neon **antes** do merge (backup com `pg_dump` e `npx prisma migrate deploy`). Depois do merge, cada integrante roda `git pull`, `npm install` e `npx prisma generate` no backend.
+
+---
+
 ## 2026-11-24 — Painel de indicadores da Gestão
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-painel-indicadores`)

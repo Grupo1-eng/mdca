@@ -56,6 +56,8 @@ export const educandosSeed: Educando[] = [
       "Fora da escola ou com defasagem escolar superior a 2 anos",
     ],
     origemEncaminhamento: "CRAS Leste I/II",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   },
   {
     id: "edu-2",
@@ -98,6 +100,8 @@ export const educandosSeed: Educando[] = [
     saudeObs: "Uso contínuo de medicação para asma.",
     motivosIngresso: ["Dificuldade de aprendizagem"],
     origemEncaminhamento: "Escola",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   },
   {
     id: "edu-3",
@@ -140,6 +144,8 @@ export const educandosSeed: Educando[] = [
     saudeObs: "Sem restrições relatadas.",
     motivosIngresso: ["Trabalho infantil"],
     origemEncaminhamento: "Conselho Tutelar",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   },
   {
     id: "edu-4",
@@ -182,6 +188,8 @@ export const educandosSeed: Educando[] = [
     saudeObs: "Encaminhado para avaliação neuropediátrica.",
     motivosIngresso: ["Vivência de violência e/ou negligência"],
     origemEncaminhamento: "CREAS Leste",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   },
   {
     id: "edu-5",
@@ -224,6 +232,8 @@ export const educandosSeed: Educando[] = [
     saudeObs: "Alergia a lactose.",
     motivosIngresso: ["Situação de isolamento"],
     origemEncaminhamento: "Espontâneo",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   },
 ]
 

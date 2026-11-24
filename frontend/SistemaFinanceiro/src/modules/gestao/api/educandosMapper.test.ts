@@ -233,3 +233,43 @@ describe("vínculo com a iniciativa", () => {
     expect(planejarVinculo(gravado, { iniciativaId: "", dataIngresso: "" })).toEqual([{ tipo: "encerrar", id: 70 }])
   })
 })
+
+// Questionário da MDCA, pergunta 24: autorização de uso de imagem e voz.
+describe("autorização de uso de imagem", () => {
+  it("lê sim, não e não informado do backend", () => {
+    expect(deEducandoApi({ ...apiBase, autorizacaoImagem: true, autorizacaoImagemData: "2026-03-10" })).toMatchObject({
+      autorizacaoImagem: "Sim",
+      autorizacaoImagemData: "2026-03-10",
+    })
+    expect(deEducandoApi({ ...apiBase, autorizacaoImagem: false }).autorizacaoImagem).toBe("Não")
+    expect(deEducandoApi({ ...apiBase, autorizacaoImagem: null })).toMatchObject({
+      autorizacaoImagem: "",
+      autorizacaoImagemData: "",
+    })
+  })
+
+  it("envia true/false com a data, ou null sem resposta", () => {
+    const base = { ...educandoVazio(), nome: "Ana" }
+    expect(
+      paraEducandoPayload({ ...base, autorizacaoImagem: "Sim", autorizacaoImagemData: "2026-03-10" }),
+    ).toMatchObject({ autorizacaoImagem: true, autorizacaoImagemData: "2026-03-10" })
+    expect(paraEducandoPayload({ ...base, autorizacaoImagem: "Não" })).toMatchObject({
+      autorizacaoImagem: false,
+      autorizacaoImagemData: null,
+    })
+    expect(
+      paraEducandoPayload({ ...base, autorizacaoImagem: "", autorizacaoImagemData: "2026-03-10" }),
+    ).toMatchObject({ autorizacaoImagem: null, autorizacaoImagemData: null })
+  })
+
+  it("rascunho antigo, sem o campo, não vira \"não autorizado\"", () => {
+    const antigo = { ...educandoVazio(), nome: "Ana" } as Record<string, unknown>
+    delete antigo.autorizacaoImagem
+    delete antigo.autorizacaoImagemData
+    expect(paraEducandoPayload(antigo as unknown as ReturnType<typeof educandoVazio>)).toMatchObject({
+      autorizacaoImagem: null,
+      autorizacaoImagemData: null,
+    })
+  })
+})
+

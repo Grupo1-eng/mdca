@@ -66,6 +66,9 @@ export interface EducandoApi {
   genero?: string | null
   serie?: string | null
   origemEncaminhamento?: string | null
+  // Autorização de uso de imagem e voz; null = não informado.
+  autorizacaoImagem?: boolean | null
+  autorizacaoImagemData?: string | null
   motivosIngresso?: string[]
 }
 

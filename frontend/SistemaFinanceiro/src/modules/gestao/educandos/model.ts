@@ -140,6 +140,8 @@ export function educandoVazio(): Educando {
     saudeObs: "",
     motivosIngresso: [],
     origemEncaminhamento: "",
+    autorizacaoImagem: "",
+    autorizacaoImagemData: "",
   }
 }
 

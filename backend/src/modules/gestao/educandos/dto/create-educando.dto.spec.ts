@@ -29,3 +29,27 @@ describe('CPF nos DTOs da Gestão', () => {
     }
   });
 });
+
+// Questionário da MDCA, pergunta 24: autorização de uso de imagem e voz.
+describe('Autorização de uso de imagem no DTO do educando', () => {
+  async function erros(dados: object) {
+    return validate(plainToInstance(CreateEducandoDto, { nome: 'Ana', ...dados }));
+  }
+
+  it('aceita sim, não ou não informado (null/ausente), com data', async () => {
+    expect(await erros({ autorizacaoImagem: true, autorizacaoImagemData: '2026-03-10' })).toHaveLength(0);
+    expect(await erros({ autorizacaoImagem: false })).toHaveLength(0);
+    expect(await erros({ autorizacaoImagem: null, autorizacaoImagemData: null })).toHaveLength(0);
+    expect(await erros({})).toHaveLength(0);
+  });
+
+  it('converte a data e recusa valores inválidos', async () => {
+    const dto = plainToInstance(CreateEducandoDto, { nome: 'Ana', autorizacaoImagemData: '2026-03-10' });
+    expect(dto.autorizacaoImagemData).toBeInstanceOf(Date);
+
+    const [erroBool] = await erros({ autorizacaoImagem: 'talvez' });
+    expect(erroBool.property).toBe('autorizacaoImagem');
+    const [erroData] = await erros({ autorizacaoImagemData: 'ontem' });
+    expect(erroData.property).toBe('autorizacaoImagemData');
+  });
+});

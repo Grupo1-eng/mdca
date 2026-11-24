@@ -158,6 +158,10 @@ model Educando {
   serie                  String?
   origemEncaminhamento   String?   @map("origem_encaminhamento")
   motivosIngresso        String[]  @default([]) @map("motivos_ingresso")
+  // Autorização de uso de imagem e voz, assinada pelos responsáveis
+  // (questionário da MDCA, pergunta 24). null = não informado.
+  autorizacaoImagem      Boolean?  @map("autorizacao_imagem")
+  autorizacaoImagemData  DateTime? @map("autorizacao_imagem_data") @db.Date
 
   // NOVO — decidido nesta conversa: responsável técnico fixo por educando
   tecnicoResponsavelId   Int?      @map("tecnico_responsavel_id")

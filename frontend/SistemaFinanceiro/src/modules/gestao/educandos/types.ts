@@ -8,6 +8,8 @@ export interface Iniciativa {
   situacao: "Ativo" | "Encerrado" | "Suspenso"
 }
 
+export type AutorizacaoImagem = "" | "Sim" | "Não"
+
 export interface Responsavel {
   id: string
   nome: string
@@ -51,6 +53,10 @@ export interface Educando {
   saudeObs: string
   motivosIngresso: string[]
   origemEncaminhamento: string
+  // Autorização de uso de imagem e voz, assinada pelos responsáveis
+  // (questionário da MDCA, pergunta 24). "" = não informado.
+  autorizacaoImagem: AutorizacaoImagem
+  autorizacaoImagemData: string
 }
 
 export interface Atendimento {

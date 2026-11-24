@@ -114,6 +114,13 @@ function TextInput({
   )
 }
 
+// Data de hoje no fuso do navegador, para o limite do campo de assinatura.
+function hojeIso(): string {
+  const d = new Date()
+  const dois = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`
+}
+
 export default function EducandoForm({
   educando,
   leitura = false,
@@ -533,6 +540,47 @@ export default function EducandoForm({
                 </option>
               ))}
             </select>
+          </Field>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-1 text-base font-semibold">
+          Autorização de uso de imagem e voz
+        </h2>
+        <p className="mb-4 text-xs text-[var(--muted-foreground)]">
+          Termo assinado pelos responsáveis familiares, para fotos, vídeos e
+          áudios do educando.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Situação">
+            <select
+              className={inputClass}
+              value={form.autorizacaoImagem ?? ""}
+              onChange={(event) => {
+                const valor = event.target.value as Educando["autorizacaoImagem"]
+                setForm((atual) => ({
+                  ...atual,
+                  autorizacaoImagem: valor,
+                  autorizacaoImagemData: valor ? atual.autorizacaoImagemData : "",
+                }))
+              }}
+              disabled={leitura}
+            >
+              <option value="">Não informado</option>
+              <option value="Sim">Autorizado</option>
+              <option value="Não">Não autorizado</option>
+            </select>
+          </Field>
+          <Field label="Data da assinatura">
+            <input
+              type="date"
+              className={inputClass}
+              value={form.autorizacaoImagemData ?? ""}
+              max={hojeIso()}
+              onChange={(event) => set("autorizacaoImagemData", event.target.value)}
+              disabled={leitura || !form.autorizacaoImagem}
+            />
           </Field>
         </div>
       </Card>
