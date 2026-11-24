@@ -6,6 +6,13 @@ import {
 
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateEncaminhamentoDto } from './dto/create-encaminhamento.dto';
+import {
+  EVOLUCAO_PARA_SIGILO,
+  Leitor,
+  aplicarSigiloEncaminhamento,
+} from '../evolucoes/sigilo';
+
+type UsuarioLeitor = Leitor & { organizacaoId: number };
 
 // Nome de quem registrou o encaminhamento, para a linha do tempo da ficha.
 const PROFISSIONAL = {
@@ -75,26 +82,27 @@ export class EncaminhamentosService {
 
   async listarPorEducando(
     educandoId: number,
-    organizacaoId: number,
+    usuario: UsuarioLeitor,
   ) {
     await this.validarEducando(
       educandoId,
-      organizacaoId,
+      usuario.organizacaoId,
     );
 
-    return this.prisma.encaminhamento.findMany({
+    const encaminhamentos = await this.prisma.encaminhamento.findMany({
       where: {
         educandoId,
 
         educando: {
           is: {
-            organizacaoId,
+            organizacaoId: usuario.organizacaoId,
           },
         },
       },
 
       include: {
         ...PROFISSIONAL,
+        ...EVOLUCAO_PARA_SIGILO,
         acompanhamentos: {
           orderBy: {
             data: 'desc',
@@ -106,11 +114,16 @@ export class EncaminhamentosService {
         dataEncaminhamento: 'desc',
       },
     });
+
+    // Ligado a uma evolução sigilosa de outro serviço: sem a descrição.
+    return encaminhamentos.map((encaminhamento) =>
+      aplicarSigiloEncaminhamento(encaminhamento, usuario),
+    );
   }
 
   async buscarPorId(
     id: number,
-    organizacaoId: number,
+    usuario: UsuarioLeitor,
   ) {
     const encaminhamento =
       await this.prisma.encaminhamento.findFirst({
@@ -119,13 +132,14 @@ export class EncaminhamentosService {
 
           educando: {
             is: {
-              organizacaoId,
+              organizacaoId: usuario.organizacaoId,
             },
           },
         },
 
         include: {
           ...PROFISSIONAL,
+          ...EVOLUCAO_PARA_SIGILO,
           acompanhamentos: {
             orderBy: {
               data: 'desc',
@@ -140,7 +154,7 @@ export class EncaminhamentosService {
       );
     }
 
-    return encaminhamento;
+    return aplicarSigiloEncaminhamento(encaminhamento, usuario);
   }
 
   async criar(

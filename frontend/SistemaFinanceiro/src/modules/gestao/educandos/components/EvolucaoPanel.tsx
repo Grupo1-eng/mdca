@@ -52,7 +52,9 @@ function AtendimentoCard({
   atendimento: Atendimento
   podeVerSigiloso: boolean
 }) {
-  const oculto = atendimento.sigiloso && !podeVerSigiloso
+  // O backend já corta o texto de sigilosa de outro serviço (conteudoOculto).
+  const oculto =
+    atendimento.sigiloso && (atendimento.conteudoOculto || !podeVerSigiloso)
   return (
     <Card className="relative p-4">
       <span className="absolute -left-[27px] top-6 size-3 rounded-full bg-[#0e7e6e]" />
@@ -73,7 +75,8 @@ function AtendimentoCard({
       {oculto ? (
         <div className="mt-3">
           <SensitiveNote>
-            Conteúdo sigiloso — restrito à equipe técnica e à coordenação.
+            Conteúdo sigiloso — restrito ao serviço de quem registrou e à
+            coordenação.
           </SensitiveNote>
         </div>
       ) : (
@@ -162,10 +165,19 @@ function EncaminhamentoCard({
       <p className="mt-2 text-sm font-medium">
         {encaminhamento.destino || "Destino não informado"}
       </p>
-      {encaminhamento.motivo && (
-        <p className="text-sm text-[var(--muted-foreground)]">
-          {encaminhamento.motivo}
-        </p>
+      {encaminhamento.conteudoOculto ? (
+        <div className="mt-2">
+          <SensitiveNote>
+            Ligado a um atendimento sigiloso de outro serviço: motivo e
+            observações ocultos.
+          </SensitiveNote>
+        </div>
+      ) : (
+        encaminhamento.motivo && (
+          <p className="text-sm text-[var(--muted-foreground)]">
+            {encaminhamento.motivo}
+          </p>
+        )
       )}
       {encaminhamento.profissional && (
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
@@ -437,7 +449,7 @@ export default function EvolucaoPanel({ educandoId }: { educandoId: string }) {
                   setForm({ ...form, sigiloso: event.target.checked })
                 }
               />
-              Marcar conteúdo como sigiloso (restrito à equipe técnica e
+              Marcar conteúdo como sigiloso (restrito ao seu serviço e à
               coordenação)
             </label>
             {pendente && (

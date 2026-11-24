@@ -21,3 +21,8 @@ export const PERFIS_REGISTRO_ATIVIDADES: Perfil[] = [
   PERFIS.COORDENACAO,
   PERFIS.EDUCADOR,
 ];
+
+// Veem o conteúdo de toda evolução sigilosa, de qualquer serviço. Os técnicos
+// veem só as sigilosas do próprio serviço (MDCA, perguntas 24 e 25), e quem
+// registrou sempre vê. Regra em `evolucoes/sigilo.ts`.
+export const PERFIS_VEEM_TODO_SIGILOSO: Perfil[] = [PERFIS.COORDENACAO];

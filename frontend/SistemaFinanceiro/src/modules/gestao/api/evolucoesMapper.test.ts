@@ -71,7 +71,49 @@ describe("deEvolucaoApi", () => {
       intervencaoUsuario: "",
       intervencaoFamilia: "",
       sigiloso: false,
+      conteudoOculto: false,
     })
+  })
+
+  it("mostra o perfil de quem registrou e marca o conteúdo oculto pelo backend", () => {
+    const atendimento = deEvolucaoApi({
+      id: 6,
+      educandoId: 1,
+      projetoId: null,
+      profissionalId: 10,
+      titulo: null,
+      tipo: "atendimento",
+      descricao: null,
+      dataInicio: dataHoraLocalParaIso("2026-10-21T09:00"),
+      dataFim: null,
+      situacao: "aberta",
+      profissional: { id: 10, nome: "Bia", perfil: "tecnico_servico_social" },
+      sigiloso: true,
+      conteudoOculto: true,
+    })
+    expect(atendimento).toMatchObject({
+      perfilProfissional: "Técnico – Serviço Social",
+      registro: "",
+      sigiloso: true,
+      conteudoOculto: true,
+    })
+  })
+
+  it("perfil desconhecido não quebra a tela", () => {
+    const atendimento = deEvolucaoApi({
+      id: 7,
+      educandoId: 1,
+      projetoId: null,
+      profissionalId: 11,
+      titulo: null,
+      tipo: "atendimento",
+      descricao: "x",
+      dataInicio: dataHoraLocalParaIso("2026-10-21T09:00"),
+      dataFim: null,
+      situacao: "aberta",
+      profissional: { id: 11, nome: "Zé", perfil: "perfil_novo" },
+    })
+    expect(atendimento.perfilProfissional).toBe("")
   })
 })
 
@@ -111,6 +153,12 @@ describe("deEncaminhamentoApi", () => {
     expect(enc.acompanhamentos.map((a) => a.id)).toEqual(["2", "1"])
     expect(enc.acompanhamentos[1].observacao).toBe("")
     expect(situacaoAtualEncaminhamento(enc)).toBe("Efetivado")
+  })
+
+  it("ligado a evolução sigilosa de outro serviço: conteúdo oculto", () => {
+    const enc = deEncaminhamentoApi({ ...base, descricao: null, conteudoOculto: true })
+    expect(enc).toMatchObject({ motivo: "", conteudoOculto: true })
+    expect(deEncaminhamentoApi(base).conteudoOculto).toBe(false)
   })
 })
 
