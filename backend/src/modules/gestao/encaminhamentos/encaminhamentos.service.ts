@@ -19,6 +19,9 @@ const PROFISSIONAL = {
   profissional: { select: { id: true, nome: true } },
 } as const;
 
+// Itens nas listas do painel dos técnicos.
+const LIMITE_PAINEL = 8;
+
 @Injectable()
 export class EncaminhamentosService {
   constructor(
@@ -119,6 +122,26 @@ export class EncaminhamentosService {
     return encaminhamentos.map((encaminhamento) =>
       aplicarSigiloEncaminhamento(encaminhamento, usuario),
     );
+  }
+
+  // Sem descrição nem acompanhamentos: só o que a lista do painel mostra
+  // (educando, destino, data e situação), sem conteúdo sigiloso.
+  async listarEmAberto(organizacaoId: number, limite = LIMITE_PAINEL) {
+    return this.prisma.encaminhamento.findMany({
+      where: {
+        educando: { is: { organizacaoId } },
+        NOT: { situacaoAtual: { equals: 'efetivado', mode: 'insensitive' } },
+      },
+      select: {
+        id: true,
+        destino: true,
+        dataEncaminhamento: true,
+        situacaoAtual: true,
+        educando: { select: { id: true, nome: true } },
+      },
+      orderBy: { dataEncaminhamento: 'asc' },
+      take: limite,
+    });
   }
 
   async buscarPorId(

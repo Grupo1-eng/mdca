@@ -42,6 +42,8 @@ describe("rotas migradas da Gestão", () => {
     expect(html).toContain("Exportar PDF")
     expect(html).toContain("Calculando indicadores")
     expect(html).not.toContain("Disponível na próxima etapa")
+    // Coordenação também vê os encaminhamentos em aberto.
+    expect(html).toContain("Encaminhamentos em aberto")
     expect(html).toContain('href="/gestao/agenda"')
     expect(html).toContain('href="/gestao/educandos"')
     expect(html).toContain('href="/gestao/agenda"')

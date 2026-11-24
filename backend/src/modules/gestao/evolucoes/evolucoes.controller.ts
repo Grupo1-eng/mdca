@@ -46,6 +46,13 @@ export class EvolucoesController {
     );
   }
 
+  // Painel dos técnicos: últimos atendimentos da organização, sem o texto.
+  // Antes de ':id', para "recentes" não ser lido como número.
+  @Get('recentes')
+  recentes(@UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.listarRecentes(usuario.organizacaoId);
+  }
+
   @Get(':id')
   buscar(
     @Param('id', ParseIntPipe) id: number,

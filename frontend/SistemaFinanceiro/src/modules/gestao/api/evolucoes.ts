@@ -114,3 +114,33 @@ export function criarAcompanhamento(
     body: JSON.stringify(dados),
   })
 }
+
+// Painel dos técnicos (GET /api/encaminhamentos/em-aberto): não efetivados,
+// mais antigos primeiro. Sem descrição nem acompanhamentos.
+export interface EncaminhamentoEmAbertoApi {
+  id: number
+  destino: string | null
+  dataEncaminhamento: string
+  situacaoAtual: string
+  educando: { id: number; nome: string }
+}
+
+export function listarEncaminhamentosEmAberto(): Promise<EncaminhamentoEmAbertoApi[]> {
+  return request<EncaminhamentoEmAbertoApi[]>("/api/encaminhamentos/em-aberto")
+}
+
+// Painel dos técnicos (GET /api/evolucoes/recentes): últimos atendimentos da
+// organização, sem nenhum texto.
+export interface AtendimentoRecenteApi {
+  id: number
+  tipo: string | null
+  dataInicio: string
+  sigiloso: boolean
+  educando: { id: number; nome: string }
+  profissional: { id: number; nome: string }
+}
+
+export function listarAtendimentosRecentes(): Promise<AtendimentoRecenteApi[]> {
+  return request<AtendimentoRecenteApi[]>("/api/evolucoes/recentes")
+}
+
