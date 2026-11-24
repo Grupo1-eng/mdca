@@ -13,6 +13,7 @@ import {
   educandoVazio,
   responsavelVazio,
   formatarCpf,
+  problemaFaixaEtaria,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
 import {
@@ -151,9 +152,16 @@ export default function EducandoForm({
     ? `Este ${duplicidade.campo.toUpperCase()} já pertence a ${duplicidade.educando.nome}.`
     : undefined
 
+  // Faixa etária só no cadastro novo (quem já é educando e fez 18 segue).
+  const cadastroNovo = !ehIdPersistido(form.id)
+  const erroIdade =
+    cadastroNovo && !leitura && form.nascimento
+      ? problemaFaixaEtaria(form.nascimento)
+      : null
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (leitura || duplicidade) return
+    if (leitura || duplicidade || erroIdade) return
 
     let salvo: Educando | undefined
     const ok = await salvar(async () => {
@@ -173,6 +181,11 @@ export default function EducandoForm({
           foi mantido para correção.
         </SensitiveNote>
       )}
+      {erroIdade && (
+        <SensitiveNote>
+          <strong>Cadastro bloqueado.</strong> {erroIdade}
+        </SensitiveNote>
+      )}
       {mensagem && <SensitiveNote>{mensagem}</SensitiveNote>}
 
       <Section titulo="Dados pessoais">
@@ -190,6 +203,7 @@ export default function EducandoForm({
           value={form.nascimento}
           onChange={(value) => set("nascimento", value)}
           disabled={leitura}
+          error={erroIdade ?? undefined}
         />
         <div>
           <TextInput
@@ -528,7 +542,7 @@ export default function EducandoForm({
           <button
             type="submit"
             className={primaryButton}
-            disabled={estado === "saving" || !!duplicidade}
+            disabled={estado === "saving" || !!duplicidade || !!erroIdade}
           >
             {educando ? "Salvar alterações" : "Cadastrar educando"}
           </button>

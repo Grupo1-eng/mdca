@@ -80,3 +80,11 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 
 **Consequência:** para abrir mais campos ao administrativo (por exemplo, identificação e escola), é preciso uma seleção própria no backend e voltar a mostrar a ficha na tela. As constantes ficam em `backend/src/modules/gestao/perfis-gestao.ts`.
 
+## 2026-11-24 — Cadastro de educando: faixa etária de 6 a 17 anos
+
+**Contexto:** no questionário (pergunta 4), a MDCA informou que o público atendido são crianças e adolescentes de 6 a 17 anos. O cadastro aceitava qualquer data de nascimento.
+
+**Decisão:** o cadastro de um educando **novo** recusa data de nascimento fora de 6 a 17 anos (idade completa no dia do cadastro) e data no futuro, na tela e no `POST /api/educandos` (`gestao/educandos/faixa-etaria.ts`). A edição não confere a idade. A data de nascimento continua opcional.
+
+**Consequência:** quem já é educando e completa 18 anos continua editável e com o histórico preservado. Para mudar a faixa, alterar `IDADE_MINIMA`/`IDADE_MAXIMA` no backend e no frontend (`gestao/educandos/model.ts`).
+

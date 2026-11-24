@@ -9,6 +9,8 @@ import {
   filtrarEducandos,
   permissoesEducandos,
   salvarEducandoEmMemoria,
+  idadeEm,
+  problemaFaixaEtaria,
 } from "./model"
 
 describe("domínio temporário de Educandos", () => {
@@ -152,3 +154,27 @@ describe("CPF", () => {
     expect(cpfIncompleto("123.456.789-10")).toBe(false)
   })
 })
+
+describe("faixa etária (questionário da MDCA, pergunta 4)", () => {
+  const hoje = new Date(2026, 10, 24) // 24/11/2026, horário local
+
+  it("calcula a idade completa, contando o aniversário", () => {
+    expect(idadeEm("2020-11-24", hoje)).toBe(6)
+    expect(idadeEm("2020-11-25", hoje)).toBe(5)
+    expect(idadeEm("", hoje)).toBeNull()
+  })
+
+  it("aceita de 6 a 17 anos e recusa fora disso", () => {
+    expect(problemaFaixaEtaria("2020-11-24", hoje)).toBeNull()
+    expect(problemaFaixaEtaria("2008-11-25", hoje)).toBeNull()
+    expect(problemaFaixaEtaria("2020-11-25", hoje)).toMatch(/de 6 a 17 anos.*tem 5 anos/)
+    expect(problemaFaixaEtaria("2008-11-24", hoje)).toMatch(/tem 18 anos/)
+  })
+
+  it("recusa data no futuro", () => {
+    expect(problemaFaixaEtaria("2027-01-01", hoje)).toBe(
+      "A data de nascimento não pode ser no futuro.",
+    )
+  })
+})
+

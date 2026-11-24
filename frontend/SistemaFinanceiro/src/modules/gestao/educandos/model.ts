@@ -265,3 +265,33 @@ export function nomePerfil(perfil: Perfil): string {
   }
   return nomes[perfil]
 }
+
+// Público atendido pela MDCA: 6 a 17 anos (questionário, pergunta 4). Vale
+// só para o cadastro novo; quem já é educando e fez 18 anos segue editável.
+// O backend confere a mesma regra no POST /api/educandos.
+export const IDADE_MINIMA = 6
+export const IDADE_MAXIMA = 17
+
+// Idade completa em `hoje` para uma data "AAAA-MM-DD"; null se inválida.
+export function idadeEm(nascimento: string, hoje: Date = new Date()): number | null {
+  const [ano, mes, dia] = nascimento.split("-").map(Number)
+  if (!ano || !mes || !dia) return null
+  let idade = hoje.getFullYear() - ano
+  const mesHoje = hoje.getMonth() + 1
+  if (mesHoje < mes || (mesHoje === mes && hoje.getDate() < dia)) idade -= 1
+  return idade
+}
+
+export function problemaFaixaEtaria(
+  nascimento: string,
+  hoje: Date = new Date(),
+): string | null {
+  const idade = idadeEm(nascimento, hoje)
+  if (idade === null) return null
+  if (idade < 0) return "A data de nascimento não pode ser no futuro."
+  if (idade < IDADE_MINIMA || idade > IDADE_MAXIMA) {
+    return `A MDCA atende crianças e adolescentes de ${IDADE_MINIMA} a ${IDADE_MAXIMA} anos. Pela data de nascimento, o educando tem ${idade} ano${idade === 1 ? "" : "s"}.`
+  }
+  return null
+}
+

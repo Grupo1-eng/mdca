@@ -23,6 +23,20 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-24 — Faixa etária no cadastro e ajustes na tela de Usuários
+
+**Tipo:** evolução e correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-usuarios-ajustes`)
+
+**O que mudou:**
+- Cadastro de educando novo: data de nascimento fora de 6 a 17 anos, ou no futuro, é recusada na tela (aviso no campo e botão desabilitado) e no `POST /api/educandos` (400 com mensagem em português). A edição não confere a idade. Ver [decisão](decisoes.md).
+- Tela de Usuários (Gestão): e-mail sem @ ou sem domínio é recusado antes de enviar; erros do backend (parte em inglês, mensagens padrão do class-validator da rota compartilhada `/api/usuarios`) são traduzidos e aparecem dentro do formulário, não no topo; ao clicar em "Editar" ou "+ Novo usuário", a página rola até o formulário e foca o nome.
+
+**Por quê:** questionário da MDCA (pergunta 4) e problemas encontrados pelo usuário no teste da tela de Usuários.
+
+**Pendências:** a rota compartilhada `/api/usuarios` continua devolvendo mensagens em inglês para outros clientes (a tela de Usuários do Financeiro); a correção foi só na tela da Gestão.
+
+---
+
 ## 2026-11-24 — Listagens da Gestão com dados por perfil
 
 **Tipo:** correção (dados sensíveis) · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-dados-por-perfil`)
