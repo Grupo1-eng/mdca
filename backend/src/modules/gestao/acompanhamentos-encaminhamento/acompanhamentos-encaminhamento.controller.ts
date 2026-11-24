@@ -42,7 +42,7 @@ export class AcompanhamentosEncaminhamentoController {
   ) {
     return this.service.listarPorEncaminhamento(
       encaminhamentoId,
-      usuario.organizacaoId,
+      usuario,
     );
   }
 
@@ -56,7 +56,7 @@ export class AcompanhamentosEncaminhamentoController {
   ) {
     return this.service.buscarPorId(
       id,
-      usuario.organizacaoId,
+      usuario,
     );
   }
 

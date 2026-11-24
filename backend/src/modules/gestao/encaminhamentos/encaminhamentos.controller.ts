@@ -48,6 +48,16 @@ export class EncaminhamentosController {
     );
   }
 
+  // Painel dos técnicos: encaminhamentos ainda não efetivados, mais antigos
+  // primeiro. Antes de ':id', para "em-aberto" não ser lido como número.
+  @Get('em-aberto')
+  emAberto(
+    @UsuarioAtual()
+    usuario: UsuarioAutenticado,
+  ) {
+    return this.service.listarEmAberto(usuario.organizacaoId);
+  }
+
   @Get(':id')
   buscar(
     @Param('id', ParseIntPipe)
