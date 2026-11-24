@@ -5,6 +5,20 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { PERFIS_FINANCEIRO, Perfil } from './perfis.constants';
 import { RegistroAuditoriaService } from '../shared/auditorias/registro-auditoria.service';
+import { UsuarioAutenticado } from './decorators/usuario-atual.decorator';
+
+interface DadosSessao {
+  id: number;
+  nome: string;
+  email: string;
+  perfil: string;
+  organizacaoId: number;
+}
+
+interface OrganizacaoDaSessao {
+  id: number;
+  nome: string;
+}
 
 // Não há cadastro público: usuários são criados pela coordenação em
 // /api/usuarios (ver backend/README.md).
@@ -23,6 +37,7 @@ export class AuthService {
         email: dados.email,
         ativo: true,
       },
+      include: { organizacao: { select: { id: true, nome: true } } },
     });
 
     if (!usuario) {
@@ -40,7 +55,18 @@ export class AuthService {
     }
 
     await this.auditarLogin(usuario, 'login', 'Login realizado');
-    return this.gerarSessao(usuario);
+    return this.gerarSessao(usuario, usuario.organizacao);
+  }
+
+  // Dados do usuário logado (GET /api/auth/me), no mesmo formato do `usuario`
+  // do login. A organização vai junto para o frontend mostrar o nome dela, por
+  // exemplo no cabeçalho dos relatórios em PDF.
+  async usuarioAtual(usuario: UsuarioAutenticado) {
+    const organizacao = await this.prisma.organizacao.findUnique({
+      where: { id: usuario.organizacaoId },
+      select: { id: true, nome: true },
+    });
+    return this.dadosDoUsuario(usuario, organizacao);
   }
 
   // Só usuários com acesso ao financeiro entram no log do financeiro. E-mails
@@ -62,13 +88,10 @@ export class AuthService {
   }
 
   // Formato da resposta do login.
-  private async gerarSessao(usuario: {
-    id: number;
-    nome: string;
-    email: string;
-    perfil: string;
-    organizacaoId: number;
-  }) {
+  private async gerarSessao(
+    usuario: DadosSessao,
+    organizacao: OrganizacaoDaSessao | null,
+  ) {
     const payload = {
       sub: usuario.id,
       email: usuario.email,
@@ -78,12 +101,22 @@ export class AuthService {
 
     return {
       accessToken: await this.jwtService.signAsync(payload),
-      usuario: {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        perfil: usuario.perfil,
-      },
+      usuario: this.dadosDoUsuario(usuario, organizacao),
+    };
+  }
+
+  private dadosDoUsuario(
+    usuario: DadosSessao,
+    organizacao: OrganizacaoDaSessao | null,
+  ) {
+    return {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil,
+      organizacao: organizacao
+        ? { id: organizacao.id, nome: organizacao.nome }
+        : null,
     };
   }
 }

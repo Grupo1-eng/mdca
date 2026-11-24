@@ -32,12 +32,17 @@ function horaMinuto(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** Data/hora e autor da emissão (RF59), comum à planilha e ao PDF. */
+export function textoEmissao(geradoEm: Date, usuario: string | null): string {
+  return `Gerado em ${formatData(geradoEm)} ${horaMinuto(geradoEm)}${usuario ? ` por ${usuario}` : ""}`;
+}
+
 /**
  * Linhas da planilha: título, filtros, data/hora e autor da emissão (RF59),
  * uma linha em branco, a tabela e, se houver, a linha de totais.
  */
 export function planilhaComCabecalho(dados: DadosPlanilha): SheetData {
-  const emissao = `Gerado em ${formatData(dados.geradoEm)} ${horaMinuto(dados.geradoEm)}${dados.usuario ? ` por ${dados.usuario}` : ""}`;
+  const emissao = textoEmissao(dados.geradoEm, dados.usuario);
   return [
     [{ value: dados.titulo, fontWeight: "bold" }],
     ...dados.filtros.map((f) => [{ value: f }]),
@@ -49,8 +54,8 @@ export function planilhaComCabecalho(dados: DadosPlanilha): SheetData {
   ];
 }
 
-/** "Fluxo de Caixa" + 05/11/2026 → "fluxo-de-caixa-2026-11-05.xlsx". */
-export function nomeArquivo(nome: string, data: Date): string {
+/** "Fluxo de Caixa" + 05/11/2026 → "fluxo-de-caixa-2026-11-05.xlsx" (ou ".pdf"). */
+export function nomeArquivo(nome: string, data: Date, extensao: "xlsx" | "pdf" = "xlsx"): string {
   const base = nome
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -58,7 +63,7 @@ export function nomeArquivo(nome: string, data: Date): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   const dia = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
-  return `${base}-${dia}.xlsx`;
+  return `${base}-${dia}.${extensao}`;
 }
 
 /** Gera o .xlsx e dispara o download no navegador. */

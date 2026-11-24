@@ -24,7 +24,7 @@ Toda rota exige `Authorization: Bearer <accessToken>`, exceto as marcadas com
 | Método | Rota              | Descrição                                              |
 |--------|-------------------|--------------------------------------------------------|
 | `POST` | `/api/auth/login` | `{ email, senha }` → `{ accessToken, usuario }`. Máx. 5 tentativas por minuto por IP (429 depois disso). |
-| `GET`  | `/api/auth/me`    | Dados do usuário do token: `{ id, nome, email, perfil }`. |
+| `GET`  | `/api/auth/me`    | Dados do usuário do token: `{ id, nome, email, perfil, organizacao: { id, nome } }`. O `usuario` do login tem o mesmo formato. |
 
 Não há cadastro público: usuários são criados pela coordenação em
 `/api/usuarios` (tela **Usuários** do front), sempre na organização de quem

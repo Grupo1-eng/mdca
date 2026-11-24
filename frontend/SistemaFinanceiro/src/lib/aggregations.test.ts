@@ -392,7 +392,7 @@ describe("filtrarPorProjeto", () => {
 // RF05 / RF12: orçado x executado do projeto escolhido.
 describe("execucaoDoProjeto", () => {
   const projeto: Projeto = {
-    id: 10, organizacaoId: 1, nome: "Oficinas", descricao: null, status: "Ativo",
+    id: 10, organizacaoId: 1, nome: "Oficinas", descricao: null, tipo: "PROJETO", status: "Ativo",
     orcamentoTotal: 1000, dataInicio: null, dataFim: null,
   };
 
