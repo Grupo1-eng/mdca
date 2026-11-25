@@ -448,8 +448,8 @@ export default function EducandoForm({
             {!leitura && (
               <div className="md:col-span-2">
                 <SensitiveNote>
-                  Campos de acesso restrito: visíveis apenas para Coordenação e
-                  equipe técnica.
+                  Informação sensível: só a coordenação e os técnicos de
+                  Serviço Social e Psicologia veem estes campos.
                 </SensitiveNote>
               </div>
             )}
