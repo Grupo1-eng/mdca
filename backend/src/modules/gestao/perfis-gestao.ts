@@ -35,3 +35,11 @@ export const PERFIS_LISTAGEM_COMPLETA_EDUCANDOS: Perfil[] = [...PERFIS_TECNICOS]
 // Recebem o orçamento total das iniciativas (GET /api/iniciativas). MDCA,
 // perguntas 17 e 22: o financeiro fica restrito a quem trabalha no setor.
 export const PERFIS_VEEM_ORCAMENTO_INICIATIVA: Perfil[] = [PERFIS.COORDENACAO];
+
+// Exportam relatórios de prestação de contas: painel (CSV/PDF, regra de tela)
+// e lista de presença por atividade (GET /api/frequencias/atividade/:id).
+// Decisão do usuário, 2026-11-26.
+export const PERFIS_EXPORTAM_RELATORIOS: Perfil[] = [
+  PERFIS.COORDENACAO,
+  PERFIS.ADMINISTRATIVO,
+];

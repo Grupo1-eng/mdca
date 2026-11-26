@@ -8,8 +8,8 @@ import {
   moeda,
   percentual,
   periodoRapido,
-  podeExportarPainel,
 } from "./painel"
+import { podeExportarRelatorios } from "../exportacao"
 
 const painel = (orcamento: boolean): PainelApi => {
   const base = {
@@ -100,13 +100,13 @@ describe("relatório para PDF", () => {
   })
 })
 
-describe("podeExportarPainel", () => {
+describe("podeExportarRelatorios", () => {
   it("libera só coordenação e administrativo", () => {
-    expect(podeExportarPainel("coordenador")).toBe(true)
-    expect(podeExportarPainel("administrativo")).toBe(true)
-    expect(podeExportarPainel("tecnico_servico_social")).toBe(false)
-    expect(podeExportarPainel("tecnico_psicologia")).toBe(false)
-    expect(podeExportarPainel("educador")).toBe(false)
-    expect(podeExportarPainel(undefined)).toBe(false)
+    expect(podeExportarRelatorios("coordenador")).toBe(true)
+    expect(podeExportarRelatorios("administrativo")).toBe(true)
+    expect(podeExportarRelatorios("tecnico_servico_social")).toBe(false)
+    expect(podeExportarRelatorios("tecnico_psicologia")).toBe(false)
+    expect(podeExportarRelatorios("educador")).toBe(false)
+    expect(podeExportarRelatorios(undefined)).toBe(false)
   })
 })

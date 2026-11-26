@@ -10,6 +10,8 @@ import {
   salvarEncontroRemoto,
 } from "../api/atividades"
 import { useSalvarGestao } from "../educandos/EducandosContext"
+import { podeExportarRelatorios } from "../exportacao"
+import ListaPresencaCard from "./ListaPresencaCard"
 import {
   Badge,
   Card,
@@ -283,6 +285,8 @@ export default function AtividadeDetalhePage() {
           </form>
         </Card>
       )}
+
+      {podeExportarRelatorios(user?.perfil) && <ListaPresencaCard atividadeId={atividade.id} />}
 
       <Card className="mb-5 overflow-hidden">
         <div className="overflow-x-auto">

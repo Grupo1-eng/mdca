@@ -8,7 +8,7 @@ import { EncontrosController } from '../encontros/encontros.controller';
 import { EncontrosService } from '../encontros/encontros.service';
 import { CreateEncontroDto } from '../encontros/dto/create-encontro.dto';
 import { FrequenciasController } from '../frequencias/frequencias.controller';
-import { PERFIS_GESTAO } from '../perfis-gestao';
+import { PERFIS_EXPORTAM_RELATORIOS, PERFIS_GESTAO } from '../perfis-gestao';
 import { AtividadesController } from './atividades.controller';
 import { AtividadesService } from './atividades.service';
 import { aceitaChamada, aceitaEncontroNovo, intervaloDeDias } from './regras-atividades';
@@ -211,5 +211,12 @@ describe('perfis das rotas de atividades, encontros e frequência', () => {
     for (const metodo of [p.criar, p.atualizar, e.criar, e.atualizar, f.registrar]) {
       expect(perfisDe(metodo)).toBeUndefined();
     }
+  });
+
+  it('só coordenação e administrativo tiram a lista de presença', () => {
+    expect(perfisDe(FrequenciasController.prototype.listaDePresenca)).toEqual(
+      PERFIS_EXPORTAM_RELATORIOS,
+    );
+    expect(PERFIS_EXPORTAM_RELATORIOS).toEqual([PERFIS.COORDENACAO, PERFIS.ADMINISTRATIVO]);
   });
 });

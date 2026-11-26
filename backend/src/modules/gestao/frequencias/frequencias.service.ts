@@ -7,8 +7,10 @@ import {
   PRESENCA,
   aceitaChamada,
   garantirEncontro,
+  intervaloDeDias,
 } from '../atividades/regras-atividades';
 import { RegistrarChamadaDto } from './dto/registrar-chamada.dto';
+import { montarListaPresenca } from './lista-presenca';
 
 export interface LinhaChamada {
   educandoId: number;
@@ -96,6 +98,71 @@ export class FrequenciasService {
       },
       orderBy: { encontro: { dataInicio: 'desc' } },
     });
+  }
+
+  // Lista de presença da atividade no período: encontros não cancelados, em
+  // ordem de data, e a grade educando × encontro.
+  async listaDePresenca(
+    atividadeId: number,
+    inicio: string,
+    fim: string,
+    organizacaoId: number,
+  ) {
+    if (inicio > fim) {
+      throw new BadRequestException('A data inicial não pode ser depois da data final.');
+    }
+    const atividade = await this.prisma.atividade.findFirst({
+      where: { id: atividadeId, projeto: { is: { organizacaoId } } },
+      select: {
+        id: true,
+        nome: true,
+        projetoId: true,
+        projeto: { select: { id: true, nome: true } },
+      },
+    });
+    if (!atividade) throw new NotFoundException('Atividade não encontrada.');
+
+    const { desde, ate } = intervaloDeDias(inicio, fim);
+    const [encontros, vinculados] = await Promise.all([
+      this.prisma.encontro.findMany({
+        where: {
+          atividadeId,
+          situacao: { not: 'cancelado' },
+          dataInicio: { gte: desde, lt: ate },
+        },
+        select: {
+          id: true,
+          dataInicio: true,
+          horaInicio: true,
+          situacao: true,
+          frequencias: {
+            select: {
+              educandoId: true,
+              presencaAusencia: true,
+              educando: { select: { nome: true } },
+            },
+          },
+        },
+        orderBy: [{ dataInicio: 'asc' }, { horaInicio: 'asc' }],
+      }),
+      this.prisma.educando.findMany({
+        where: {
+          organizacaoId,
+          situacaoAtual: 'ativo',
+          educandoProjetos: {
+            some: { projetoId: atividade.projetoId, situacao: SITUACAO_VINCULO_ATIVO },
+          },
+        },
+        select: { id: true, nome: true },
+      }),
+    ]);
+
+    return {
+      atividade: { id: atividade.id, nome: atividade.nome, iniciativa: atividade.projeto },
+      periodo: { inicio, fim },
+      encontros: encontros.map(({ frequencias: _f, ...encontro }) => encontro),
+      linhas: montarListaPresenca(encontros, vinculados),
+    };
   }
 
   // Educandos ativos vinculados à iniciativa, mais quem já tem presença

@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Lista de presença por atividade (CSV)
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** na página da atividade, o quadro "Lista de presença" exporta em CSV a presença de cada educando nos encontros de um período, com totais e frequência. Backend: `GET /api/frequencias/atividade/:id?inicio&fim` (só coordenação e administrativo). Utilitários de exportação e a lista de quem exporta foram para `gestao/exportacao.ts` (o painel passou a usá-los).
+
+**Por quê:** questionário da MDCA, perguntas 12, 13 e 21 (prestação de contas mensal, filtrada para cada parceiro). Ver [`decisoes.md`](decisoes.md).
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-26 — Correção: período dos encontros no painel
 
 **Tipo:** correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)

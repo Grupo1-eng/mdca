@@ -99,7 +99,15 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 - **Educandos atendidos:** educandos distintos com presença em encontro realizado ou com atendimento no período.
 - **Orçamento total** das iniciativas só para a coordenação (`PERFIS_VEEM_ORCAMENTO_INICIATIVA`). Execução financeira fica no Financeiro.
 - Datas do filtro no calendário de Brasília (UTC-3) para as evoluções (guardam o instante); encontros guardam só o dia (meia-noite UTC) e são filtrados por dia (`intervaloDeDias`, correção de 2026-11-26). Exportação feita na tela: CSV (`;`, para o Excel em português) e relatório para imprimir ou salvar como PDF pelo navegador, sem biblioteca nova.
-- **Quem exporta (atualizado em 2026-11-26):** só coordenação e administrativo (`PERFIS_EXPORTAM_PAINEL`, frontend `gestao/dashboard/painel.ts`). Técnicos e educador veem o painel, sem os botões de exportação. Antes (24/11) a exportação estava liberada a todos os perfis da Gestão.
+- **Quem exporta (atualizado em 2026-11-26):** só coordenação e administrativo (`PERFIS_EXPORTAM_RELATORIOS`, frontend `gestao/exportacao.ts`; mesma lista no backend em `perfis-gestao.ts`). Técnicos e educador veem o painel, sem os botões de exportação. Antes (24/11) a exportação estava liberada a todos os perfis da Gestão.
 
 **Consequência:** chamada registrada em encontro que não foi marcado como realizado não entra na frequência. A cobrança da equipe é marcar o encontro como realizado.
+
+## 2026-11-26 — Lista de presença por atividade
+
+**Contexto:** a MDCA presta contas a cada parceiro, quase sempre por mês e no formato de cada um (questionário, perguntas 12, 13 e 21). O painel só dá números agregados.
+
+**Decisão:** `GET /api/frequencias/atividade/:id?inicio&fim` devolve os encontros não cancelados da atividade no período (planejados entram, marcados "(planejado)") e a grade educando × encontro. Linhas: educandos ativos vinculados hoje à iniciativa, mais quem tem chamada no período (mesmo desvinculado). Só coordenação e administrativo (`PERFIS_EXPORTAM_RELATORIOS`). A tela gera o CSV (`;` + BOM): P = presente, F = falta, em branco = sem chamada; totais e frequência por educando.
+
+**Consequência:** a lista mostra o vínculo atual; quem entrou e saiu da iniciativa sem nenhuma chamada no período não aparece.
 
