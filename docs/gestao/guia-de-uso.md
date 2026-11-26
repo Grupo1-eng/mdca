@@ -28,7 +28,7 @@ Vê e faz tudo na Gestão.
 - **Tirar o acesso de alguém:** Usuários › **Inativar**. A conta não é apagada e pode ser reativada.
 - **Cadastrar um projeto, serviço ou programa:** Projetos, Serviços e Programas › **Nova iniciativa**.
 - **Inativar ou reativar um educando:** na ficha do educando, botão no topo. O histórico nunca é apagado.
-- **Prestação de contas:** no Dashboard, use o **Painel de indicadores**. Escolha o período (há atalhos "Este mês", "Mês passado" e "Este ano") e a iniciativa, e clique em **Exportar CSV** (abre no Excel) ou **Exportar PDF** (abre o relatório para imprimir ou salvar como PDF). Só a coordenação vê o orçamento das iniciativas.
+- **Prestação de contas:** no Dashboard, use o **Painel de indicadores**. Escolha o período (há atalhos "Este mês", "Mês passado" e "Este ano") e a iniciativa, e clique em **Exportar CSV** (abre no Excel) ou **Exportar PDF** (abre o relatório para imprimir ou salvar como PDF). Só a coordenação e o administrativo exportam; só a coordenação vê o orçamento das iniciativas.
 
 ## Técnicos de Serviço Social e de Psicologia
 

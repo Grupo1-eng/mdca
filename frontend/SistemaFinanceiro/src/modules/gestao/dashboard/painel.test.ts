@@ -8,6 +8,7 @@ import {
   moeda,
   percentual,
   periodoRapido,
+  podeExportarPainel,
 } from "./painel"
 
 const painel = (orcamento: boolean): PainelApi => {
@@ -96,5 +97,16 @@ describe("relatório para PDF", () => {
     expect(html).toContain("<span>Frequência média</span><strong>60,0%</strong>")
     expect(html).toContain("Oficina &quot;Arte&quot;; música")
     expect(html).not.toContain('Oficina "Arte"')
+  })
+})
+
+describe("podeExportarPainel", () => {
+  it("libera só coordenação e administrativo", () => {
+    expect(podeExportarPainel("coordenador")).toBe(true)
+    expect(podeExportarPainel("administrativo")).toBe(true)
+    expect(podeExportarPainel("tecnico_servico_social")).toBe(false)
+    expect(podeExportarPainel("tecnico_psicologia")).toBe(false)
+    expect(podeExportarPainel("educador")).toBe(false)
+    expect(podeExportarPainel(undefined)).toBe(false)
   })
 })

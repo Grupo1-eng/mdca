@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Exportação do painel só para coordenação e administrativo
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-exportacao-painel-perfis`)
+
+**O que mudou:** os botões "Exportar CSV" e "Exportar PDF" do painel de indicadores aparecem só para coordenação e administrativo (`PERFIS_EXPORTAM_PAINEL` em `gestao/dashboard/painel.ts`). Técnicos e educador continuam vendo o painel. Também fechado sem merge o PR #42 (autorização de uso de imagem): Gestão e Financeiro concluíram que não é necessário; a migration nunca foi aplicada.
+
+**Por quê:** decisão do usuário (26/11). A US05 fala em exportação pela coordenação; o administrativo cuida das rotinas de prestação de contas. Ver [`decisoes.md`](decisoes.md).
+
+**Pendências:** a exportação é gerada na tela; a rota `GET /api/painel` segue aberta a todos os perfis da Gestão (só números agregados), então a restrição é de interface.
+
+---
+
 ## 2026-11-24 — Listas dos técnicos, sigilo nos acompanhamentos e guia de uso
 
 **Tipo:** evolução e correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-melhorias-sem-compartilhado`)

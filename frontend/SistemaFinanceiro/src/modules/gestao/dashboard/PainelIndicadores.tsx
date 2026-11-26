@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useAuth } from "@/context/AuthContext"
 import { consultarPainel, type FiltrosPainel, type PainelApi } from "../api/painel"
 import { useEducandosGestao } from "../educandos/EducandosContext"
 import { inputClass } from "../educandos/components/EducandoUi"
@@ -10,6 +11,7 @@ import {
   moeda,
   percentual,
   periodoRapido,
+  podeExportarPainel,
   tipoIniciativa,
 } from "./painel"
 
@@ -55,6 +57,8 @@ function baixarArquivo(conteudo: string, nome: string, tipo: string) {
 }
 
 export default function PainelIndicadores() {
+  const { user } = useAuth()
+  const exporta = podeExportarPainel(user?.perfil)
   const { iniciativas, carregarIniciativas } = useEducandosGestao()
   const [filtros, setFiltros] = useState<FiltrosPainel>(() => ({
     ...periodoRapido("mes-atual"),
@@ -128,14 +132,16 @@ export default function PainelIndicadores() {
             são recalculados a cada filtro.
           </p>
         </div>
-        <div className="flex gap-2">
-          <button type="button" className={botao} disabled={!painel} onClick={exportarCsv}>
-            Exportar CSV
-          </button>
-          <button type="button" className={botao} disabled={!painel} onClick={exportarPdf}>
-            Exportar PDF
-          </button>
-        </div>
+        {exporta && (
+          <div className="flex gap-2">
+            <button type="button" className={botao} disabled={!painel} onClick={exportarCsv}>
+              Exportar CSV
+            </button>
+            <button type="button" className={botao} disabled={!painel} onClick={exportarPdf}>
+              Exportar PDF
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
