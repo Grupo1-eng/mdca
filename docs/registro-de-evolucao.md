@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Correção: período dos encontros no painel
+
+**Tipo:** correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** o painel passou a filtrar os encontros por dia (`intervaloDeDias` em `gestao/atividades/regras-atividades.ts`). Evoluções seguem filtradas no calendário de Brasília.
+
+**Por quê:** o encontro guarda só o dia, à meia-noite UTC (`dataDoDia`), e o painel aplicava o intervalo de Brasília (03:00 UTC): encontro do dia 1º ficava fora do mês e o do dia 1º do mês seguinte entrava no anterior.
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-26 — Situações de vulnerabilidade constatadas no cadastro
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)

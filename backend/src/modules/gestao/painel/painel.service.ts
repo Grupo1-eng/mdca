@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Perfil } from '../../auth/perfis.constants';
+import { intervaloDeDias } from '../atividades/regras-atividades';
 import { PERFIS_VEEM_ORCAMENTO_INICIATIVA } from '../perfis-gestao';
 import { calcularPainel, intervaloDoPeriodo } from './calculo-painel';
 import { ConsultaPainelDto } from './dto/consulta-painel.dto';
@@ -26,7 +27,10 @@ export class PainelService {
         'A data inicial não pode ser depois da data final.',
       );
     }
+    // Evoluções guardam o instante do atendimento (calendário de Brasília);
+    // encontros guardam só o dia, à meia-noite UTC (dataDoDia).
     const { desde, ate } = intervaloDoPeriodo(inicio, fim);
+    const dias = intervaloDeDias(inicio, fim);
     const comOrcamento = PERFIS_VEEM_ORCAMENTO_INICIATIVA.includes(
       perfil as Perfil,
     );
@@ -53,7 +57,7 @@ export class PainelService {
       this.prisma.encontro.findMany({
         where: {
           situacao: SITUACAO_REALIZADO,
-          dataInicio: { gte: desde, lt: ate },
+          dataInicio: { gte: dias.desde, lt: dias.ate },
           atividade: {
             projeto: { organizacaoId },
             ...(iniciativaId !== undefined ? { projetoId: iniciativaId } : {}),

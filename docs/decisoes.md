@@ -98,7 +98,7 @@ Registro de decisões permanentes do projeto, com data, contexto, decisão e con
 - **Atendimentos registrados:** evoluções no período. Contam para uma iniciativa quando registradas nela ou, sem iniciativa própria, quando o educando tem vínculo com ela (por isso a soma das linhas pode passar do total).
 - **Educandos atendidos:** educandos distintos com presença em encontro realizado ou com atendimento no período.
 - **Orçamento total** das iniciativas só para a coordenação (`PERFIS_VEEM_ORCAMENTO_INICIATIVA`). Execução financeira fica no Financeiro.
-- Datas do filtro no calendário de Brasília (UTC-3). Exportação feita na tela: CSV (`;`, para o Excel em português) e relatório para imprimir ou salvar como PDF pelo navegador, sem biblioteca nova.
+- Datas do filtro no calendário de Brasília (UTC-3) para as evoluções (guardam o instante); encontros guardam só o dia (meia-noite UTC) e são filtrados por dia (`intervaloDeDias`, correção de 2026-11-26). Exportação feita na tela: CSV (`;`, para o Excel em português) e relatório para imprimir ou salvar como PDF pelo navegador, sem biblioteca nova.
 - **Quem exporta (atualizado em 2026-11-26):** só coordenação e administrativo (`PERFIS_EXPORTAM_PAINEL`, frontend `gestao/dashboard/painel.ts`). Técnicos e educador veem o painel, sem os botões de exportação. Antes (24/11) a exportação estava liberada a todos os perfis da Gestão.
 
 **Consequência:** chamada registrada em encontro que não foi marcado como realizado não entra na frequência. A cobrança da equipe é marcar o encontro como realizado.

@@ -90,11 +90,16 @@ describe('Painel da Gestão (integração)', () => {
       situacao: 'realizado',
       atividade: { projeto: { organizacaoId: 3 } },
     });
-    expect(whereEncontro.dataInicio.gte.toISOString()).toBe('2026-11-01T03:00:00.000Z');
-    expect(whereEncontro.dataInicio.lt.toISOString()).toBe('2026-12-01T03:00:00.000Z');
+    expect(whereEncontro.dataInicio.gte.toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    expect(whereEncontro.dataInicio.lt.toISOString()).toBe('2026-12-01T00:00:00.000Z');
     expect(prisma.evolucao.findMany.mock.calls[0][0].where).toMatchObject({
       educando: { organizacaoId: 3 },
     });
+    // Encontro guarda só o dia (meia-noite UTC); evolução guarda o instante,
+    // filtrado no calendário de Brasília.
+    const whereEvolucao = prisma.evolucao.findMany.mock.calls[0][0].where;
+    expect(whereEvolucao.dataInicio.gte.toISOString()).toBe('2026-11-01T03:00:00.000Z');
+    expect(whereEvolucao.dataInicio.lt.toISOString()).toBe('2026-12-01T03:00:00.000Z');
   });
 
   it('filtra por iniciativa nas três consultas', async () => {
