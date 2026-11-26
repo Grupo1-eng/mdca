@@ -10,11 +10,13 @@ import {
   Post,
   Put,
   Query,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiProduces,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -22,6 +24,8 @@ import { LancamentosService } from './lancamentos.service';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
 import { ResumoSemanalQueryDto, SEM_PROJETO } from './dto/resumo-semanal-query.dto';
+import { ExtratoQueryDto } from './dto/extrato-query.dto';
+import { TIPO_XLSX } from './extrato-xlsx';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
@@ -62,6 +66,37 @@ export class LancamentosController {
     const projetoId =
       query.projetoId === undefined ? undefined : query.projetoId === SEM_PROJETO ? null : Number(query.projetoId);
     return this.service.resumoSemanal(query.mes, usuario.organizacaoId, projetoId);
+  }
+
+  @ApiTags('Lançamentos')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Exporta o extrato financeiro em planilha Excel (.xlsx)',
+    description:
+      'Gera a planilha direto do banco, só com os lançamentos da organização do usuário. ' +
+      'Todos os filtros são opcionais e combinam entre si. Sem filtros, exporta todos os lançamentos.',
+  })
+  @ApiProduces(TIPO_XLSX)
+  @ApiResponse({ status: 200, description: 'Arquivo .xlsx para download.' })
+  @ApiResponse({ status: 400, description: 'Filtro com valor ou formato inválido.' })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido.' })
+  @ApiResponse({ status: 403, description: 'Perfil sem acesso ao módulo financeiro.' })
+  @ApiResponse({ status: 404, description: 'Projeto ou categoria do filtro não encontrado.' })
+  @Get('extrato/exportar')
+  async exportarExtrato(
+    @Query() query: ExtratoQueryDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    const { arquivo, nome } = await this.service.exportarExtrato(
+      query,
+      usuario.organizacaoId,
+      usuario.nome,
+    );
+    return new StreamableFile(arquivo, {
+      type: TIPO_XLSX,
+      disposition: `attachment; filename="${nome}"`,
+      length: arquivo.length,
+    });
   }
 
   @Get(':id')
