@@ -20,6 +20,16 @@ export const MOTIVOS_INGRESSO = [
   "Dificuldade de aprendizagem",
 ] as const
 
+// Outras situações de vulnerabilidade constatadas (questionário da MDCA,
+// pergunta 19). Gravadas no mesmo campo dos motivos de ingresso
+// (`motivos_ingresso`, lista de textos), sem migration. Ficam na ficha
+// cadastral, que só coordenação e técnicos veem.
+export const VULNERABILIDADES_CONSTATADAS = [
+  "Uso de substâncias psicoativas na família",
+  "Questões de saúde mental",
+  "Neurodivergência (TEA, TDAH e outras)",
+] as const
+
 export const ORIGENS_ENCAMINHAMENTO = [
   "Ação Rua",
   "CREAS Leste",

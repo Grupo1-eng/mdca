@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Situações de vulnerabilidade constatadas no cadastro
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** o bloco "Ingresso, vulnerabilidades e encaminhamento" da ficha ganhou um segundo grupo de caixas de marcar, "Outras situações de vulnerabilidade constatadas": uso de substâncias psicoativas na família, questões de saúde mental e neurodivergência (`VULNERABILIDADES_CONSTATADAS` em `gestao/educandos/model.ts`). Gravado no mesmo campo dos motivos de ingresso (`motivos_ingresso`), sem migration.
+
+**Por quê:** questionário da MDCA, pergunta 19 (dados de cadastro essenciais).
+
+**Pendências:** documentação e certidões continuam fora (exigem campo novo e armazenamento de arquivos).
+
+---
+
 ## 2026-11-26 — Exportação do painel só para coordenação e administrativo
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-exportacao-painel-perfis`)
