@@ -11,7 +11,7 @@ import { FrequenciasController } from '../frequencias/frequencias.controller';
 import { PERFIS_EXPORTAM_RELATORIOS, PERFIS_GESTAO } from '../perfis-gestao';
 import { AtividadesController } from './atividades.controller';
 import { AtividadesService } from './atividades.service';
-import { aceitaChamada, aceitaEncontroNovo, intervaloDeDias } from './regras-atividades';
+import { aceitaChamada, aceitaEncontroNovo, ehDataReal, intervaloDeDias } from './regras-atividades';
 
 function prismaFalso() {
   return {
@@ -165,6 +165,17 @@ describe('DTO do encontro', () => {
     expect((await validarDto(CreateEncontroDto, { atividadeId: 1, data: '20/11/2026' })).erros).toBeDefined();
     expect((await validarDto(CreateEncontroDto, { atividadeId: 1, data: '2026-11-20', horaInicio: '25:00' })).erros).toBeDefined();
     expect((await validarDto(CreateEncontroDto, { atividadeId: 1, data: '2026-11-20', situacao: 'Realizado' })).erros).toBeDefined();
+  });
+});
+
+describe('ehDataReal', () => {
+  it('aceita só datas que existem no calendário', () => {
+    expect(ehDataReal('2026-11-30')).toBe(true);
+    expect(ehDataReal('2028-02-29')).toBe(true);
+    expect(ehDataReal('2026-11-31')).toBe(false);
+    expect(ehDataReal('2026-02-29')).toBe(false);
+    expect(ehDataReal('2026-11-99')).toBe(false);
+    expect(ehDataReal('30/11/2026')).toBe(false);
   });
 });
 

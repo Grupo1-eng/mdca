@@ -75,13 +75,14 @@ describe('FrequenciasService.listaDePresenca', () => {
     });
   });
 
-  it('atividade de outra organização: 404; período invertido: 400', async () => {
+  it('atividade de outra organização: 404; período invertido ou data inexistente: 400', async () => {
     const prisma = prismaFalso();
     prisma.atividade.findFirst.mockResolvedValue(null);
     const service = new FrequenciasService(prisma as any);
 
     await expect(service.listaDePresenca(4, '2026-11-01', '2026-11-30', 3)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.listaDePresenca(4, '2026-12-01', '2026-11-30', 3)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.listaDePresenca(4, '2026-11-01', '2026-11-31', 3)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('recusa datas fora do formato AAAA-MM-DD', async () => {

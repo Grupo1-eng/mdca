@@ -38,6 +38,13 @@ export function dataDoDia(valor: string): Date {
   return new Date(`${valor}T00:00:00.000Z`);
 }
 
+// "AAAA-MM-DD" que existe no calendário (recusa 2026-11-31, 2026-02-30...).
+export function ehDataReal(valor: string): boolean {
+  if (!DATA.test(valor)) return false;
+  const data = dataDoDia(valor);
+  return !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === valor;
+}
+
 // Período de dias "AAAA-MM-DD" -> intervalo [início, fim) para campos gravados
 // com dataDoDia (meia-noite UTC), como a data do encontro. Não use o intervalo
 // de Brasília (painel/calculo-painel) nesses campos: ele perde o primeiro dia

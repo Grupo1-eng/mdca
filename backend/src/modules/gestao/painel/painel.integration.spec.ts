@@ -145,6 +145,7 @@ describe('Painel da Gestão (integração)', () => {
     ['sem datas', '/api/painel'],
     ['data em outro formato', '/api/painel?inicio=01/11/2026&fim=2026-11-30'],
     ['início depois do fim', '/api/painel?inicio=2026-12-01&fim=2026-11-30'],
+    ['dia que não existe', '/api/painel?inicio=2026-11-01&fim=2026-11-31'],
     ['iniciativa inválida', '/api/painel?inicio=2026-11-01&fim=2026-11-30&iniciativaId=abc'],
   ])('recusa %s (400)', async (_caso, rota) => {
     const res = await get(rota);

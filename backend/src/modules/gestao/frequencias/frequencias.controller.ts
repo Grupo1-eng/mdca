@@ -53,7 +53,7 @@ export class FrequenciasController {
     return this.service.listaDePresenca(id, filtros.inicio, filtros.fim, usuario.organizacaoId);
   }
 
-    @Get('educando/:id')
+  @Get('educando/:id')
   @Perfis(...PERFIS_GESTAO)
   historico(
     @Param('id', ParseIntPipe) id: number,

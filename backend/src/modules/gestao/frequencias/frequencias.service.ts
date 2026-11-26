@@ -6,6 +6,7 @@ import {
   AUSENCIA,
   PRESENCA,
   aceitaChamada,
+  ehDataReal,
   garantirEncontro,
   intervaloDeDias,
 } from '../atividades/regras-atividades';
@@ -108,6 +109,9 @@ export class FrequenciasService {
     fim: string,
     organizacaoId: number,
   ) {
+    if (!ehDataReal(inicio) || !ehDataReal(fim)) {
+      throw new BadRequestException('Período inválido.');
+    }
     if (inicio > fim) {
       throw new BadRequestException('A data inicial não pode ser depois da data final.');
     }

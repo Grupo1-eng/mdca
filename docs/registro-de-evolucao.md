@@ -55,6 +55,8 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 **Por quê:** o encontro guarda só o dia, à meia-noite UTC (`dataDoDia`), e o painel aplicava o intervalo de Brasília (03:00 UTC): encontro do dia 1º ficava fora do mês e o do dia 1º do mês seguinte entrava no anterior.
 
+Também passaram a recusar (400 "Período inválido.") datas que não existem no calendário, como 2026-11-31 (antes viravam o dia seguinte; na lista de presença davam erro 500): `ehDataReal`.
+
 **Pendências:** nenhuma.
 
 ---

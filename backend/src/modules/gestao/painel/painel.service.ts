@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Perfil } from '../../auth/perfis.constants';
-import { intervaloDeDias } from '../atividades/regras-atividades';
+import { ehDataReal, intervaloDeDias } from '../atividades/regras-atividades';
 import { PERFIS_VEEM_ORCAMENTO_INICIATIVA } from '../perfis-gestao';
 import { calcularPainel, intervaloDoPeriodo } from './calculo-painel';
 import { ConsultaPainelDto } from './dto/consulta-painel.dto';
@@ -19,7 +19,7 @@ export class PainelService {
     perfil: string,
   ) {
     const { inicio, fim, iniciativaId } = filtros;
-    if (Number.isNaN(Date.parse(inicio)) || Number.isNaN(Date.parse(fim))) {
+    if (!ehDataReal(inicio) || !ehDataReal(fim)) {
       throw new BadRequestException('Período inválido.');
     }
     if (inicio > fim) {
