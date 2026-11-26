@@ -2,6 +2,7 @@
 // formatação e exportação em CSV e PDF (relatório para imprimir/salvar).
 // Funções puras.
 import type { PainelApi } from "../api/painel"
+import type { Perfil } from "@/types/financeiro"
 
 const dois = (n: number) => String(n).padStart(2, "0")
 const iso = (d: Date) => `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`
@@ -53,6 +54,14 @@ const TIPOS: Record<string, string> = {
 
 export function tipoIniciativa(tipo: string): string {
   return TIPOS[tipo?.toUpperCase()] ?? tipo
+}
+
+// Quem exporta o painel em CSV/PDF (decisão do usuário, 26/11): coordenação e
+// administrativo. Os demais perfis da Gestão veem o painel, sem exportar.
+export const PERFIS_EXPORTAM_PAINEL: readonly Perfil[] = ["coordenador", "administrativo"]
+
+export function podeExportarPainel(perfil: Perfil | undefined): boolean {
+  return perfil !== undefined && PERFIS_EXPORTAM_PAINEL.includes(perfil)
 }
 
 export function comOrcamento(painel: PainelApi): boolean {
