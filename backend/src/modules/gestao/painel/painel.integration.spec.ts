@@ -90,11 +90,16 @@ describe('Painel da Gestão (integração)', () => {
       situacao: 'realizado',
       atividade: { projeto: { organizacaoId: 3 } },
     });
-    expect(whereEncontro.dataInicio.gte.toISOString()).toBe('2026-11-01T03:00:00.000Z');
-    expect(whereEncontro.dataInicio.lt.toISOString()).toBe('2026-12-01T03:00:00.000Z');
+    expect(whereEncontro.dataInicio.gte.toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    expect(whereEncontro.dataInicio.lt.toISOString()).toBe('2026-12-01T00:00:00.000Z');
     expect(prisma.evolucao.findMany.mock.calls[0][0].where).toMatchObject({
       educando: { organizacaoId: 3 },
     });
+    // Encontro guarda só o dia (meia-noite UTC); evolução guarda o instante,
+    // filtrado no calendário de Brasília.
+    const whereEvolucao = prisma.evolucao.findMany.mock.calls[0][0].where;
+    expect(whereEvolucao.dataInicio.gte.toISOString()).toBe('2026-11-01T03:00:00.000Z');
+    expect(whereEvolucao.dataInicio.lt.toISOString()).toBe('2026-12-01T03:00:00.000Z');
   });
 
   it('filtra por iniciativa nas três consultas', async () => {
@@ -140,6 +145,7 @@ describe('Painel da Gestão (integração)', () => {
     ['sem datas', '/api/painel'],
     ['data em outro formato', '/api/painel?inicio=01/11/2026&fim=2026-11-30'],
     ['início depois do fim', '/api/painel?inicio=2026-12-01&fim=2026-11-30'],
+    ['dia que não existe', '/api/painel?inicio=2026-11-01&fim=2026-11-31'],
     ['iniciativa inválida', '/api/painel?inicio=2026-11-01&fim=2026-11-30&iniciativaId=abc'],
   ])('recusa %s (400)', async (_caso, rota) => {
     const res = await get(rota);

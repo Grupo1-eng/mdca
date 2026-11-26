@@ -1,6 +1,7 @@
 // Público atendido pela MDCA: crianças e adolescentes de 6 a 17 anos
-// (questionário da MDCA, pergunta 4). Vale para o cadastro de um educando
-// novo; quem já está cadastrado e completou 18 anos continua editável.
+// (questionário da MDCA, pergunta 4). Vale no cadastro de um educando novo e
+// na edição quando a data de nascimento muda; quem já está cadastrado e
+// completou 18 anos continua editável se a data não for alterada.
 export const IDADE_MINIMA = 6;
 export const IDADE_MAXIMA = 17;
 
@@ -27,4 +28,10 @@ export function problemaFaixaEtaria(
     return `A MDCA atende crianças e adolescentes de ${IDADE_MINIMA} a ${IDADE_MAXIMA} anos. Pela data de nascimento, o educando tem ${idade} ano${idade === 1 ? '' : 's'}.`;
   }
   return null;
+}
+
+// Mesmo dia do calendário (UTC), ignorando o horário gravado.
+export function mesmaData(a: Date | null | undefined, b: Date | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
 }

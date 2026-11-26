@@ -23,6 +23,56 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Faixa etária também na edição do educando
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** `PUT /api/educandos/:id` e o formulário passam a conferir a faixa de 6 a 17 anos quando a data de nascimento é alterada (`mesmaData` em `gestao/educandos/faixa-etaria.ts`, `confereFaixaEtaria` no front). Sem mudança na data, quem já é educando e fez 18 anos segue editável.
+
+**Por quê:** questionário da MDCA, pergunta 4; antes só o cadastro novo conferia, e uma data errada podia ser corrigida para fora da faixa.
+
+**Pendências:** nenhuma.
+
+---
+
+## 2026-11-26 — Lista de presença por atividade (CSV)
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** na página da atividade, o quadro "Lista de presença" exporta em CSV a presença de cada educando nos encontros de um período, com totais e frequência. Backend: `GET /api/frequencias/atividade/:id?inicio&fim` (só coordenação e administrativo). Utilitários de exportação e a lista de quem exporta foram para `gestao/exportacao.ts` (o painel passou a usá-los).
+
+**Por quê:** questionário da MDCA, perguntas 12, 13 e 21 (prestação de contas mensal, filtrada para cada parceiro). Ver [`decisoes.md`](decisoes.md).
+
+**Pendências:** nenhuma.
+
+---
+
+## 2026-11-26 — Correção: período dos encontros no painel
+
+**Tipo:** correção · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** o painel passou a filtrar os encontros por dia (`intervaloDeDias` em `gestao/atividades/regras-atividades.ts`). Evoluções seguem filtradas no calendário de Brasília.
+
+**Por quê:** o encontro guarda só o dia, à meia-noite UTC (`dataDoDia`), e o painel aplicava o intervalo de Brasília (03:00 UTC): encontro do dia 1º ficava fora do mês e o do dia 1º do mês seguinte entrava no anterior.
+
+Também passaram a recusar (400 "Período inválido.") datas que não existem no calendário, como 2026-11-31 (antes viravam o dia seguinte; na lista de presença davam erro 500): `ehDataReal`.
+
+**Pendências:** nenhuma.
+
+---
+
+## 2026-11-26 — Situações de vulnerabilidade constatadas no cadastro
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** o bloco "Ingresso, vulnerabilidades e encaminhamento" da ficha ganhou um segundo grupo de caixas de marcar, "Outras situações de vulnerabilidade constatadas": uso de substâncias psicoativas na família, questões de saúde mental e neurodivergência (`VULNERABILIDADES_CONSTATADAS` em `gestao/educandos/model.ts`). Gravado no mesmo campo dos motivos de ingresso (`motivos_ingresso`), sem migration.
+
+**Por quê:** questionário da MDCA, pergunta 19 (dados de cadastro essenciais).
+
+**Pendências:** documentação e certidões continuam fora (exigem campo novo e armazenamento de arquivos).
+
+---
+
 ## 2026-11-26 — Exportação do painel só para coordenação e administrativo
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-exportacao-painel-perfis`)

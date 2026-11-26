@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext"
 import { consultarPainel, type FiltrosPainel, type PainelApi } from "../api/painel"
 import { useEducandosGestao } from "../educandos/EducandosContext"
 import { inputClass } from "../educandos/components/EducandoUi"
+import { baixarArquivo, podeExportarRelatorios } from "../exportacao"
 import {
   PERIODOS_RAPIDOS,
   comOrcamento,
@@ -11,7 +12,6 @@ import {
   moeda,
   percentual,
   periodoRapido,
-  podeExportarPainel,
   tipoIniciativa,
 } from "./painel"
 
@@ -47,18 +47,9 @@ function Destaque({
   )
 }
 
-function baixarArquivo(conteudo: string, nome: string, tipo: string) {
-  const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }))
-  const link = document.createElement("a")
-  link.href = url
-  link.download = nome
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 export default function PainelIndicadores() {
   const { user } = useAuth()
-  const exporta = podeExportarPainel(user?.perfil)
+  const exporta = podeExportarRelatorios(user?.perfil)
   const { iniciativas, carregarIniciativas } = useEducandosGestao()
   const [filtros, setFiltros] = useState<FiltrosPainel>(() => ({
     ...periodoRapido("mes-atual"),

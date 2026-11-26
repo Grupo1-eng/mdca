@@ -8,10 +8,10 @@ import { EncontrosController } from '../encontros/encontros.controller';
 import { EncontrosService } from '../encontros/encontros.service';
 import { CreateEncontroDto } from '../encontros/dto/create-encontro.dto';
 import { FrequenciasController } from '../frequencias/frequencias.controller';
-import { PERFIS_GESTAO } from '../perfis-gestao';
+import { PERFIS_EXPORTAM_RELATORIOS, PERFIS_GESTAO } from '../perfis-gestao';
 import { AtividadesController } from './atividades.controller';
 import { AtividadesService } from './atividades.service';
-import { aceitaChamada, aceitaEncontroNovo } from './regras-atividades';
+import { aceitaChamada, aceitaEncontroNovo, ehDataReal, intervaloDeDias } from './regras-atividades';
 
 function prismaFalso() {
   return {
@@ -168,6 +168,25 @@ describe('DTO do encontro', () => {
   });
 });
 
+describe('ehDataReal', () => {
+  it('aceita só datas que existem no calendário', () => {
+    expect(ehDataReal('2026-11-30')).toBe(true);
+    expect(ehDataReal('2028-02-29')).toBe(true);
+    expect(ehDataReal('2026-11-31')).toBe(false);
+    expect(ehDataReal('2026-02-29')).toBe(false);
+    expect(ehDataReal('2026-11-99')).toBe(false);
+    expect(ehDataReal('30/11/2026')).toBe(false);
+  });
+});
+
+describe('intervaloDeDias', () => {
+  it('cobre do primeiro ao último dia, em meia-noite UTC (como dataDoDia)', () => {
+    const { desde, ate } = intervaloDeDias('2026-11-01', '2026-11-30');
+    expect(desde.toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    expect(ate.toISOString()).toBe('2026-12-01T00:00:00.000Z');
+  });
+});
+
 describe('regras das decisões', () => {
   it('atividade encerrada não aceita encontro novo (decisão 3)', () => {
     expect(aceitaEncontroNovo({ situacao: 'ativa' })).toBe(true);
@@ -203,5 +222,12 @@ describe('perfis das rotas de atividades, encontros e frequência', () => {
     for (const metodo of [p.criar, p.atualizar, e.criar, e.atualizar, f.registrar]) {
       expect(perfisDe(metodo)).toBeUndefined();
     }
+  });
+
+  it('só coordenação e administrativo tiram a lista de presença', () => {
+    expect(perfisDe(FrequenciasController.prototype.listaDePresenca)).toEqual(
+      PERFIS_EXPORTAM_RELATORIOS,
+    );
+    expect(PERFIS_EXPORTAM_RELATORIOS).toEqual([PERFIS.COORDENACAO, PERFIS.ADMINISTRATIVO]);
   });
 });

@@ -69,7 +69,12 @@ describe("rotas migradas da Gestão", () => {
     const html = renderizarRota("/gestao/educandos/novo")
     expect(html).toContain("Dados pessoais")
     expect(html).toContain("Responsáveis familiares")
-    expect(html).toContain("Ingresso e encaminhamento")
+    expect(html).toContain("Ingresso, vulnerabilidades e encaminhamento")
+    // Questionário da MDCA, pergunta 19: situações constatadas no mesmo campo.
+    expect(html).toContain("Outras situações de vulnerabilidade constatadas")
+    expect(html).toContain("Uso de substâncias psicoativas na família")
+    expect(html).toContain("Questões de saúde mental")
+    expect(html).toContain("Neurodivergência (TEA, TDAH e outras)")
     expect(html).toContain('href="/gestao/educandos"')
   })
 

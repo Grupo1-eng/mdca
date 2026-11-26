@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Put, Query, UseGuards } from '@nestjs/common';
 
 import { Perfis } from '../../auth/decorators/perfis.decorator';
 import {
@@ -7,7 +7,12 @@ import {
 } from '../../auth/decorators/usuario-atual.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PerfisGuard } from '../../auth/guards/perfis.guard';
-import { PERFIS_GESTAO, PERFIS_REGISTRO_ATIVIDADES } from '../perfis-gestao';
+import {
+  PERFIS_EXPORTAM_RELATORIOS,
+  PERFIS_GESTAO,
+  PERFIS_REGISTRO_ATIVIDADES,
+} from '../perfis-gestao';
+import { ConsultaListaPresencaDto } from './dto/consulta-lista-presenca.dto';
 import { RegistrarChamadaDto } from './dto/registrar-chamada.dto';
 import { FrequenciasService } from './frequencias.service';
 
@@ -34,6 +39,18 @@ export class FrequenciasController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
     return this.service.registrar(id, dados, usuario.organizacaoId);
+  }
+
+  // Lista de presença da atividade no período (prestação de contas): só quem
+  // exporta relatórios (coordenação e administrativo).
+  @Get('atividade/:id')
+  @Perfis(...PERFIS_EXPORTAM_RELATORIOS)
+  listaDePresenca(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() filtros: ConsultaListaPresencaDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.listaDePresenca(id, filtros.inicio, filtros.fim, usuario.organizacaoId);
   }
 
   @Get('educando/:id')

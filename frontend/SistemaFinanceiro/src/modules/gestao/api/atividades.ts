@@ -87,3 +87,28 @@ export async function registrarChamada(encontroId: string, linhas: LinhaChamada[
 export async function historicoFrequencia(educandoId: string): Promise<RegistroFrequencia[]> {
   return (await request<FrequenciaApi[]>(`/api/frequencias/educando/${educandoId}`)).map(deFrequenciaApi)
 }
+
+// Lista de presença da atividade no período (coordenação e administrativo).
+export interface ListaPresencaApi {
+  atividade: { id: number; nome: string; iniciativa: { id: number; nome: string } }
+  periodo: { inicio: string; fim: string }
+  encontros: Array<{ id: number; dataInicio: string | null; horaInicio: string | null; situacao: string }>
+  linhas: Array<{
+    educandoId: number
+    nome: string
+    presencas: Record<string, boolean>
+    totalPresencas: number
+    totalAusencias: number
+  }>
+}
+
+export async function consultarListaPresenca(
+  atividadeId: string,
+  inicio: string,
+  fim: string,
+): Promise<ListaPresencaApi> {
+  const busca = new URLSearchParams({ inicio, fim })
+  return request<ListaPresencaApi>(
+    `/api/frequencias/atividade/${encodeURIComponent(atividadeId)}?${busca}`,
+  )
+}

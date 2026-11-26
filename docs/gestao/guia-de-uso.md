@@ -29,10 +29,12 @@ Vê e faz tudo na Gestão.
 - **Cadastrar um projeto, serviço ou programa:** Projetos, Serviços e Programas › **Nova iniciativa**.
 - **Inativar ou reativar um educando:** na ficha do educando, botão no topo. O histórico nunca é apagado.
 - **Prestação de contas:** no Dashboard, use o **Painel de indicadores**. Escolha o período (há atalhos "Este mês", "Mês passado" e "Este ano") e a iniciativa, e clique em **Exportar CSV** (abre no Excel) ou **Exportar PDF** (abre o relatório para imprimir ou salvar como PDF). Só a coordenação e o administrativo exportam; só a coordenação vê o orçamento das iniciativas.
+- **Lista de presença de uma atividade:** abra a atividade (Atividades e Frequência) › quadro **Lista de presença** › escolha o período › **Exportar lista (CSV)**. Sai uma planilha com cada educando, a presença (P) ou falta (F) em cada encontro, os totais e a frequência. Só a coordenação e o administrativo exportam.
 
 ## Técnicos de Serviço Social e de Psicologia
 
-- **Cadastrar um educando:** Educandos › **Novo educando**. O sistema avisa se o CPF ou o NIS já pertencem a outro educando, e só aceita crianças e adolescentes de 6 a 17 anos.
+- **Cadastrar um educando:** Educandos › **Novo educando**. O sistema avisa se o CPF ou o NIS já pertencem a outro educando, e só aceita crianças e adolescentes de 6 a 17 anos (na edição, a idade é conferida só se a data de nascimento for alterada; quem já é educando e fez 18 anos continua editável).
+- **Situações de vulnerabilidade:** no bloco "Ingresso, vulnerabilidades e encaminhamento", marque os motivos de ingresso e as outras situações constatadas (substâncias psicoativas na família, saúde mental, neurodivergência).
 - **Registrar um atendimento:** na ficha do educando, aba **Fichas de evolução** › **Registrar atendimento** › **Salvar atendimento**.
   - Marque **sigiloso** quando o conteúdo for restrito. Um atendimento sigiloso só pode ser lido pelos técnicos do mesmo serviço de quem registrou e pela coordenação. Os demais veem só que ele existe.
 - **Registrar um encaminhamento:** mesma aba › **Registrar encaminhamento** (destino e motivo) › **Salvar encaminhamento**. Depois, acompanhe a efetivação em **Registrar acompanhamento** (Pendente, Em andamento ou Efetivado).
@@ -49,6 +51,7 @@ Vê e faz tudo na Gestão.
 ## Administrativo
 
 - Consulta a lista de educandos (nome, iniciativa e situação), a frequência, as atividades, as iniciativas, a agenda e o painel de indicadores.
+- Exporta o painel de indicadores (CSV e PDF) e a lista de presença de cada atividade (CSV), como descrito em Coordenação › Prestação de contas.
 - Não vê a ficha cadastral, os atendimentos nem os encaminhamentos. Esse acesso fica para a próxima etapa do sistema, como a MDCA pediu.
 
 ## Agenda (todos)

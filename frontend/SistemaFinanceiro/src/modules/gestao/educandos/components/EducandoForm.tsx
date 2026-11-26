@@ -8,11 +8,13 @@ import {
 import {
   CORES_AUTODECLARADAS,
   MOTIVOS_INGRESSO,
+  VULNERABILIDADES_CONSTATADAS,
   ORIGENS_ENCAMINHAMENTO,
   duplicidadeDe,
   educandoVazio,
   responsavelVazio,
   formatarCpf,
+  confereFaixaEtaria,
   problemaFaixaEtaria,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
@@ -114,6 +116,48 @@ function TextInput({
   )
 }
 
+// Grupo de caixas de marcar que grava numa lista compartilhada: marcar ou
+// desmarcar aqui não mexe nos itens de outros grupos da mesma lista.
+function CaixasDeMarcar({
+  titulo,
+  opcoes,
+  marcados,
+  desabilitado,
+  onChange,
+}: {
+  titulo: string
+  opcoes: readonly string[]
+  marcados: string[]
+  desabilitado: boolean
+  onChange: (lista: string[]) => void
+}) {
+  return (
+    <>
+      <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">{titulo}</p>
+      <div className="grid gap-2 md:grid-cols-2">
+        {opcoes.map((opcao) => (
+          <label key={opcao} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-[#0e7e6e]"
+              checked={marcados.includes(opcao)}
+              disabled={desabilitado}
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...marcados, opcao]
+                    : marcados.filter((item) => item !== opcao),
+                )
+              }
+            />
+            {opcao}
+          </label>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function EducandoForm({
   educando,
   leitura = false,
@@ -152,10 +196,11 @@ export default function EducandoForm({
     ? `Este ${duplicidade.campo.toUpperCase()} já pertence a ${duplicidade.educando.nome}.`
     : undefined
 
-  // Faixa etária só no cadastro novo (quem já é educando e fez 18 segue).
-  const cadastroNovo = !ehIdPersistido(form.id)
+  // Faixa etária no cadastro novo e na edição quando a data de nascimento
+  // muda (quem já é educando e fez 18 segue editável sem mexer na data).
+  const nascimentoOriginal = ehIdPersistido(form.id) ? (educando?.nascimento ?? "") : undefined
   const erroIdade =
-    cadastroNovo && !leitura && form.nascimento
+    !leitura && confereFaixaEtaria(form.nascimento, nascimentoOriginal)
       ? problemaFaixaEtaria(form.nascimento)
       : null
 
@@ -485,36 +530,28 @@ export default function EducandoForm({
 
       <Card className="p-5">
         <h2 className="mb-4 text-base font-semibold">
-          Ingresso e encaminhamento
+          Ingresso, vulnerabilidades e encaminhamento
         </h2>
         {pendente && (
           <div className="mb-3">
             <SensitiveNote>{AVISO_PENDENTE}</SensitiveNote>
           </div>
         )}
-        <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">
-          Motivo de ingresso (múltipla escolha)
-        </p>
-        <div className="grid gap-2 md:grid-cols-2">
-          {MOTIVOS_INGRESSO.map((motivo) => (
-            <label key={motivo} className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 accent-[#0e7e6e]"
-                checked={form.motivosIngresso.includes(motivo)}
-                disabled={leitura || pendente}
-                onChange={(event) =>
-                  set(
-                    "motivosIngresso",
-                    event.target.checked
-                      ? [...form.motivosIngresso, motivo]
-                      : form.motivosIngresso.filter((item) => item !== motivo),
-                  )
-                }
-              />
-              {motivo}
-            </label>
-          ))}
+        <CaixasDeMarcar
+          titulo="Motivo de ingresso (múltipla escolha)"
+          opcoes={MOTIVOS_INGRESSO}
+          marcados={form.motivosIngresso}
+          desabilitado={leitura || pendente}
+          onChange={(lista) => set("motivosIngresso", lista)}
+        />
+        <div className="mt-4">
+          <CaixasDeMarcar
+            titulo="Outras situações de vulnerabilidade constatadas (múltipla escolha)"
+            opcoes={VULNERABILIDADES_CONSTATADAS}
+            marcados={form.motivosIngresso}
+            desabilitado={leitura || pendente}
+            onChange={(lista) => set("motivosIngresso", lista)}
+          />
         </div>
         <div className="mt-4 max-w-md">
           <Field label="Origem do encaminhamento">

@@ -20,6 +20,16 @@ export const MOTIVOS_INGRESSO = [
   "Dificuldade de aprendizagem",
 ] as const
 
+// Outras situações de vulnerabilidade constatadas (questionário da MDCA,
+// pergunta 19). Gravadas no mesmo campo dos motivos de ingresso
+// (`motivos_ingresso`, lista de textos), sem migration. Ficam na ficha
+// cadastral, que só coordenação e técnicos veem.
+export const VULNERABILIDADES_CONSTATADAS = [
+  "Uso de substâncias psicoativas na família",
+  "Questões de saúde mental",
+  "Neurodivergência (TEA, TDAH e outras)",
+] as const
+
 export const ORIGENS_ENCAMINHAMENTO = [
   "Ação Rua",
   "CREAS Leste",
@@ -267,8 +277,9 @@ export function nomePerfil(perfil: Perfil): string {
 }
 
 // Público atendido pela MDCA: 6 a 17 anos (questionário, pergunta 4). Vale
-// só para o cadastro novo; quem já é educando e fez 18 anos segue editável.
-// O backend confere a mesma regra no POST /api/educandos.
+// no cadastro novo e na edição quando a data de nascimento muda; quem já é
+// educando e fez 18 anos segue editável se a data não for alterada.
+// O backend confere a mesma regra no POST e no PUT /api/educandos.
 export const IDADE_MINIMA = 6
 export const IDADE_MAXIMA = 17
 
@@ -280,6 +291,15 @@ export function idadeEm(nascimento: string, hoje: Date = new Date()): number | n
   const mesHoje = hoje.getMonth() + 1
   if (mesHoje < mes || (mesHoje === mes && hoje.getDate() < dia)) idade -= 1
   return idade
+}
+
+// Confere a faixa no cadastro novo (sem data original) ou quando a data mudou.
+export function confereFaixaEtaria(
+  nascimento: string,
+  nascimentoOriginal: string | undefined,
+): boolean {
+  if (!nascimento) return false
+  return nascimentoOriginal === undefined || nascimento !== nascimentoOriginal
 }
 
 export function problemaFaixaEtaria(
