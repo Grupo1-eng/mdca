@@ -23,6 +23,18 @@ Uma entrada por mudança relevante, **a mais recente no topo**, no formato:
 
 ---
 
+## 2026-11-26 — Faixa etária também na edição do educando
+
+**Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)
+
+**O que mudou:** `PUT /api/educandos/:id` e o formulário passam a conferir a faixa de 6 a 17 anos quando a data de nascimento é alterada (`mesmaData` em `gestao/educandos/faixa-etaria.ts`, `confereFaixaEtaria` no front). Sem mudança na data, quem já é educando e fez 18 anos segue editável.
+
+**Por quê:** questionário da MDCA, pergunta 4; antes só o cadastro novo conferia, e uma data errada podia ser corrigida para fora da faixa.
+
+**Pendências:** nenhuma.
+
+---
+
 ## 2026-11-26 — Lista de presença por atividade (CSV)
 
 **Tipo:** evolução · **Grupo:** gestão · **PR:** a abrir (branch `feature/gestao-itens-questionario`)

@@ -7,7 +7,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { idadeEm } from './faixa-etaria';
 
 // POST /api/educandos recusa data de nascimento fora de 6 a 17 anos
-// (questionário da MDCA, pergunta 4). A edição não confere a idade.
+// (questionário da MDCA, pergunta 4). A edição confere só se a data mudar.
 describe('Educandos: faixa etária no cadastro (integração)', () => {
   let app: INestApplication;
   let token: string;
@@ -89,5 +89,46 @@ describe('Educandos: faixa etária no cadastro (integração)', () => {
   it('sem data de nascimento, o cadastro segue aceito', async () => {
     const res = await post({ nome: 'Bia' });
     expect(res.status).toBe(201);
+  });
+
+  describe('edição (PUT)', () => {
+    function put(corpo: object) {
+      return request(app.getHttpServer())
+        .put('/api/educandos/1')
+        .set('Authorization', `Bearer ${token}`)
+        .send(corpo);
+    }
+
+    function existente(dataNascimento: string) {
+      prisma.educando.findFirst.mockResolvedValue({
+        id: 1,
+        organizacaoId: 3,
+        nome: 'Bia',
+        dataNascimento: new Date(`${dataNascimento}T00:00:00.000Z`),
+      });
+      prisma.educando.update.mockImplementation(({ data }) => ({ id: 1, ...data }));
+    }
+
+    it('quem fez 18 segue editável se a data não muda', async () => {
+      const data = nascidoHa(19);
+      existente(data);
+      const res = await put({ nome: 'Bia Souza', dataNascimento: data });
+      expect(res.status).toBe(200);
+      expect(prisma.educando.update).toHaveBeenCalled();
+    });
+
+    it('recusa trocar a data para fora da faixa', async () => {
+      existente(nascidoHa(10));
+      const res = await put({ nome: 'Bia', dataNascimento: nascidoHa(4) });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/de 6 a 17 anos/);
+      expect(prisma.educando.update).not.toHaveBeenCalled();
+    });
+
+    it('aceita trocar a data para dentro da faixa', async () => {
+      existente(nascidoHa(10));
+      const res = await put({ nome: 'Bia', dataNascimento: nascidoHa(12) });
+      expect(res.status).toBe(200);
+    });
   });
 });

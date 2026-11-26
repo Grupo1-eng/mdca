@@ -33,7 +33,8 @@ Vê e faz tudo na Gestão.
 
 ## Técnicos de Serviço Social e de Psicologia
 
-- **Cadastrar um educando:** Educandos › **Novo educando**. O sistema avisa se o CPF ou o NIS já pertencem a outro educando, e só aceita crianças e adolescentes de 6 a 17 anos.
+- **Cadastrar um educando:** Educandos › **Novo educando**. O sistema avisa se o CPF ou o NIS já pertencem a outro educando, e só aceita crianças e adolescentes de 6 a 17 anos (na edição, a idade é conferida só se a data de nascimento for alterada; quem já é educando e fez 18 anos continua editável).
+- **Situações de vulnerabilidade:** no bloco "Ingresso, vulnerabilidades e encaminhamento", marque os motivos de ingresso e as outras situações constatadas (substâncias psicoativas na família, saúde mental, neurodivergência).
 - **Registrar um atendimento:** na ficha do educando, aba **Fichas de evolução** › **Registrar atendimento** › **Salvar atendimento**.
   - Marque **sigiloso** quando o conteúdo for restrito. Um atendimento sigiloso só pode ser lido pelos técnicos do mesmo serviço de quem registrou e pela coordenação. Os demais veem só que ele existe.
 - **Registrar um encaminhamento:** mesma aba › **Registrar encaminhamento** (destino e motivo) › **Salvar encaminhamento**. Depois, acompanhe a efetivação em **Registrar acompanhamento** (Pendente, Em andamento ou Efetivado).

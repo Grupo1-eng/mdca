@@ -10,6 +10,7 @@ import {
   permissoesEducandos,
   salvarEducandoEmMemoria,
   idadeEm,
+  confereFaixaEtaria,
   problemaFaixaEtaria,
 } from "./model"
 
@@ -178,3 +179,17 @@ describe("faixa etária (questionário da MDCA, pergunta 4)", () => {
   })
 })
 
+
+describe("confereFaixaEtaria", () => {
+  it("confere no cadastro novo e quando a data muda na edição", () => {
+    expect(confereFaixaEtaria("2015-03-10", undefined)).toBe(true)
+    expect(confereFaixaEtaria("2015-03-10", "2014-03-10")).toBe(true)
+    expect(confereFaixaEtaria("2015-03-10", "")).toBe(true)
+  })
+
+  it("não confere se a data não mudou (quem fez 18 segue editável) ou está vazia", () => {
+    expect(confereFaixaEtaria("2005-03-10", "2005-03-10")).toBe(false)
+    expect(confereFaixaEtaria("", "2005-03-10")).toBe(false)
+    expect(confereFaixaEtaria("", undefined)).toBe(false)
+  })
+})

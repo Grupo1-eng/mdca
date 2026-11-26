@@ -1,4 +1,4 @@
-import { idadeEm, problemaFaixaEtaria } from './faixa-etaria';
+import { idadeEm, mesmaData, problemaFaixaEtaria } from './faixa-etaria';
 
 // Questionário da MDCA, pergunta 4: público de 6 a 17 anos.
 describe('faixa etária do educando', () => {
@@ -34,5 +34,14 @@ describe('faixa etária do educando', () => {
 
   it('usa "ano" no singular', () => {
     expect(problemaFaixaEtaria(nascido('2025-01-01'), hoje)).toMatch(/tem 1 ano\./);
+  });
+});
+
+describe('mesmaData', () => {
+  it('compara o dia, ignorando o horário', () => {
+    expect(mesmaData(new Date('2015-03-10T00:00:00Z'), new Date('2015-03-10T15:00:00Z'))).toBe(true);
+    expect(mesmaData(new Date('2015-03-10T00:00:00Z'), new Date('2015-03-11T00:00:00Z'))).toBe(false);
+    expect(mesmaData(new Date('2015-03-10T00:00:00Z'), null)).toBe(false);
+    expect(mesmaData(null, undefined)).toBe(true);
   });
 });

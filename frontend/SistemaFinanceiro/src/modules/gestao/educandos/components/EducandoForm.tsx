@@ -14,6 +14,7 @@ import {
   educandoVazio,
   responsavelVazio,
   formatarCpf,
+  confereFaixaEtaria,
   problemaFaixaEtaria,
 } from "../model"
 import type { Educando, Responsavel } from "../types"
@@ -195,10 +196,11 @@ export default function EducandoForm({
     ? `Este ${duplicidade.campo.toUpperCase()} já pertence a ${duplicidade.educando.nome}.`
     : undefined
 
-  // Faixa etária só no cadastro novo (quem já é educando e fez 18 segue).
-  const cadastroNovo = !ehIdPersistido(form.id)
+  // Faixa etária no cadastro novo e na edição quando a data de nascimento
+  // muda (quem já é educando e fez 18 segue editável sem mexer na data).
+  const nascimentoOriginal = ehIdPersistido(form.id) ? (educando?.nascimento ?? "") : undefined
   const erroIdade =
-    cadastroNovo && !leitura && form.nascimento
+    !leitura && confereFaixaEtaria(form.nascimento, nascimentoOriginal)
       ? problemaFaixaEtaria(form.nascimento)
       : null
 
